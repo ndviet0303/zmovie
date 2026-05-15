@@ -36,6 +36,11 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
+button *,
+a * {
+  cursor: inherit;
+}
+
 button:disabled,
 a[aria-disabled="true"] {
   cursor: not-allowed;

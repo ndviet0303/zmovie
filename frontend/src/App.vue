@@ -1029,7 +1029,7 @@ onBeforeUnmount(() => {
             <article v-for="(movie, index) in filteredMovies.slice(0, 8)" :key="movie.id" class="group min-w-0">
               <button
                 :class="[
-                  'relative block aspect-2/3 w-full overflow-hidden rounded-lg bg-[#252938] text-left shadow-[0_14px_38px_rgba(0,0,0,0.26)] transition group-hover:-translate-y-1 group-hover:shadow-[0_18px_52px_rgba(0,0,0,0.42)]',
+                  'relative block aspect-2/3 w-full cursor-pointer overflow-hidden rounded-lg bg-[#252938] text-left shadow-[0_14px_38px_rgba(0,0,0,0.26)] transition group-hover:-translate-y-1 group-hover:shadow-[0_18px_52px_rgba(0,0,0,0.42)]',
                   index === 7 ? 'ring-3 ring-[#ffe182]' : 'ring-1 ring-white/8',
                 ]"
                 type="button"
@@ -1056,7 +1056,7 @@ onBeforeUnmount(() => {
                   </small>
                 </div>
                 <button
-                  class="col-span-2 mt-1 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-white/8 bg-white/8 px-3 text-xs font-black whitespace-nowrap text-slate-100 transition hover:border-[#ffe182] hover:bg-[#ffe182] hover:text-[#11131d]"
+                  class="col-span-2 mt-1 inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-white/8 bg-white/8 px-3 text-xs font-black whitespace-nowrap text-slate-100 transition hover:border-[#ffe182] hover:bg-[#ffe182] hover:text-[#11131d]"
                   type="button"
                   @click="openPlayer(movie)"
                 >
@@ -1091,7 +1091,7 @@ onBeforeUnmount(() => {
           <div class="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4 xl:grid-cols-8">
             <article v-for="movie in section.items" :key="movie.id" class="min-w-0">
               <button
-                class="group relative block aspect-2/3 w-full overflow-hidden rounded-lg bg-[#252938] text-left"
+                class="group relative block aspect-2/3 w-full cursor-pointer overflow-hidden rounded-lg bg-[#252938] text-left"
                 type="button"
                 @click="openPlayer(movie)"
               >
@@ -1112,7 +1112,7 @@ onBeforeUnmount(() => {
                 {{ movie.original }}
               </p>
               <button
-                class="mx-auto mt-2 flex h-7 items-center gap-1 rounded-lg bg-white/8 px-3 text-xs font-bold text-slate-200 transition hover:bg-[#ffe182] hover:text-[#11131d]"
+                class="mx-auto mt-2 flex h-7 cursor-pointer items-center gap-1 rounded-lg bg-white/8 px-3 text-xs font-bold text-slate-200 transition hover:bg-[#ffe182] hover:text-[#11131d]"
                 type="button"
                 @click="openMovie(movie)"
               >
