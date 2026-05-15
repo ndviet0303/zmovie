@@ -641,6 +641,15 @@ function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+function useFallbackImage(event) {
+  const image = event.currentTarget
+  if (!image || image.dataset.fallbackApplied) return
+
+  image.dataset.fallbackApplied = 'true'
+  image.src = logoMarkUrl
+  image.classList.add('object-contain', 'p-3')
+}
+
 function setupPlayerSource() {
   const video = videoRef.value
   const url = activeMovie.value?.videoUrl
@@ -734,10 +743,10 @@ onBeforeUnmount(() => {
   <AdminPanel v-if="isAdminRoute" />
   <div v-else class="min-h-screen overflow-x-hidden bg-[#11131d] text-slate-50">
     <header
-      class="sticky top-0 z-20 grid min-h-[74px] grid-cols-[1fr_auto] items-center gap-4 border-b border-white/7 bg-[#090a12]/92 px-4 py-3 backdrop-blur-[18px] md:grid-cols-[auto_minmax(240px,420px)_auto] md:gap-5 md:px-[clamp(20px,4vw,52px)] md:py-0 xl:grid-cols-[auto_minmax(260px,420px)_1fr]"
+      class="sticky top-0 z-20 grid min-h-[72px] grid-cols-[minmax(0,1fr)_44px] items-center gap-4 border-b border-white/7 bg-[#090a12]/94 px-4 py-3 backdrop-blur-[18px] md:grid-cols-[auto_minmax(240px,420px)_auto] md:gap-5 md:px-[clamp(20px,4vw,52px)] md:py-0 xl:grid-cols-[auto_minmax(250px,420px)_1fr]"
     >
       <button
-        class="flex min-w-max items-center gap-2.5 text-left"
+        class="flex min-w-0 items-center gap-2.5 text-left"
         type="button"
         aria-label="ZMovie home"
         @click="showHome"
@@ -750,7 +759,7 @@ onBeforeUnmount(() => {
       </button>
 
       <div
-        class="order-3 col-span-full flex h-10 items-center gap-3 rounded-lg border border-white/6 bg-[#20232d] px-4 text-slate-300 transition focus-within:border-[#ffe182]/70 md:order-none md:col-span-1 md:h-[46px] md:px-[18px]"
+        class="order-3 col-span-full flex h-10 min-w-0 items-center gap-3 rounded-lg border border-white/6 bg-[#20232d] px-4 text-slate-300 transition focus-within:border-[#ffe182]/70 md:order-none md:col-span-1 md:h-[46px] md:px-[18px]"
       >
         <Search :size="20" />
         <input
@@ -772,7 +781,7 @@ onBeforeUnmount(() => {
       </div>
 
       <button
-        class="grid h-11 w-11 cursor-pointer place-items-center rounded-lg border border-white/10 bg-[#20232d] text-white xl:hidden"
+        class="grid h-11 w-11 cursor-pointer place-items-center justify-self-end rounded-lg border border-white/10 bg-[#20232d] text-white xl:hidden"
         type="button"
         aria-label="Mở menu"
         @click="menuOpen = !menuOpen"
@@ -783,7 +792,7 @@ onBeforeUnmount(() => {
 
       <nav
         :class="[
-          'absolute left-5 right-5 top-32 hidden rounded-xl border border-white/8 bg-[#10121c]/98 p-4 text-sm font-bold text-[#f5f7fb] shadow-[0_22px_60px_rgba(0,0,0,0.45)] md:top-[74px] xl:static xl:flex xl:items-center xl:justify-end xl:gap-[clamp(18px,2vw,36px)] xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none',
+          'absolute left-5 right-5 top-32 hidden rounded-xl border border-white/8 bg-[#10121c]/98 p-4 text-sm font-bold text-[#f5f7fb] shadow-[0_22px_60px_rgba(0,0,0,0.45)] md:top-[74px] xl:static xl:flex xl:items-center xl:justify-end xl:gap-[clamp(14px,1.6vw,28px)] xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none',
           menuOpen ? 'grid gap-1 md:grid-cols-2 xl:flex' : 'xl:flex',
         ]"
       >
@@ -791,7 +800,7 @@ onBeforeUnmount(() => {
           v-for="item in navItems"
           :key="item"
           :class="[
-            'inline-flex min-h-10 items-center gap-1 px-2.5 text-left transition-colors hover:text-[#ffe182] xl:px-0',
+            'inline-flex min-h-10 items-center gap-1 px-2.5 text-left whitespace-nowrap transition-colors hover:text-[#ffe182] xl:px-0',
             (item === 'ZMovie' && selectedCategory === 'Tất cả') || item === selectedCategory
               ? 'text-[#ffe182]'
               : '',
@@ -810,7 +819,7 @@ onBeforeUnmount(() => {
         <button
           v-for="item in filterItems"
           :key="item"
-          class="inline-flex min-h-10 items-center gap-1 px-2.5 text-left transition-colors hover:text-[#ffe182] xl:px-0"
+          class="inline-flex min-h-10 items-center gap-1 px-2.5 text-left whitespace-nowrap transition-colors hover:text-[#ffe182] xl:px-0"
           type="button"
           @click="selectCategory('Tất cả')"
         >
@@ -822,15 +831,15 @@ onBeforeUnmount(() => {
 
     <main v-if="currentView === 'home'">
       <section
-        class="hero-bg relative min-h-[560px] px-[18px] md:min-h-[430px] md:px-[clamp(20px,7vw,140px)] 2xl:px-[clamp(20px,14vw,370px)]"
-        :style="{ backgroundImage: `linear-gradient(90deg, #171922 0%, rgba(23,25,34,.9) 16%, rgba(23,25,34,.16) 52%, #171922 100%), linear-gradient(180deg, rgba(23,25,34,0) 48%, #171922 100%), url(${activeHeroMovie.backdrop})` }"
+        class="hero-bg relative min-h-[540px] px-[18px] md:min-h-[500px] md:px-[clamp(20px,7vw,140px)] 2xl:px-[clamp(20px,14vw,370px)]"
+        :style="{ backgroundImage: `linear-gradient(90deg, #131722 0%, rgba(19,23,34,.88) 26%, rgba(19,23,34,.32) 58%, #131722 100%), linear-gradient(180deg, rgba(19,23,34,0) 48%, #11131d 100%), url(${activeHeroMovie.backdrop})` }"
         @mouseenter="pauseHeroAutoplay"
         @mouseleave="resumeHeroAutoplay"
         @focusin="pauseHeroAutoplay"
         @focusout="resumeHeroAutoplay"
       >
-        <div class="relative z-[1] max-w-xl pt-10 md:pt-14">
-          <h1 class="mb-2 text-3xl font-black text-white">{{ activeHeroMovie.title }}</h1>
+        <div class="relative z-[1] max-w-xl pt-12 md:pt-16">
+          <h1 class="mb-2 text-[clamp(30px,3vw,48px)] leading-tight font-black text-white">{{ activeHeroMovie.title }}</h1>
           <p class="mb-3.5 text-base font-bold text-[#ffe182]">{{ activeHeroMovie.original }}</p>
           <div class="flex max-w-80 flex-wrap gap-2.5">
             <span class="tag border-[#ffe182] text-[#ffe182]">IMDb {{ activeHeroMovie.imdb }}</span>
@@ -840,23 +849,33 @@ onBeforeUnmount(() => {
               {{ genre }}
             </span>
           </div>
-          <p class="my-6 line-clamp-3 max-w-[520px] text-sm font-semibold leading-[1.65] text-slate-50 md:my-8 md:text-[15px]">
+          <p class="my-6 line-clamp-3 max-w-[520px] text-sm font-semibold leading-[1.65] text-slate-100 md:my-7 md:text-[15px]">
             {{ activeHeroMovie.description }}
           </p>
-          <button
-            class="grid h-[72px] w-[72px] cursor-pointer place-items-center rounded-full border-0 bg-linear-to-br from-[#ffe58f] to-[#ffd058] text-[#11131d] shadow-[0_18px_48px_rgba(255,208,88,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_56px_rgba(255,208,88,0.32)]"
-            type="button"
-            aria-label="Xem phim"
-            @click="playActiveHero"
-          >
-            <Play :size="28" fill="currentColor" />
-          </button>
+          <div class="flex flex-wrap items-center gap-3">
+            <button
+              class="inline-flex h-12 cursor-pointer items-center gap-2 rounded-lg border-0 bg-linear-to-br from-[#ffe58f] to-[#ffd058] px-5 text-sm font-black text-[#11131d] shadow-[0_18px_48px_rgba(255,208,88,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_56px_rgba(255,208,88,0.32)]"
+              type="button"
+              @click="playActiveHero"
+            >
+              <Play :size="18" fill="currentColor" />
+              Xem phim
+            </button>
+            <button
+              class="inline-flex h-12 cursor-pointer items-center gap-2 rounded-lg border border-white/14 bg-white/9 px-5 text-sm font-bold text-white transition hover:border-[#ffe182] hover:text-[#ffe182]"
+              type="button"
+              @click="openMovie(activeHeroMovie)"
+            >
+              Chi tiết
+              <ChevronRight :size="16" />
+            </button>
+          </div>
         </div>
 
         <div
           ref="heroStripRef"
           :class="[
-            'absolute bottom-[86px] left-[18px] right-[18px] z-[1] flex touch-pan-x select-none gap-3 overflow-x-auto scroll-smooth md:bottom-32 md:left-auto md:right-[clamp(20px,7vw,140px)] 2xl:right-[clamp(24px,14vw,360px)]',
+            'absolute bottom-8 left-[18px] right-[18px] z-[1] flex touch-pan-x select-none gap-3 overflow-x-auto scroll-smooth md:bottom-12 md:left-auto md:right-[clamp(20px,7vw,140px)] 2xl:right-[clamp(24px,14vw,360px)]',
             isHeroDragging ? 'cursor-grabbing scroll-auto' : 'cursor-grab',
           ]"
           aria-label="Phim nổi bật"
@@ -876,7 +895,7 @@ onBeforeUnmount(() => {
             type="button"
             @click="handleHeroThumbnailClick(index)"
           >
-            <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" />
+            <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" @error="useFallbackImage" />
             <span
               :class="[
                 'absolute bottom-0 left-0 h-0.5 bg-[#ffe182] transition-all duration-[4500ms] group-hover:bg-white',
@@ -889,9 +908,9 @@ onBeforeUnmount(() => {
 
       <section
         id="catalog"
-        class="mx-auto -mt-12 max-w-[1810px] px-[18px] pb-16 md:-mt-[78px] md:px-[clamp(20px,7vw,140px)] md:pb-20 2xl:px-[clamp(20px,14vw,370px)]"
+        class="mx-auto max-w-[1810px] px-[18px] py-12 md:px-[clamp(20px,7vw,140px)] md:py-14 2xl:px-[clamp(20px,14vw,370px)]"
       >
-        <h2 class="relative z-[2] max-w-[980px] text-2xl leading-tight font-extrabold text-slate-50 md:text-[clamp(24px,2vw,32px)]">
+        <h2 class="relative z-[2] max-w-[980px] text-2xl leading-tight font-extrabold text-slate-50 md:text-[clamp(24px,2vw,34px)]">
           ZMovie - Kho Phim Full HD - Xem Phim Online Vietsub, Thuyết Minh
         </h2>
         <div class="relative z-[2] mt-4 flex flex-wrap items-center gap-3 text-xs font-semibold">
@@ -928,18 +947,18 @@ onBeforeUnmount(() => {
           </span>
         </div>
 
-        <div class="relative z-[2] mt-7 grid grid-cols-1 gap-4 min-[421px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div class="relative z-[2] mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <RouterLink
             v-for="(topic, index) in topics"
             :key="topic.title"
             :to="{ name: 'topic', params: { slug: topic.slug } }"
             :class="[
-              'flex min-h-[126px] cursor-pointer flex-col justify-between overflow-hidden rounded-lg bg-linear-to-br p-4.5 text-left text-white transition hover:-translate-y-0.5 hover:brightness-105 md:min-h-[152px] md:p-6',
+              'flex min-h-[118px] cursor-pointer flex-col justify-between overflow-hidden rounded-lg bg-linear-to-br p-4.5 text-left text-white shadow-[0_16px_42px_rgba(0,0,0,0.2)] transition hover:-translate-y-0.5 hover:brightness-105 md:min-h-[134px] md:p-5',
               topicTones[index],
               selectedTopic?.title === topic.title ? 'ring-2 ring-white' : '',
             ]"
           >
-            <strong class="max-w-[170px] text-[clamp(21px,1.35vw,30px)] leading-tight">
+            <strong class="max-w-[170px] text-[clamp(20px,1.2vw,26px)] leading-tight">
               {{ topic.title }}
             </strong>
             <span class="inline-flex items-center gap-1.5 text-sm font-bold">
@@ -970,7 +989,7 @@ onBeforeUnmount(() => {
                 type="button"
                 @click="openMovie(movie)"
               >
-                <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" />
+                <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" @error="useFallbackImage" />
                 <span class="absolute right-2 bottom-2 max-w-[calc(100%-16px)] overflow-hidden rounded-md bg-[#303543]/92 px-2 py-1 text-[11px] font-black text-ellipsis whitespace-nowrap text-white shadow-lg backdrop-blur">
                   {{ movie.badge }} {{ movie.meta }}
                 </span>
@@ -1030,7 +1049,7 @@ onBeforeUnmount(() => {
                 type="button"
                 @click="openPlayer(movie)"
               >
-                <img class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.04]" :src="movie.poster" :alt="movie.title" />
+                <img class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.04]" :src="movie.poster" :alt="movie.title" @error="useFallbackImage" />
                 <span class="absolute right-2 bottom-2 rounded-[5px] bg-[#3f4454]/92 px-2 py-1 text-[11px] font-black text-white">
                   {{ movie.badge }}
                 </span>
@@ -1047,7 +1066,7 @@ onBeforeUnmount(() => {
                 {{ movie.original }}
               </p>
               <button
-                class="mx-auto mt-2 flex items-center gap-1 rounded-full bg-white/8 px-3 py-1 text-xs font-bold text-slate-200 transition hover:bg-[#ffe182] hover:text-[#11131d]"
+                class="mx-auto mt-2 flex h-7 items-center gap-1 rounded-lg bg-white/8 px-3 text-xs font-bold text-slate-200 transition hover:bg-[#ffe182] hover:text-[#11131d]"
                 type="button"
                 @click="openMovie(movie)"
               >
@@ -1146,7 +1165,7 @@ onBeforeUnmount(() => {
                 type="button"
                 @click="openPlayer(movie)"
               >
-                <img class="aspect-2/3 w-full object-cover" :src="movie.poster" :alt="movie.title" />
+                <img class="aspect-2/3 w-full object-cover" :src="movie.poster" :alt="movie.title" @error="useFallbackImage" />
               </button>
             </div>
           </aside>
@@ -1209,7 +1228,7 @@ onBeforeUnmount(() => {
             type="button"
             @click="openMovie(movie)"
           >
-            <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" />
+            <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" @error="useFallbackImage" />
           </button>
         </div>
       </section>
@@ -1267,13 +1286,12 @@ onBeforeUnmount(() => {
     </footer>
 
     <button
-      class="fixed right-4 bottom-4 z-10 grid h-[58px] w-[58px] cursor-pointer place-items-center rounded-[14px] border border-white/16 bg-white text-[9px] font-black text-[#0f111a] uppercase md:right-6 md:bottom-6"
+      class="fixed right-4 bottom-4 z-10 inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border border-white/16 bg-white text-[#0f111a] shadow-[0_16px_44px_rgba(0,0,0,0.28)] transition hover:bg-[#ffe182] md:right-6 md:bottom-6"
       type="button"
       aria-label="Lên đầu trang"
       @click="scrollToTop"
     >
       <ChevronDown class="rotate-180" :size="18" />
-      <span>Đầu trang</span>
     </button>
 
   </div>

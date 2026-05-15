@@ -21,8 +21,8 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(circle at 52% 14%, rgba(139, 109, 65, 0.32), transparent 34rem),
-    linear-gradient(180deg, #0d0f17 0%, #151720 44%, #11131b 100%);
+    radial-gradient(circle at 52% 14%, rgba(255, 209, 88, 0.12), transparent 30rem),
+    linear-gradient(180deg, #0b0d14 0%, #141720 44%, #10131b 100%);
 }
 
 button,
@@ -41,8 +41,8 @@ a {
 
 .hero-bg {
   background:
-    linear-gradient(90deg, #171922 0%, rgba(23, 25, 34, 0.9) 16%, rgba(23, 25, 34, 0.16) 52%, #171922 100%),
-    linear-gradient(180deg, rgba(23, 25, 34, 0) 48%, #171922 100%),
+    linear-gradient(90deg, #131722 0%, rgba(19, 23, 34, 0.88) 26%, rgba(19, 23, 34, 0.32) 58%, #131722 100%),
+    linear-gradient(180deg, rgba(19, 23, 34, 0) 48%, #11131d 100%),
     url("https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=2200&q=85") center / cover;
 }
 
