@@ -19,7 +19,6 @@ Route::get('/probe', fn () => [
     'app' => config('app.name'),
     'env' => config('app.env'),
     'time' => now()->toISOString(),
-    
 ]);
 Route::get('/debug/db-connection', [DatabaseDebugController::class, 'show']);
 
