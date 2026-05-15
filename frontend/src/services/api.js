@@ -84,6 +84,12 @@ async function errorMessage(response) {
 }
 
 function resolveApiBaseUrl() {
+  const configuredUrl = import.meta.env.VITE_API_BASE_URL
+
+  if (configuredUrl) {
+    return normalizeApiBaseUrl(configuredUrl)
+  }
+
   if (typeof window !== 'undefined') {
     return normalizeApiBaseUrl(window.location.origin)
   }
