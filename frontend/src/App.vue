@@ -1246,10 +1246,10 @@ onBeforeUnmount(() => {
 
     <main v-else-if="activeMovie" class="pb-20">
       <section
-        class="relative mx-auto mt-2 min-h-[500px] max-w-[1800px] overflow-hidden rounded-none px-5 py-12 md:mt-2 md:min-h-[500px] md:rounded-2xl md:px-12 md:py-14"
+        class="relative mx-auto mt-2 min-h-[500px] max-w-[1800px] overflow-hidden rounded-none px-5 pt-12 pb-44 md:mt-2 md:min-h-[560px] md:rounded-2xl md:px-12 md:pt-14 md:pb-52"
         :style="{ backgroundImage: `linear-gradient(90deg, rgba(35,39,56,.98) 0%, rgba(35,39,56,.9) 28%, rgba(35,39,56,.15) 63%, rgba(35,39,56,.75) 100%), linear-gradient(180deg, rgba(35,39,56,0) 64%, #171922 100%), url(${activeMovie.backdrop})`, backgroundSize: 'cover', backgroundPosition: 'center' }"
       >
-        <div class="relative z-[1] max-w-xl">
+        <div class="relative z-[2] max-w-xl">
           <h1 class="text-3xl font-black text-white">{{ activeMovie.title }}</h1>
           <p class="mt-2 font-bold text-[#ffe182]">{{ activeMovie.original }}</p>
           <div class="mt-4 flex flex-wrap gap-2">
