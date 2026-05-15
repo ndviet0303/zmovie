@@ -1,13 +1,6 @@
 const API_BASE_URL = resolveApiBaseUrl()
 const ADMIN_SESSION_KEY = 'zmovie_admin_session'
 
-const posterFallback =
-  'https://images.unsplash.com/photo-1608889825103-eb5ed706fc64?auto=format&fit=crop&w=520&q=85'
-const backdropFallback =
-  'https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=2200&q=85'
-const videoFallback =
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
-
 async function request(path, params = {}) {
   const url = new URL(`${API_BASE_URL}${path}`)
   Object.entries(params).forEach(([key, value]) => {
@@ -228,15 +221,15 @@ export function normalizeMovie(movie) {
     imdb: Number(movie.average_rating ?? 0).toFixed(1),
     genres: (movie.genres ?? []).map((genre) => genre.name),
     countries: (movie.countries ?? []).map((country) => country.name),
-    poster: absoluteAssetUrl(movie.poster_path) || posterFallback,
-    backdrop: absoluteAssetUrl(movie.backdrop_path) || backdropFallback,
+    poster: absoluteAssetUrl(movie.poster_path),
+    backdrop: absoluteAssetUrl(movie.backdrop_path),
     description:
       movie.overview ??
       'Nội dung đang được ZMovie cập nhật. Bạn có thể theo dõi phim này để nhận thông tin mới nhất.',
     isFeatured: Boolean(movie.is_featured),
     viewCount: movie.view_count ?? 0,
     episodes,
-    videoUrl: streamUrl(videoSource) || playableUrl(movie.trailer_url ?? videoFallback),
+    videoUrl: streamUrl(videoSource) || playableUrl(movie.trailer_url),
     videoType: videoSource?.source_type ?? 'mp4',
     raw: movie,
   }

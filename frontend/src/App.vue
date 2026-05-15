@@ -108,261 +108,22 @@ const topicSlugs = {
   tvshow: 'TV Show',
 }
 
-const fallbackMovies = [
-  {
-    id: 'the-favor',
-    title: 'Kẻ Cứu Rỗi',
-    original: 'The Favor',
-    category: 'Phim Lẻ Mới',
-    year: '2025',
-    meta: 'Full',
-    badge: 'P.Đề',
-    imdb: '0',
-    genres: ['Chính kịch', 'Kinh Dị'],
-    poster:
-      'https://images.unsplash.com/photo-1608889825103-eb5ed706fc64?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Phim Kẻ Cứu Rỗi là một tác phẩm điện ảnh Hàn Quốc đầy kịch tính, khám phá ranh giới mong manh giữa phép màu và lời nguyền trong cuộc sống gia đình.',
-  },
-  {
-    id: 'enchanting-cranium',
-    title: 'Liêu Trai: Mỹ Nhân Thủ',
-    original: 'The Enchanting Cranium Mystery',
-    category: 'Phim Lẻ Mới',
-    year: '2025',
-    meta: 'Full',
-    badge: 'P.Đề',
-    imdb: '7.1',
-    genres: ['Cổ Trang', 'Bí Ẩn'],
-    poster:
-      'https://images.unsplash.com/photo-1526816229784-65d5d54ac8bc?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Một vụ án kỳ bí kéo những nhân vật trẻ vào vòng xoáy bí mật, tình yêu và những lời nguyền cổ xưa.',
-  },
-  {
-    id: 'gabriels-inferno',
-    title: 'Giáo Sư Gabriel: Phần 2',
-    original: "Gabriel's Inferno: Part II",
-    category: 'Phim Lẻ Mới',
-    year: '2024',
-    meta: 'Full',
-    badge: 'P.Đề',
-    imdb: '6.8',
-    genres: ['Tình Cảm', 'Tâm Lý'],
-    poster:
-      'https://images.unsplash.com/photo-1516585427167-9f4af9627e6c?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Một chuyện tình nhiều tổn thương tiếp tục mở ra giữa những lựa chọn khó nói và quá khứ chưa khép lại.',
-  },
-  {
-    id: 'in-the-name-father',
-    title: 'Điệp Án Truy Tung',
-    original: 'In The Name Of The Father',
-    category: 'Phim Lẻ Mới',
-    year: '2025',
-    meta: 'Full',
-    badge: 'P.Đề',
-    imdb: '7.4',
-    genres: ['Hành Động', 'Gia Đình'],
-    poster:
-      'https://images.unsplash.com/photo-1518709268805-4e9042af2176?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Một người cha bị cuốn vào cuộc truy tìm nguy hiểm khi sự thật về gia đình dần bị phơi bày.',
-  },
-  {
-    id: 'the-gates',
-    title: 'Khu Khép Kín',
-    original: 'The Gates',
-    category: 'Phim Lẻ Mới',
-    year: '2025',
-    meta: 'Full',
-    badge: 'P.Đề',
-    imdb: '6.5',
-    genres: ['Kinh Dị', 'Giật Gân'],
-    poster:
-      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1518709911915-712d5fd04677?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Một khu nhà tưởng chừng bình yên che giấu những cánh cửa dẫn đến bí mật chết người.',
-  },
-  {
-    id: 'filing-love',
-    title: 'Thanh Tra Bí Mật',
-    original: 'Filing for Love',
-    category: 'Phim Bộ Mới',
-    year: '2025',
-    meta: 'Tập 8',
-    badge: 'P.Đề',
-    imdb: '7.0',
-    genres: ['Hài', 'Tình Cảm'],
-    poster:
-      'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Một cặp đôi bất đắc dĩ cùng điều tra những hồ sơ kỳ lạ, vừa phá án vừa học cách tin nhau.',
-  },
-  {
-    id: 'we-are-trying',
-    title: 'Cuộc Chiến Trong Chúng Ta',
-    original: 'We Are All Trying Here',
-    category: 'Phim Bộ Mới',
-    year: '2025',
-    meta: 'Tập 10',
-    badge: 'P.Đề',
-    imdb: '7.2',
-    genres: ['Đời Thường', 'Tâm Lý'],
-    poster:
-      'https://images.unsplash.com/photo-1511882150382-421056c89033?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Những con người trẻ đối mặt với áp lực đô thị, tình bạn và những lựa chọn trưởng thành.',
-  },
-  {
-    id: 'lillys-verschwinden',
-    title: 'Lilly Mất Tích (Phần 1)',
-    original: 'Lillys Verschwinden (Season 1)',
-    category: 'Phim Bộ Mới',
-    year: '2025',
-    meta: 'Tập 6',
-    badge: 'P.Đề',
-    imdb: '7.3',
-    genres: ['Bí Ẩn', 'Tội Phạm'],
-    poster:
-      'https://images.unsplash.com/photo-1497032205916-ac775f0649ae?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Vụ mất tích của Lilly buộc cả thị trấn phải nhìn lại những bí mật đã bị chôn giấu nhiều năm.',
-  },
-  {
-    id: 'funny-af',
-    title: 'Funny AF With Kevin Hart',
-    original: 'Funny AF with Kevin Hart',
-    category: 'Phim Bộ Mới',
-    year: '2025',
-    meta: 'Tập 4',
-    badge: 'P.Đề',
-    imdb: '6.9',
-    genres: ['Hài', 'TV Show'],
-    poster:
-      'https://images.unsplash.com/photo-1527224538127-2104bb71c51b?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1508973379184-7517410fb0bc?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Chuỗi sân khấu hài độc thoại với nhịp nhanh, nhiều khách mời và các câu chuyện đời thường sắc bén.',
-  },
-  {
-    id: 'all-blue-sky',
-    title: 'Xanh Ngắt Bầu Trời',
-    original: 'All the Blue in the Sky',
-    category: 'Phim Bộ Mới',
-    year: '2025',
-    meta: 'Tập 12',
-    badge: 'P.Đề',
-    imdb: '7.6',
-    genres: ['Phiêu Lưu', 'Gia Đình'],
-    poster:
-      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Một hành trình đường dài mở ra những kết nối mới giữa các thành viên trong một gia đình rạn nứt.',
-  },
-  {
-    id: 'embers-love',
-    title: 'Tân Hoa Duyên',
-    original: 'Embers of Love',
-    category: 'Phim Chiếu Rạp',
-    year: '2025',
-    meta: 'Full',
-    badge: 'P.Đề',
-    imdb: '7.5',
-    genres: ['Cổ Trang', 'Lãng Mạn'],
-    poster:
-      'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1526816229784-65d5d54ac8bc?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Giữa chiến loạn, một mối tình cũ được thắp lại bằng những lựa chọn đầy hy sinh.',
-  },
-  {
-    id: 'mf-ghost',
-    title: 'MF GHOST (Phần 3)',
-    original: 'MF GHOST (Season 3)',
-    category: 'Phim Chiếu Rạp',
-    year: '2025',
-    meta: 'Tập 3',
-    badge: 'P.Đề',
-    imdb: '7.8',
-    genres: ['Anime', 'Thể Thao'],
-    poster:
-      'https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Những tay đua trẻ bước vào mùa giải mới với tốc độ, chiến thuật và áp lực lớn hơn trước.',
-  },
-  {
-    id: 'street-trash',
-    title: 'Rác Đường Phố',
-    original: 'Street Trash',
-    category: 'Phim Chiếu Rạp',
-    year: '2024',
-    meta: 'Full',
-    badge: 'P.Đề',
-    imdb: '6.1',
-    genres: ['Kinh Dị', 'Hài Đen'],
-    poster:
-      'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Một đô thị hỗn loạn biến thành sân khấu cho những tình huống kinh dị quái dị và châm biếm.',
-  },
-  {
-    id: 'sparklehorse',
-    title: 'Tia Sáng Tuyệt Đẹp',
-    original: 'This Is Sparklehorse',
-    category: 'Phim Chiếu Rạp',
-    year: '2024',
-    meta: 'Full',
-    badge: 'P.Đề',
-    imdb: '7.7',
-    genres: ['Tài Liệu', 'Âm Nhạc'],
-    poster:
-      'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Một lát cắt tài liệu về âm nhạc, ký ức và những giai đoạn sáng tạo đầy biến động.',
-  },
-]
-
 const sections = ['Phim Lẻ Mới', 'Phim Bộ Mới', 'Phim Chiếu Rạp']
-const movies = ref(fallbackMovies)
+const movies = ref([])
 
-const allMovies = computed(() => movies.value.length ? movies.value : fallbackMovies)
+const allMovies = computed(() => movies.value)
 const featuredMovies = computed(() => {
   const featured = allMovies.value.filter((movie) => movie.isFeatured)
   return (featured.length ? featured : allMovies.value).slice(0, 7)
 })
 
 const activeHeroMovie = computed(() => {
-  return featuredMovies.value[activeHeroIndex.value] ?? featuredMovies.value[0] ?? fallbackMovies[0]
+  return featuredMovies.value[activeHeroIndex.value] ?? featuredMovies.value[0] ?? null
 })
 
-const activeEpisodes = computed(() => activeMovie.value?.episodes ?? [])
+const activeEpisodes = computed(() => {
+  return activeMovie.value?.episodes ?? []
+})
 
 const activeEpisode = computed(() => {
   if (!activeEpisodes.value.length) return null
@@ -541,6 +302,7 @@ async function applyRouteState() {
     if (movie) {
       activeMovie.value = movie
       ensureSelectedEpisode(movie)
+
     }
 
     try {
@@ -595,16 +357,16 @@ async function loadInitialData() {
       fetchLookups().catch(() => null),
     ])
 
-    movies.value = movieData.length ? movieData : fallbackMovies
+    movies.value = movieData
     catalogMovies.value = movieData
     lookups.value = lookupData
     backendStatus.value = movieData.length
       ? `Đã đồng bộ ${movieData.length} phim từ backend`
-      : 'Backend chưa có phim published, đang dùng dữ liệu demo'
+      : 'Backend chưa có phim published'
   } catch (error) {
-    movies.value = fallbackMovies
+    movies.value = []
     apiError.value = error.message
-    backendStatus.value = 'Không kết nối được backend, đang dùng dữ liệu demo'
+    backendStatus.value = 'Không kết nối được backend'
   } finally {
     isLoading.value = false
     await applyRouteState()
@@ -629,17 +391,21 @@ async function runSearch(query) {
   } catch (error) {
     apiError.value = error.message
     backendStatus.value = 'Search API lỗi, đang lọc cục bộ'
-    movies.value = catalogMovies.value.length ? catalogMovies.value : fallbackMovies
+    movies.value = catalogMovies.value
   } finally {
     isSearching.value = false
   }
 }
 
 async function openMovie(movie) {
+  if (!movie) return
+
   await router.push({ name: 'movie-detail', params: { id: movieRouteId(movie) } })
 }
 
 function openPlayer(movie, episode = null) {
+  if (!movie) return
+
   if (episode) {
     selectedEpisodeId.value = episode.id
   }
@@ -759,6 +525,8 @@ function handleHeroThumbnailClick(index) {
 }
 
 function playActiveHero() {
+  if (!activeHeroMovie.value) return
+
   openPlayer(activeHeroMovie.value)
 }
 
@@ -766,11 +534,11 @@ function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-function useFallbackImage(event) {
+function handleImageError(event) {
   const image = event.currentTarget
-  if (!image || image.dataset.fallbackApplied) return
+  if (!image || image.dataset.imageErrorHandled) return
 
-  image.dataset.fallbackApplied = 'true'
+  image.dataset.imageErrorHandled = 'true'
   image.src = logoMarkUrl
   image.classList.add('object-contain', 'p-3')
 }
@@ -1105,6 +873,7 @@ onBeforeUnmount(() => {
 
     <main v-if="currentView === 'home'">
       <section
+        v-if="activeHeroMovie"
         class="hero-bg relative min-h-[540px] px-[18px] md:min-h-[500px] md:px-[clamp(20px,7vw,140px)] 2xl:px-[clamp(20px,14vw,370px)]"
         :style="{ backgroundImage: `linear-gradient(90deg, #131722 0%, rgba(19,23,34,.88) 26%, rgba(19,23,34,.32) 58%, #131722 100%), linear-gradient(180deg, rgba(19,23,34,0) 48%, #11131d 100%), url(${activeHeroMovie.backdrop})` }"
         @mouseenter="pauseHeroAutoplay"
@@ -1169,7 +938,7 @@ onBeforeUnmount(() => {
             type="button"
             @click="handleHeroThumbnailClick(index)"
           >
-            <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" @error="useFallbackImage" />
+            <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" @error="handleImageError" />
             <span
               :class="[
                 'absolute bottom-0 left-0 h-0.5 bg-[#ffe182] transition-all duration-[4500ms] group-hover:bg-white',
@@ -1177,6 +946,20 @@ onBeforeUnmount(() => {
               ]"
             ></span>
           </button>
+        </div>
+      </section>
+      <section
+        v-else
+        class="mx-auto max-w-[1810px] px-[18px] py-16 md:px-[clamp(20px,7vw,140px)] 2xl:px-[clamp(20px,14vw,370px)]"
+      >
+        <div class="rounded-2xl border border-white/8 bg-white/5 px-6 py-12 text-center">
+          <h1 class="text-2xl font-black text-white">Chưa có phim để hiển thị</h1>
+          <p class="mt-2 text-sm font-semibold text-slate-400">
+            {{ isLoading ? 'Đang tải dữ liệu từ backend...' : backendStatus }}
+          </p>
+          <p v-if="apiError" class="mt-3 text-sm font-bold text-amber-200">
+            {{ apiError }}
+          </p>
         </div>
       </section>
 
@@ -1263,7 +1046,7 @@ onBeforeUnmount(() => {
                 type="button"
                 @click="openMovie(movie)"
               >
-                <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" @error="useFallbackImage" />
+                <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" @error="handleImageError" />
                 <span class="absolute right-2 bottom-2 max-w-[calc(100%-16px)] overflow-hidden rounded-md bg-[#303543]/92 px-2 py-1 text-[11px] font-black text-ellipsis whitespace-nowrap text-white shadow-lg backdrop-blur">
                   {{ movie.badge }} {{ movie.meta }}
                 </span>
@@ -1323,7 +1106,7 @@ onBeforeUnmount(() => {
                 type="button"
                 @click="openPlayer(movie)"
               >
-                <img class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.04]" :src="movie.poster" :alt="movie.title" @error="useFallbackImage" />
+                <img class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.04]" :src="movie.poster" :alt="movie.title" @error="handleImageError" />
                 <span class="absolute right-2 bottom-2 rounded-[5px] bg-[#3f4454]/92 px-2 py-1 text-[11px] font-black text-white">
                   {{ movie.badge }}
                 </span>
@@ -1411,6 +1194,31 @@ onBeforeUnmount(() => {
           playsinline
         ></video>
 
+        <section v-if="activeEpisodes.length" class="mt-5 rounded-2xl border border-white/8 bg-white/5 p-4">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <h2 class="text-lg font-black text-white">Chọn tập</h2>
+            <span class="text-xs font-bold text-slate-400">
+              {{ activeEpisodes.length }} tập
+            </span>
+          </div>
+          <div class="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12">
+            <button
+              v-for="episode in activeEpisodes"
+              :key="episode.id"
+              :class="[
+                'h-10 cursor-pointer rounded-lg border px-3 text-sm font-black transition',
+                activeEpisode?.id === episode.id
+                  ? 'border-[#ffe182] bg-[#ffe182] text-[#11131d]'
+                  : 'border-white/10 bg-white/7 text-slate-100 hover:border-[#ffe182] hover:text-[#ffe182]',
+              ]"
+              type="button"
+              @click="selectEpisode(episode)"
+            >
+              Tập {{ episode.number }}
+            </button>
+          </div>
+        </section>
+
         <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
           <section class="rounded-2xl border border-white/8 bg-white/5 p-5">
             <div class="flex flex-wrap gap-2">
@@ -1464,7 +1272,7 @@ onBeforeUnmount(() => {
                 type="button"
                 @click="openPlayer(movie)"
               >
-                <img class="aspect-2/3 w-full object-cover" :src="movie.poster" :alt="movie.title" @error="useFallbackImage" />
+                <img class="aspect-2/3 w-full object-cover" :src="movie.poster" :alt="movie.title" @error="handleImageError" />
               </button>
             </div>
           </aside>
@@ -1552,7 +1360,7 @@ onBeforeUnmount(() => {
             type="button"
             @click="openMovie(movie)"
           >
-            <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" @error="useFallbackImage" />
+            <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" @error="handleImageError" />
           </button>
         </div>
       </section>
