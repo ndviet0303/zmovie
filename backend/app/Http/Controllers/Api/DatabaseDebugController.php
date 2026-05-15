@@ -10,11 +10,6 @@ class DatabaseDebugController extends Controller
 {
     public function show(Request $request)
     {
-        $expectedToken = (string) config('app.db_debug_token', '');
-
-        abort_if($expectedToken === '', 404);
-        abort_unless(hash_equals($expectedToken, (string) ($request->header('X-Debug-Token') ?: $request->query('token'))), 403);
-
         $connection = config('database.default');
         $config = config("database.connections.{$connection}");
         $runtime = DB::selectOne('
