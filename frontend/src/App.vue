@@ -33,6 +33,7 @@ const lookups = ref(null)
 const catalogMovies = ref([])
 const selectedCategory = ref('Tất cả')
 const selectedTopic = ref(null)
+const selectedEpisodeId = ref(null)
 const videoRef = ref(null)
 const heroStripRef = ref(null)
 const heroHoverPaused = ref(false)
@@ -342,6 +343,21 @@ const activeHeroMovie = computed(() => {
   return featuredMovies.value[activeHeroIndex.value] ?? featuredMovies.value[0] ?? fallbackMovies[0]
 })
 
+const activeEpisodes = computed(() => activeMovie.value?.episodes ?? [])
+
+const activeEpisode = computed(() => {
+  if (!activeEpisodes.value.length) return null
+
+  return (
+    activeEpisodes.value.find((episode) => String(episode.id) === String(selectedEpisodeId.value)) ??
+    activeEpisodes.value[0]
+  )
+})
+
+const activeVideoUrl = computed(() => {
+  return activeEpisode.value?.videoUrl || activeMovie.value?.videoUrl || ''
+})
+
 const isAdminRoute = computed(() => route.name === 'admin' || route.name === 'admin-login')
 
 const filteredMovies = computed(() => {
@@ -411,6 +427,21 @@ function findMovieByRouteId(id) {
   })
 }
 
+function ensureSelectedEpisode(movie = activeMovie.value) {
+  const episodes = movie?.episodes ?? []
+
+  if (!episodes.length) {
+    selectedEpisodeId.value = null
+    return
+  }
+
+  const selectedExists = episodes.some((episode) => String(episode.id) === String(selectedEpisodeId.value))
+
+  if (!selectedExists) {
+    selectedEpisodeId.value = episodes[0].id
+  }
+}
+
 function topicBySlug(slug) {
   const topicTitle = topicSlugs[slug]
   if (topicTitle === 'TV Show') {
@@ -427,6 +458,7 @@ async function applyRouteState() {
     const movie = findMovieByRouteId(route.params.id)
     if (movie) {
       activeMovie.value = movie
+      ensureSelectedEpisode(movie)
       currentView.value = route.name === 'watch' ? 'watch' : 'detail'
       selectedCategory.value = 'Tất cả'
       selectedTopic.value = null
@@ -435,6 +467,7 @@ async function applyRouteState() {
         try {
           const freshMovie = await fetchMovie(movie.id)
           activeMovie.value = freshMovie
+          ensureSelectedEpisode(freshMovie)
         } catch (error) {
           apiError.value = error.message
         }
@@ -445,6 +478,7 @@ async function applyRouteState() {
 
   currentView.value = 'home'
   activeMovie.value = null
+  selectedEpisodeId.value = null
 
   if (route.name === 'category') {
     selectedCategory.value = categoryRoutes[route.params.slug] ?? 'Tất cả'
@@ -526,7 +560,11 @@ async function openMovie(movie) {
   await router.push({ name: 'movie-detail', params: { id: movieRouteId(movie) } })
 }
 
-function openPlayer(movie) {
+function openPlayer(movie, episode = null) {
+  if (episode) {
+    selectedEpisodeId.value = episode.id
+  }
+
   router.push({ name: 'watch', params: { id: movieRouteId(movie) } })
 }
 
@@ -549,6 +587,14 @@ function clearFilters() {
 
 function selectHero(index) {
   activeHeroIndex.value = index
+}
+
+function selectEpisode(episode, shouldPlay = false) {
+  selectedEpisodeId.value = episode.id
+
+  if (shouldPlay && activeMovie.value) {
+    openPlayer(activeMovie.value, episode)
+  }
 }
 
 function advanceHero() {
@@ -652,7 +698,7 @@ function useFallbackImage(event) {
 
 function setupPlayerSource() {
   const video = videoRef.value
-  const url = activeMovie.value?.videoUrl
+  const url = activeVideoUrl.value
 
   if (!video || !url) return
 
@@ -706,7 +752,7 @@ watch(
 )
 
 watch(
-  () => [currentView.value, activeMovie.value?.videoUrl],
+  () => [currentView.value, activeVideoUrl.value],
   async () => {
     if (currentView.value === 'watch') {
       await nextTick()
@@ -1105,7 +1151,7 @@ onBeforeUnmount(() => {
               {{ activeMovie.title }}
             </h1>
             <p class="mt-1 truncate text-sm font-semibold text-slate-400">
-              {{ activeMovie.original }} · {{ activeMovie.year }} · {{ activeMovie.meta }}
+              {{ activeMovie.original }} · {{ activeMovie.year }} · {{ activeEpisode?.title ?? activeMovie.meta }}
             </p>
           </div>
 
@@ -1130,8 +1176,8 @@ onBeforeUnmount(() => {
         <video
           ref="videoRef"
           class="aspect-video w-full rounded-2xl bg-black shadow-[0_24px_90px_rgba(0,0,0,0.45)]"
-          :key="activeMovie.id"
-          :poster="activeMovie.backdrop"
+          :key="`${activeMovie.id}-${activeEpisode?.id ?? 'movie'}`"
+          :poster="activeEpisode?.still || activeMovie.backdrop"
           controls
           autoplay
           playsinline
@@ -1142,14 +1188,39 @@ onBeforeUnmount(() => {
             <div class="flex flex-wrap gap-2">
               <span class="tag border-[#ffe182] text-[#ffe182]">IMDb {{ activeMovie.imdb }}</span>
               <span class="tag">{{ activeMovie.year }}</span>
-              <span class="tag">{{ activeMovie.meta }}</span>
+              <span class="tag">{{ activeEpisode?.title ?? activeMovie.meta }}</span>
               <span v-for="genre in activeMovie.genres" :key="genre" class="tag">
                 {{ genre }}
               </span>
             </div>
             <p class="mt-5 line-clamp-4 text-sm leading-7 text-slate-300 md:text-[15px]">
-              {{ activeMovie.description }}
+              {{ activeEpisode?.overview || activeMovie.description }}
             </p>
+
+            <div v-if="activeEpisodes.length" class="mt-6">
+              <div class="mb-3 flex items-center justify-between gap-3">
+                <h2 class="text-lg font-black text-white">Danh sách tập</h2>
+                <span class="text-xs font-bold text-slate-400">
+                  {{ activeEpisodes.length }} tập
+                </span>
+              </div>
+              <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8">
+                <button
+                  v-for="episode in activeEpisodes"
+                  :key="episode.id"
+                  :class="[
+                    'h-10 rounded-lg border px-3 text-sm font-black transition',
+                    activeEpisode?.id === episode.id
+                      ? 'border-[#ffe182] bg-[#ffe182] text-[#11131d]'
+                      : 'border-white/10 bg-white/7 text-slate-100 hover:border-[#ffe182] hover:text-[#ffe182]',
+                  ]"
+                  type="button"
+                  @click="selectEpisode(episode)"
+                >
+                  Tập {{ episode.number }}
+                </button>
+              </div>
+            </div>
           </section>
 
           <aside class="rounded-2xl border border-white/8 bg-white/5 p-5">
@@ -1195,7 +1266,7 @@ onBeforeUnmount(() => {
           <button
             class="mt-9 grid h-[72px] w-[72px] cursor-pointer place-items-center rounded-full bg-linear-to-br from-[#ffe58f] to-[#ffd058] text-[#11131d] shadow-[0_18px_48px_rgba(255,208,88,0.24)]"
             type="button"
-            @click="openPlayer(activeMovie)"
+            @click="openPlayer(activeMovie, activeEpisode)"
           >
             <Play :size="28" fill="currentColor" />
           </button>
@@ -1203,7 +1274,7 @@ onBeforeUnmount(() => {
             <button
               class="rounded-full bg-white px-5 py-2 text-sm font-black text-[#11131d] transition hover:bg-[#ffe182]"
               type="button"
-              @click="openPlayer(activeMovie)"
+              @click="openPlayer(activeMovie, activeEpisode)"
             >
               Xem phim
             </button>
@@ -1214,6 +1285,31 @@ onBeforeUnmount(() => {
             >
               Quay lại danh sách
             </button>
+          </div>
+
+          <div v-if="activeEpisodes.length" class="mt-8">
+            <div class="mb-3 flex flex-wrap items-center gap-3">
+              <h2 class="text-lg font-black text-white">Chọn tập</h2>
+              <span class="rounded-full bg-white/9 px-3 py-1 text-xs font-bold text-slate-300">
+                {{ activeEpisodes.length }} tập
+              </span>
+            </div>
+            <div class="grid max-w-[560px] grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+              <button
+                v-for="episode in activeEpisodes"
+                :key="episode.id"
+                :class="[
+                  'h-10 rounded-lg border px-3 text-sm font-black transition',
+                  activeEpisode?.id === episode.id
+                    ? 'border-[#ffe182] bg-[#ffe182] text-[#11131d]'
+                    : 'border-white/14 bg-white/9 text-white hover:border-[#ffe182] hover:text-[#ffe182]',
+                ]"
+                type="button"
+                @click="selectEpisode(episode, true)"
+              >
+                Tập {{ episode.number }}
+              </button>
+            </div>
           </div>
         </div>
 

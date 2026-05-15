@@ -130,6 +130,15 @@ function streamUrl(source) {
   return `${API_BASE_URL}/video-sources/${source.id}/stream`
 }
 
+function preferredVideoSource(sources = []) {
+  return (
+    sources.find((source) => source.is_active && source.is_default) ??
+    sources.find((source) => source.is_active) ??
+    sources[0] ??
+    null
+  )
+}
+
 function movieCategory(movie) {
   if (movie.type === 'series') return 'Phim Bộ Mới'
   if (movie.type === 'short') return 'TV Show'
@@ -144,11 +153,32 @@ export function normalizeMovie(movie) {
     0,
   )
 
-  const videoSource =
-    movie.video_sources?.find((source) => source.is_active && source.is_default) ??
-    movie.video_sources?.find((source) => source.is_active) ??
-    movie.videoSources?.find((source) => source.is_active && source.is_default) ??
-    movie.videoSources?.find((source) => source.is_active)
+  const videoSource = preferredVideoSource(movie.video_sources ?? movie.videoSources ?? [])
+  const episodes = seasons
+    .flatMap((season) => {
+      return (season.episodes ?? []).map((episode) => {
+        const episodeSource = preferredVideoSource(episode.video_sources ?? episode.videoSources ?? [])
+
+        return {
+          id: episode.id,
+          slug: episode.slug,
+          title: episode.title ?? `Tập ${episode.episode_number}`,
+          number: episode.episode_number,
+          seasonId: season.id,
+          seasonNumber: season.season_number,
+          seasonTitle: season.title,
+          overview: episode.overview,
+          runtimeMinutes: episode.runtime_minutes,
+          still: absoluteAssetUrl(episode.still_path),
+          status: episode.status,
+          publishedAt: episode.published_at,
+          videoUrl: streamUrl(episodeSource),
+          videoType: episodeSource?.source_type ?? '',
+        }
+      })
+    })
+    .filter((episode) => episode.status !== 'archived')
+    .sort((a, b) => (a.seasonNumber - b.seasonNumber) || (a.number - b.number))
 
   return {
     id: movie.id,
@@ -180,6 +210,7 @@ export function normalizeMovie(movie) {
       'Nội dung đang được ZMovie cập nhật. Bạn có thể theo dõi phim này để nhận thông tin mới nhất.',
     isFeatured: Boolean(movie.is_featured),
     viewCount: movie.view_count ?? 0,
+    episodes,
     videoUrl: streamUrl(videoSource) || playableUrl(movie.trailer_url ?? videoFallback),
     videoType: videoSource?.source_type ?? 'mp4',
     raw: movie,

@@ -73,7 +73,7 @@ class MovieController extends Controller
             'studios',
             'tags',
             'people',
-            'seasons.episodes',
+            'seasons.episodes.videoSources',
             'videoSources',
             'subtitles',
             'licenses.countries',
