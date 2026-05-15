@@ -5,12 +5,14 @@ stages:
   - deploy
 
 .if-mr-to-dev-main: &if-mr-to-dev-main
-  if: '$CI_PIPELINE_SOURCE == "merge_request_event" &&
-    ($CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "dev" ||
-    $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main")'
+  if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH'
 
 include:
   - local: .gitlab/ci/backend.gitlab-ci.yml
+    rules:
+      - <<: *if-mr-to-dev-main
+      - when: never
+  - local: .gitlab/ci/frontend.gitlab-ci.yml
     rules:
       - <<: *if-mr-to-dev-main
       - when: never

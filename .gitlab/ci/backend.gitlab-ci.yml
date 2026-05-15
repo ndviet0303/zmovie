@@ -14,9 +14,7 @@ cache:
     - .docker/cache
 
 .if-mr-to-dev-main: &if-mr-to-dev-main
-  if: '$CI_PIPELINE_SOURCE == "merge_request_event" &&
-    ($CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "dev" ||
-    $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main")'
+  if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH'
 
 zmovie_build:
   image: docker:latest
@@ -24,8 +22,7 @@ zmovie_build:
   services:
     - docker:dind
   rules:
-      - <<: *if-mr-to-dev-main
-        when: manual
+    - <<: *if-mr-to-dev-main
   allow_failure: true
   # Add before_script to set up cache directory
   before_script:
