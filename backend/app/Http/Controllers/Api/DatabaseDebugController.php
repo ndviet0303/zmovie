@@ -10,38 +10,53 @@ class DatabaseDebugController extends Controller
 {
     public function show(Request $request)
     {
-        $connection = config('database.default');
-        $config = config("database.connections.{$connection}");
-        $runtime = DB::selectOne('
-            select
-                current_database() as database,
-                current_user as username,
-                current_schema() as current_schema,
-                current_setting(\'search_path\') as search_path
-        ');
+        try {
+            $connection = config('database.default');
+            $config = config("database.connections.{$connection}") ?? [];
+            
+            $runtime = null;
+            try {
+                $runtime = DB::selectOne('
+                    select
+                        current_database() as database,
+                        current_user as username,
+                        current_schema() as current_schema,
+                        current_setting(\'search_path\') as search_path
+                ');
+            } catch (\Throwable $e) {
+                $runtime = ['error' => $e->getMessage()];
+            }
 
-        return response()->json([
-            'connection' => $connection,
-            'configured' => [
-                'driver' => $config['driver'] ?? null,
-                'host' => $config['host'] ?? null,
-                'port' => $config['port'] ?? null,
-                'database' => $config['database'] ?? null,
-                'username' => $config['username'] ?? null,
-                'schema' => $config['search_path'] ?? null,
-                'sslmode' => $config['sslmode'] ?? null,
-            ],
-            'runtime' => $runtime,
-            'counts' => [
-                'movies' => $this->safeCount('movies'),
-                'genres' => $this->safeCount('genres'),
-                'countries' => $this->safeCount('countries'),
-                'languages' => $this->safeCount('languages'),
-                'episodes' => $this->safeCount('episodes'),
-                'video_sources' => $this->safeCount('video_sources'),
-                'users' => $this->safeCount('users'),
-            ],
-        ]);
+            return response()->json([
+                'status' => 'debug_info',
+                'connection' => $connection,
+                'configured' => [
+                    'driver' => $config['driver'] ?? null,
+                    'host' => $config['host'] ?? null,
+                    'port' => $config['port'] ?? null,
+                    'database' => $config['database'] ?? null,
+                    'username' => $config['username'] ?? null,
+                    'schema' => $config['search_path'] ?? null,
+                    'sslmode' => $config['sslmode'] ?? null,
+                ],
+                'runtime' => $runtime,
+                'counts' => [
+                    'movies' => $this->safeCount('movies'),
+                    'genres' => $this->safeCount('genres'),
+                    'countries' => $this->safeCount('countries'),
+                    'languages' => $this->safeCount('languages'),
+                    'episodes' => $this->safeCount('episodes'),
+                    'video_sources' => $this->safeCount('video_sources'),
+                    'users' => $this->safeCount('users'),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTrace() : null
+            ], 500);
+        }
     }
 
     private function safeCount(string $table): ?int
