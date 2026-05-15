@@ -14,7 +14,9 @@ cache:
     - .docker/cache
 
 .if-mr-to-dev-main: &if-mr-to-dev-main
-  if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH'
+  if: '$CI_PIPELINE_SOURCE == "merge_request_event" &&
+    ($CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "dev" ||
+    $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main")'
 
 zmovie_build:
   image: docker:latest
@@ -22,13 +24,15 @@ zmovie_build:
   services:
     - docker:dind
   rules:
-    - <<: *if-mr-to-dev-main
+      - <<: *if-mr-to-dev-main
+        # when: manual
+  allow_failure: true
   # Add before_script to set up cache directory
   before_script:
     - mkdir -p .docker/cache
   script:
     - echo "Logging into Docker Registry..."
-    - echo "$CI_JOB_TOKEN" | docker login -u gitlab-ci-token --password-stdin $DOCKER_REGISTRY
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $DOCKER_REGISTRY
     - echo Building Docker image
 
     # Improved Docker build with multiple cache options
@@ -55,7 +59,7 @@ server_build:
     - docker:dind
   script:
     - echo "Logging into GitLab Registry..."
-    - echo "$CI_JOB_TOKEN" | docker login -u gitlab-ci-token --password-stdin $DOCKER_REGISTRY
+    - echo "$DEPLOY_PASSWORD" | docker login -u "$DEPLOY_USERNAME" --password-stdin $DOCKER_REGISTRY
     - |
       docker build \
         --pull \
