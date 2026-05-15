@@ -17,8 +17,16 @@ PostgreSQL se chay tai `127.0.0.1:5432` voi thong tin:
 
 ```text
 database: zmovie
+test database: zmovie_test
 username: zmovie
 password: zmovie_secret
+```
+
+Neu volume PostgreSQL da duoc tao truoc khi co `zmovie_test`, can reset volume de init script chay lai:
+
+```bash
+docker compose down -v
+docker compose up --build
 ```
 
 ## Useful commands

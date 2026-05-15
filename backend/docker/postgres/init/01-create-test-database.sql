@@ -1,0 +1,3 @@
+CREATE DATABASE zmovie_test;
+
+GRANT ALL PRIVILEGES ON DATABASE zmovie_test TO zmovie;
