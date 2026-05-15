@@ -14,6 +14,12 @@ use App\Http\Controllers\Api\VideoStreamController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', fn () => ['status' => 'ok']);
+Route::get('/probe', fn () => [
+    'status' => 'ok',
+    'app' => config('app.name'),
+    'env' => config('app.env'),
+    'time' => now()->toISOString(),
+]);
 Route::get('/debug/db-connection', [DatabaseDebugController::class, 'show']);
 
 Route::post('/auth/login', [AuthController::class, 'login']);
