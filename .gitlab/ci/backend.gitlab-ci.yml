@@ -23,13 +23,12 @@ zmovie_build:
     - docker:dind
   rules:
     - <<: *if-mr-to-dev-main
-  allow_failure: true
   # Add before_script to set up cache directory
   before_script:
     - mkdir -p .docker/cache
   script:
     - echo "Logging into Docker Registry..."
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $DOCKER_REGISTRY
+    - echo "$CI_JOB_TOKEN" | docker login -u gitlab-ci-token --password-stdin $DOCKER_REGISTRY
     - echo Building Docker image
 
     # Improved Docker build with multiple cache options
@@ -56,7 +55,7 @@ server_build:
     - docker:dind
   script:
     - echo "Logging into GitLab Registry..."
-    - echo "$DEPLOY_PASSWORD" | docker login -u "$DEPLOY_USERNAME" --password-stdin $DOCKER_REGISTRY
+    - echo "$CI_JOB_TOKEN" | docker login -u gitlab-ci-token --password-stdin $DOCKER_REGISTRY
     - |
       docker build \
         --pull \
