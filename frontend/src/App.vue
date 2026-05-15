@@ -1232,31 +1232,6 @@ onBeforeUnmount(() => {
             <p class="mt-5 line-clamp-4 text-sm leading-7 text-slate-300 md:text-[15px]">
               {{ activeEpisode?.overview || activeMovie.description }}
             </p>
-
-            <div v-if="activeEpisodes.length" class="mt-6">
-              <div class="mb-3 flex items-center justify-between gap-3">
-                <h2 class="text-lg font-black text-white">Danh sách tập</h2>
-                <span class="text-xs font-bold text-slate-400">
-                  {{ activeEpisodes.length }} tập
-                </span>
-              </div>
-              <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8">
-                <button
-                  v-for="episode in activeEpisodes"
-                  :key="episode.id"
-                  :class="[
-                    'h-10 rounded-lg border px-3 text-sm font-black transition',
-                    activeEpisode?.id === episode.id
-                      ? 'border-[#ffe182] bg-[#ffe182] text-[#11131d]'
-                      : 'border-white/10 bg-white/7 text-slate-100 hover:border-[#ffe182] hover:text-[#ffe182]',
-                  ]"
-                  type="button"
-                  @click="selectEpisode(episode)"
-                >
-                  Tập {{ episode.number }}
-                </button>
-              </div>
-            </div>
           </section>
 
           <aside class="rounded-2xl border border-white/8 bg-white/5 p-5">
