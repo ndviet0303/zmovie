@@ -3,24 +3,32 @@ import {
   ChevronDown,
   ChevronRight,
   Heart,
+  LogOut,
   Menu,
   Play,
   Search,
   Star,
+  User,
   X,
 } from 'lucide-vue-next'
 import Hls from 'hls.js'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminPanel from './AdminPanel.vue'
 import logoUrl from './assets/zmovie-logo.png'
 import logoMarkUrl from './assets/zmovie-mark.png'
-import { fetchLookups, fetchMovie, fetchMovies, searchMovies } from './services/api'
+import { fetchLookups, fetchMovie, fetchMovies, searchMovies, userApi } from './services/api'
 
 const route = useRoute()
 const router = useRouter()
 
+const USER_SESSION_KEY = 'zmovie_user_session'
 const menuOpen = ref(false)
+const authOpen = ref(false)
+const authMode = ref('login')
+const authLoading = ref(false)
+const authError = ref('')
+const userSession = ref(readUserSession())
 const searchQuery = ref('')
 const activeHeroIndex = ref(0)
 const currentView = ref('home')
@@ -47,6 +55,17 @@ const heroDragState = {
   startScrollLeft: 0,
   wasDragged: false,
 }
+
+const loginForm = reactive({
+  email: '',
+  password: '',
+})
+const registerForm = reactive({
+  name: '',
+  email: '',
+  password: '',
+  password_confirmation: '',
+})
 
 const navItems = ['ZMovie', 'Phim Bộ', 'Phim Lẻ', 'TV Show', 'Phim Chiếu Rạp']
 const filterItems = ['Thể Loại Phim', 'Quốc Gia', 'Năm']
@@ -427,6 +446,64 @@ function findMovieByRouteId(id) {
   })
 }
 
+function readUserSession() {
+  try {
+    return JSON.parse(window.localStorage.getItem(USER_SESSION_KEY) ?? 'null')
+  } catch {
+    return null
+  }
+}
+
+function saveUserSession(payload) {
+  userSession.value = {
+    accessToken: payload.access_token,
+    user: payload.user,
+    permissions: payload.permissions ?? [],
+  }
+  window.localStorage.setItem(USER_SESSION_KEY, JSON.stringify(userSession.value))
+}
+
+function openAuth(mode = 'login') {
+  authMode.value = mode
+  authError.value = ''
+  authOpen.value = true
+  menuOpen.value = false
+}
+
+async function submitAuth() {
+  authLoading.value = true
+  authError.value = ''
+
+  try {
+    const payload =
+      authMode.value === 'register'
+        ? await userApi.register(registerForm)
+        : await userApi.login(loginForm)
+
+    saveUserSession(payload)
+    authOpen.value = false
+  } catch (error) {
+    authError.value = error.message
+  } finally {
+    authLoading.value = false
+  }
+}
+
+async function logoutUser() {
+  const token = userSession.value?.accessToken
+
+  try {
+    if (token) {
+      await userApi.logout(token)
+    }
+  } catch {
+    // Local logout should still work if the token expired.
+  } finally {
+    window.localStorage.removeItem(USER_SESSION_KEY)
+    userSession.value = null
+  }
+}
+
 function ensureSelectedEpisode(movie = activeMovie.value) {
   const episodes = movie?.episodes ?? []
 
@@ -455,24 +532,26 @@ async function applyRouteState() {
   menuOpen.value = false
 
   if (route.name === 'movie-detail' || route.name === 'watch') {
+    currentView.value = route.name === 'watch' ? 'watch' : 'detail'
+    selectedCategory.value = 'Tất cả'
+    selectedTopic.value = null
+
     const movie = findMovieByRouteId(route.params.id)
+
     if (movie) {
       activeMovie.value = movie
       ensureSelectedEpisode(movie)
-      currentView.value = route.name === 'watch' ? 'watch' : 'detail'
-      selectedCategory.value = 'Tất cả'
-      selectedTopic.value = null
+    }
 
-      if (movie.id && typeof movie.id !== 'string') {
-        try {
-          const freshMovie = await fetchMovie(movie.id)
-          activeMovie.value = freshMovie
-          ensureSelectedEpisode(freshMovie)
-        } catch (error) {
-          apiError.value = error.message
-        }
-      }
+    try {
+      const freshMovie = await fetchMovie(route.params.id)
+      activeMovie.value = freshMovie
+      ensureSelectedEpisode(freshMovie)
       return
+    } catch (error) {
+      apiError.value = error.message
+
+      if (movie) return
     }
   }
 
@@ -752,7 +831,7 @@ watch(
 )
 
 watch(
-  () => [currentView.value, activeVideoUrl.value],
+  () => [currentView.value, activeVideoUrl.value, activeEpisode.value?.id],
   async () => {
     if (currentView.value === 'watch') {
       await nextTick()
@@ -872,8 +951,157 @@ onBeforeUnmount(() => {
           {{ item }}
           <ChevronDown :size="14" />
         </button>
+        <div class="mt-2 flex flex-wrap items-center gap-2 border-t border-white/8 pt-3 xl:mt-0 xl:border-t-0 xl:pt-0">
+          <template v-if="userSession">
+            <span class="inline-flex min-h-10 max-w-44 items-center gap-2 overflow-hidden rounded-lg bg-white/8 px-3 text-sm font-bold text-white">
+              <User :size="16" />
+              <span class="truncate">{{ userSession.user?.name }}</span>
+            </span>
+            <button
+              class="grid h-10 w-10 cursor-pointer place-items-center rounded-lg border border-white/10 bg-white/7 text-slate-200 transition hover:border-[#ffe182] hover:text-[#ffe182]"
+              type="button"
+              aria-label="Đăng xuất"
+              @click="logoutUser"
+            >
+              <LogOut :size="16" />
+            </button>
+          </template>
+          <template v-else>
+            <button
+              class="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/12 bg-white/7 px-3 text-sm font-bold text-white transition hover:border-[#ffe182] hover:text-[#ffe182]"
+              type="button"
+              @click="openAuth('login')"
+            >
+              <User :size="16" />
+              Đăng nhập
+            </button>
+            <button
+              class="inline-flex min-h-10 cursor-pointer items-center rounded-lg bg-[#ffe182] px-3 text-sm font-black text-[#11131d] transition hover:bg-[#ffd058]"
+              type="button"
+              @click="openAuth('register')"
+            >
+              Đăng ký
+            </button>
+          </template>
+        </div>
       </nav>
     </header>
+
+    <div
+      v-if="authOpen"
+      class="fixed inset-0 z-40 grid place-items-center bg-black/70 px-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      @click.self="authOpen = false"
+    >
+      <form
+        class="w-full max-w-md rounded-2xl border border-white/10 bg-[#171922] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.45)]"
+        @submit.prevent="submitAuth"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-xs font-black uppercase tracking-[0.18em] text-[#ffe182]">Tài khoản</p>
+            <h2 class="mt-1 text-2xl font-black text-white">
+              {{ authMode === 'register' ? 'Đăng ký' : 'Đăng nhập' }}
+            </h2>
+          </div>
+          <button
+            class="grid h-9 w-9 cursor-pointer place-items-center rounded-lg border border-white/10 bg-white/7 text-slate-200 transition hover:border-[#ffe182] hover:text-[#ffe182]"
+            type="button"
+            aria-label="Đóng"
+            @click="authOpen = false"
+          >
+            <X :size="18" />
+          </button>
+        </div>
+
+        <div class="mt-5 grid gap-4">
+          <label v-if="authMode === 'register'" class="block text-sm font-bold text-slate-200">
+            Tên hiển thị
+            <input
+              v-model="registerForm.name"
+              class="mt-2 h-11 w-full rounded-lg border border-white/10 bg-white/6 px-3 text-white outline-none transition focus:border-[#ffe182]"
+              type="text"
+              autocomplete="name"
+              required
+            />
+          </label>
+
+          <label class="block text-sm font-bold text-slate-200">
+            Email
+            <input
+              v-if="authMode === 'register'"
+              v-model="registerForm.email"
+              class="mt-2 h-11 w-full rounded-lg border border-white/10 bg-white/6 px-3 text-white outline-none transition focus:border-[#ffe182]"
+              type="email"
+              autocomplete="email"
+              required
+            />
+            <input
+              v-else
+              v-model="loginForm.email"
+              class="mt-2 h-11 w-full rounded-lg border border-white/10 bg-white/6 px-3 text-white outline-none transition focus:border-[#ffe182]"
+              type="email"
+              autocomplete="email"
+              required
+            />
+          </label>
+
+          <label class="block text-sm font-bold text-slate-200">
+            Mật khẩu
+            <input
+              v-if="authMode === 'register'"
+              v-model="registerForm.password"
+              class="mt-2 h-11 w-full rounded-lg border border-white/10 bg-white/6 px-3 text-white outline-none transition focus:border-[#ffe182]"
+              type="password"
+              autocomplete="new-password"
+              minlength="8"
+              required
+            />
+            <input
+              v-else
+              v-model="loginForm.password"
+              class="mt-2 h-11 w-full rounded-lg border border-white/10 bg-white/6 px-3 text-white outline-none transition focus:border-[#ffe182]"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </label>
+
+          <label v-if="authMode === 'register'" class="block text-sm font-bold text-slate-200">
+            Nhập lại mật khẩu
+            <input
+              v-model="registerForm.password_confirmation"
+              class="mt-2 h-11 w-full rounded-lg border border-white/10 bg-white/6 px-3 text-white outline-none transition focus:border-[#ffe182]"
+              type="password"
+              autocomplete="new-password"
+              minlength="8"
+              required
+            />
+          </label>
+        </div>
+
+        <p v-if="authError" class="mt-4 rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-sm font-bold text-red-200">
+          {{ authError }}
+        </p>
+
+        <button
+          class="mt-5 inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-lg bg-[#ffe182] px-4 text-sm font-black text-[#11131d] transition hover:bg-[#ffd058] disabled:opacity-60"
+          type="submit"
+          :disabled="authLoading"
+        >
+          {{ authLoading ? 'Đang xử lý...' : authMode === 'register' ? 'Tạo tài khoản' : 'Đăng nhập' }}
+        </button>
+
+        <button
+          class="mt-4 w-full cursor-pointer text-center text-sm font-bold text-slate-300 transition hover:text-[#ffe182]"
+          type="button"
+          @click="authMode = authMode === 'register' ? 'login' : 'register'; authError = ''"
+        >
+          {{ authMode === 'register' ? 'Đã có tài khoản? Đăng nhập' : 'Chưa có tài khoản? Đăng ký' }}
+        </button>
+      </form>
+    </div>
 
     <main v-if="currentView === 'home'">
       <section

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/health', fn () => ['status' => 'ok']);
 
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/register', [AuthController::class, 'register']);
 Route::get('/auth/demo-accounts', [AuthController::class, 'demoAccounts']);
 
 Route::get('/lookups', [LookupController::class, 'index']);

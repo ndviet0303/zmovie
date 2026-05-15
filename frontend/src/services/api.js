@@ -36,12 +36,14 @@ async function request(path, params = {}) {
 }
 
 async function send(path, method, body) {
+  return sendWithToken(path, method, body, currentAccessToken())
+}
+
+async function sendWithToken(path, method, body, token = '') {
   const headers = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
   }
-
-  const token = currentAccessToken()
 
   if (token) {
     headers.Authorization = `Bearer ${token}`
@@ -58,6 +60,29 @@ async function send(path, method, body) {
   }
 
   if (response.status === 204) return null
+  return response.json()
+}
+
+async function requestWithToken(path, token = '', params = {}) {
+  const url = new URL(`${API_BASE_URL}${path}`)
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      url.searchParams.set(key, value)
+    }
+  })
+
+  const headers = { Accept: 'application/json' }
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const response = await fetch(url, { headers })
+
+  if (!response.ok) {
+    throw new Error(await errorMessage(response))
+  }
+
   return response.json()
 }
 
@@ -177,7 +202,7 @@ export function normalizeMovie(movie) {
         }
       })
     })
-    .filter((episode) => episode.status !== 'archived')
+    .filter((episode) => episode.status !== 'archived' && episode.status !== 'draft')
     .sort((a, b) => (a.seasonNumber - b.seasonNumber) || (a.number - b.number))
 
   return {
@@ -249,6 +274,13 @@ export async function fetchMovie(idOrSlug) {
 
 export async function fetchLookups() {
   return request('/lookups')
+}
+
+export const userApi = {
+  login: (payload) => sendWithToken('/auth/login', 'POST', payload),
+  register: (payload) => sendWithToken('/auth/register', 'POST', payload),
+  me: (token) => requestWithToken('/auth/me', token),
+  logout: (token) => sendWithToken('/auth/logout', 'POST', null, token),
 }
 
 export const adminApi = {

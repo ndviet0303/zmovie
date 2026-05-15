@@ -17,7 +17,13 @@ class MovieController extends Controller
         $canManageMovies = $user?->hasPermission('movies.manage') ?? false;
 
         $movies = Movie::query()
-            ->with(['contentProvider:id,name,slug', 'genres:id,name,slug', 'countries:id,name,code', 'videoSources'])
+            ->with([
+                'contentProvider:id,name,slug',
+                'genres:id,name,slug',
+                'countries:id,name,code',
+                'seasons.episodes:id,season_id,title,slug,episode_number,status,published_at',
+                'videoSources',
+            ])
             ->when(! $canManageMovies, fn ($query) => $query
                 ->where('status', 'published')
                 ->where('rights_status', 'cleared'))

@@ -11,6 +11,33 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    public function register(Request $request)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => $data['password'],
+            'role' => 'user',
+            'status' => 'active',
+            'email_verified_at' => now(),
+        ]);
+
+        $token = $user->createToken('web-client', ['movies.watch'])->plainTextToken;
+
+        return response()->json([
+            'token_type' => 'Bearer',
+            'access_token' => $token,
+            'user' => $user,
+            'permissions' => [],
+        ], 201);
+    }
+
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -36,10 +63,12 @@ class AuthController extends Controller
         }
 
         $user->update(['last_login_at' => now()]);
-        $user->tokens()->where('name', 'admin-console')->delete();
+        $tokenName = $user->role === 'admin' ? 'admin-console' : 'web-client';
+
+        $user->tokens()->where('name', $tokenName)->delete();
 
         $permissions = $this->permissions($user);
-        $token = $user->createToken('admin-console', $permissions)->plainTextToken;
+        $token = $user->createToken($tokenName, $permissions)->plainTextToken;
 
         return response()->json([
             'token_type' => 'Bearer',
