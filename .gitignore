@@ -33,10 +33,10 @@ docker/env/*.env
 *.local
 
 # Node
-node_modules/
-dist/
-dist-ssr/
-coverage/
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/coverage/
 
 # PHP / Laravel
 vendor/
