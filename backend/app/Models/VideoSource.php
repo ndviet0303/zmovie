@@ -30,4 +30,5 @@ class VideoSource extends Model
     {
         return $this->hasMany(Subtitle::class);
     }
+
 }
