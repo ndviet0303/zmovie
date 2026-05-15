@@ -67,3 +67,23 @@ bootstrap/cache/*.php
 *.sqlite-*
 *.sqlite3
 *.db
+
+# Ignore nested project build/artifact directories and secrets
+backend/.env
+backend/vendor/
+backend/node_modules/
+backend/.phpunit.result.cache
+backend/storage/
+backend/public/storage/
+
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Ignore macOS DS_Store anywhere
+**/.DS_Store
+
+# Ignore common media and cache files that sometimes get accidentally added
+# (narrow scope: backend storage/media)
+backend/storage/app/public/*
+
