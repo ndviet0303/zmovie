@@ -267,13 +267,13 @@ npm run build
 - Thiết kế backend RESTful API bằng Laravel.
 - Thiết kế cơ sở dữ liệu phục vụ nghiệp vụ phim, bản quyền, đối tác, upload và phân quyền.
 - Tích hợp Laravel Sanctum cho API token auth, endpoint đăng nhập, `/auth/me`, đăng xuất và bảo vệ route quản trị.
+- Triển khai pipeline transcode video bằng FFmpeg, tạo HLS nhiều chất lượng và cập nhật nguồn phát sau khi upload được duyệt.
 - Tích hợp phân quyền theo vai trò và quyền hạn.
 - Chuẩn bị tài liệu API, thiết kế CSDL và hướng dẫn triển khai.
 
 ## Hạn chế
 
 - Chưa tích hợp cổng thanh toán thật.
-- Chưa triển khai hệ thống transcode video thực tế.
 - Chưa có hệ thống recommendation cá nhân hóa.
 
 ## Hướng phát triển

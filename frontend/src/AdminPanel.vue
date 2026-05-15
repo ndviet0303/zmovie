@@ -16,7 +16,7 @@ import {
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import logoUrl from './assets/zmovie-logo.png'
-import { adminApi, fetchLookups } from './services/api'
+import { absoluteAssetUrl, adminApi, fetchLookups } from './services/api'
 
 const SESSION_KEY = 'zmovie_admin_session'
 
@@ -563,7 +563,7 @@ onMounted(async () => {
                 <tr v-for="movie in filteredMovies" :key="movie.id" class="align-middle">
                   <td class="border-b border-white/6 py-3 pr-4">
                     <div class="flex items-center gap-3">
-                      <img class="h-16 w-11 rounded-md object-cover ring-1 ring-white/10" :src="movie.poster_path?.startsWith('http') ? movie.poster_path : `http://127.0.0.1:8000/storage/${movie.poster_path}`" :alt="movie.title" />
+                      <img class="h-16 w-11 rounded-md object-cover ring-1 ring-white/10" :src="absoluteAssetUrl(movie.poster_path)" :alt="movie.title" />
                       <div class="min-w-0">
                         <p class="line-clamp-1 font-black text-white">{{ movie.title }}</p>
                         <p class="line-clamp-1 text-xs text-slate-400">{{ movie.slug }}</p>

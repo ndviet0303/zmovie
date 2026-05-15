@@ -14,6 +14,7 @@ class VideoStreamController extends Controller
 {
     public function show(Request $request, VideoSource $videoSource): StreamedResponse
     {
+        abort_if($videoSource->source_type === 'hls', 422, 'HLS sources are served from public storage.');
         abort_unless($videoSource->is_active, 404);
         abort_unless($this->canStream($videoSource), 404);
         abort_if(preg_match('/^https?:\/\//i', $videoSource->url), 422, 'External video sources are not streamed locally.');

@@ -5,6 +5,7 @@ WORKDIR /var/www/html
 RUN apk add --no-cache \
     bash \
     curl \
+    ffmpeg \
     git \
     icu-dev \
     libzip-dev \

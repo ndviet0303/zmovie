@@ -36,6 +36,7 @@ docker compose exec app php artisan migrate:fresh
 docker compose exec app php artisan migrate:fresh --seed
 docker compose exec app php artisan scout:sync-index-settings
 docker compose exec app php artisan scout:import "App\\Models\\Movie"
+docker compose exec app php artisan queue:work --queue=transcoding,default
 docker compose exec app php artisan test
 docker compose exec app php artisan tinker
 docker compose down

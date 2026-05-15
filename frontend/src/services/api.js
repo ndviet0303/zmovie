@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api/v1'
+const API_BASE_URL = resolveApiBaseUrl()
 const ADMIN_SESSION_KEY = 'zmovie_admin_session'
 
 const posterFallback =
@@ -83,7 +83,21 @@ async function errorMessage(response) {
   }
 }
 
-function absoluteAssetUrl(path) {
+function resolveApiBaseUrl() {
+  const configuredUrl = import.meta.env.VITE_API_BASE_URL
+
+  if (configuredUrl) {
+    return configuredUrl.replace(/\/+$/, '')
+  }
+
+  if (import.meta.env.PROD && typeof window !== 'undefined') {
+    return `${window.location.origin}/api/v1`
+  }
+
+  return 'http://127.0.0.1:8000/api/v1'
+}
+
+export function absoluteAssetUrl(path) {
   if (!path) return ''
   if (/^https?:\/\//i.test(path)) return path
 
@@ -104,6 +118,7 @@ function playableUrl(path) {
 
 function streamUrl(source) {
   if (!source?.url) return ''
+  if (source.source_type === 'hls') return playableUrl(source.url)
   if (/^https?:\/\//i.test(source.url) || !source.id) return playableUrl(source.url)
 
   const apiUrl = new URL(API_BASE_URL)

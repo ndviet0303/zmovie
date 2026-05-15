@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\TranscodeUploadFileToHls;
 use App\Models\MovieUpload;
+use App\Support\DemoVideoStorageQuota;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +13,8 @@ use Illuminate\Validation\Rule;
 
 class MovieUploadController extends Controller
 {
+    public function __construct(private readonly DemoVideoStorageQuota $quota) {}
+
     public function index(Request $request)
     {
         return response()->json(MovieUpload::query()
@@ -27,6 +31,8 @@ class MovieUploadController extends Controller
         $data = $this->validatedUpload($request);
         $files = $data['files'] ?? [];
         unset($data['files']);
+
+        $this->quota->assertHasSpace($this->incomingUploadBytes($files));
 
         $upload = DB::transaction(function () use ($data, $files) {
             $upload = MovieUpload::create([
@@ -84,6 +90,15 @@ class MovieUploadController extends Controller
             'reviewed_at' => now(),
         ]);
 
+        $this->dispatchTranscode($movieUpload, requireMasterVideo: false);
+
+        return response()->json($movieUpload->fresh()->load(['movie', 'files']));
+    }
+
+    public function transcode(MovieUpload $movieUpload)
+    {
+        $this->dispatchTranscode($movieUpload, requireMasterVideo: true);
+
         return response()->json($movieUpload->fresh()->load(['movie', 'files']));
     }
 
@@ -115,5 +130,35 @@ class MovieUploadController extends Controller
             'files.*.duration_seconds' => ['nullable', 'integer', 'min:1'],
             'files.*.technical_metadata' => ['nullable', 'array'],
         ]);
+    }
+
+    private function dispatchTranscode(MovieUpload $movieUpload, bool $requireMasterVideo): void
+    {
+        $masterVideo = $movieUpload->files()
+            ->where('file_type', 'master_video')
+            ->first();
+
+        if (! $masterVideo) {
+            abort_if($requireMasterVideo, 422, 'Upload must include a master_video file before transcoding.');
+
+            return;
+        }
+
+        abort_unless($movieUpload->movie_id, 422, 'Upload must be attached to a movie before transcoding.');
+
+        $movieUpload->update(['status' => 'transcoding']);
+        $masterVideo->update(['status' => 'processing', 'failure_reason' => null]);
+
+        TranscodeUploadFileToHls::dispatch($masterVideo->id);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $files
+     */
+    private function incomingUploadBytes(array $files): int
+    {
+        return collect($files)
+            ->filter(fn (array $file) => in_array($file['file_type'] ?? null, ['master_video', 'trailer'], true))
+            ->sum(fn (array $file) => (int) ($file['file_size_bytes'] ?? 0));
     }
 }

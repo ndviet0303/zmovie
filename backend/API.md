@@ -136,6 +136,21 @@ Can `movies.review`:
 
 ```http
 POST /api/v1/movie-uploads/{id}/approve
+POST /api/v1/movie-uploads/{id}/transcode
+```
+
+Khi upload có file `master_video` và được gắn với `movie_id`, endpoint approve/transcode sẽ dispatch job `TranscodeUploadFileToHls`. Worker cần nghe queue `transcoding`:
+
+```bash
+php artisan queue:work --queue=transcoding,default
+```
+
+Môi trường demo giới hạn dung lượng video mặc định 1GB trên `private:uploads,public:hls`. Khi vượt quota API/job sẽ báo `diskfull` với HTTP 507. Có thể tắt hoặc đổi limit bằng:
+
+```env
+DEMO_VIDEO_STORAGE_QUOTA_ENABLED=true
+DEMO_VIDEO_STORAGE_QUOTA_BYTES=1073741824
+DEMO_VIDEO_STORAGE_QUOTA_PATHS=private:uploads,public:hls
 ```
 
 ## RBAC

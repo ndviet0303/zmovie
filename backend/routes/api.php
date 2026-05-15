@@ -64,6 +64,9 @@ Route::prefix('v1')->group(function () {
     Route::post('/movie-uploads/{movieUpload}/approve', [MovieUploadController::class, 'approve'])
         ->middleware(['auth:sanctum', 'permission:movies.review']);
 
+    Route::post('/movie-uploads/{movieUpload}/transcode', [MovieUploadController::class, 'transcode'])
+        ->middleware(['auth:sanctum', 'permission:movies.review']);
+
     Route::get('/roles', [RbacController::class, 'roles'])->middleware(['auth:sanctum', 'permission:roles.manage']);
     Route::get('/permissions', [RbacController::class, 'permissions'])->middleware(['auth:sanctum', 'permission:roles.manage']);
 });
