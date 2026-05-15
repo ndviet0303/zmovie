@@ -14,11 +14,6 @@ include:
     rules:
       - <<: *if-mr-to-dev-main
       - when: never
-  - local: .gitlab/ci/frontend.gitlab-ci.yml
-    rules:
-      - <<: *if-mr-to-dev-main
-      - when: never
-
 fake_job:
   stage: fake
   script: echo
