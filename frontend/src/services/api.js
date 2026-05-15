@@ -1,13 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api/v1'
-const API_USER_ID = import.meta.env.VITE_API_USER_ID ?? ''
+const API_BASE_URL = resolveApiBaseUrl()
 const ADMIN_SESSION_KEY = 'zmovie_admin_session'
-
-const posterFallback =
-  'https://images.unsplash.com/photo-1608889825103-eb5ed706fc64?auto=format&fit=crop&w=520&q=85'
-const backdropFallback =
-  'https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=2200&q=85'
-const videoFallback =
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
 
 async function request(path, params = {}) {
   const url = new URL(`${API_BASE_URL}${path}`)
@@ -21,31 +13,33 @@ async function request(path, params = {}) {
     Accept: 'application/json',
   }
 
-  const userId = currentUserId()
+  const token = currentAccessToken()
 
-  if (userId) {
-    headers['X-User-Id'] = userId
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
 
   const response = await fetch(url, { headers })
 
   if (!response.ok) {
-    throw new Error(`API ${response.status}: ${response.statusText}`)
+    throw new Error(await errorMessage(response))
   }
 
   return response.json()
 }
 
 async function send(path, method, body) {
+  return sendWithToken(path, method, body, currentAccessToken())
+}
+
+async function sendWithToken(path, method, body, token = '') {
   const headers = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
   }
 
-  const userId = currentUserId()
-
-  if (userId) {
-    headers['X-User-Id'] = userId
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -55,25 +49,79 @@ async function send(path, method, body) {
   })
 
   if (!response.ok) {
-    throw new Error(`API ${response.status}: ${response.statusText}`)
+    throw new Error(await errorMessage(response))
   }
 
   if (response.status === 204) return null
   return response.json()
 }
 
-function currentUserId() {
-  if (API_USER_ID) return API_USER_ID
+async function requestWithToken(path, token = '', params = {}) {
+  const url = new URL(`${API_BASE_URL}${path}`)
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      url.searchParams.set(key, value)
+    }
+  })
 
+  const headers = { Accept: 'application/json' }
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const response = await fetch(url, { headers })
+
+  if (!response.ok) {
+    throw new Error(await errorMessage(response))
+  }
+
+  return response.json()
+}
+
+function currentAccessToken() {
   try {
     const session = JSON.parse(window.localStorage.getItem(ADMIN_SESSION_KEY) ?? 'null')
-    return session?.user?.id ? String(session.user.id) : ''
+    return session?.accessToken ?? ''
   } catch {
     return ''
   }
 }
 
-function absoluteAssetUrl(path) {
+async function errorMessage(response) {
+  try {
+    const payload = await response.json()
+    const firstValidationError = payload.errors
+      ? Object.values(payload.errors).flat().find(Boolean)
+      : ''
+
+    return firstValidationError || payload.message || `API ${response.status}: ${response.statusText}`
+  } catch {
+    return `API ${response.status}: ${response.statusText}`
+  }
+}
+
+function resolveApiBaseUrl() {
+  const configuredUrl = import.meta.env.VITE_API_BASE_URL
+
+  if (configuredUrl) {
+    return normalizeApiBaseUrl(configuredUrl)
+  }
+
+  if (typeof window !== 'undefined') {
+    return normalizeApiBaseUrl(window.location.origin)
+  }
+
+  return ''
+}
+
+function normalizeApiBaseUrl(value) {
+  const trimmedUrl = String(value).replace(/\/+$/, '')
+
+  return trimmedUrl === '/' ? '' : trimmedUrl
+}
+
+export function absoluteAssetUrl(path) {
   if (!path) return ''
   if (/^https?:\/\//i.test(path)) return path
 
@@ -94,10 +142,19 @@ function playableUrl(path) {
 
 function streamUrl(source) {
   if (!source?.url) return ''
+  if (source.source_type === 'hls') return playableUrl(source.url)
   if (/^https?:\/\//i.test(source.url) || !source.id) return playableUrl(source.url)
 
-  const apiUrl = new URL(API_BASE_URL)
-  return `${apiUrl.origin}/api/v1/video-sources/${source.id}/stream`
+  return `${API_BASE_URL}/video-sources/${source.id}/stream`
+}
+
+function preferredVideoSource(sources = []) {
+  return (
+    sources.find((source) => source.is_active && source.is_default) ??
+    sources.find((source) => source.is_active) ??
+    sources[0] ??
+    null
+  )
 }
 
 function movieCategory(movie) {
@@ -114,11 +171,32 @@ export function normalizeMovie(movie) {
     0,
   )
 
-  const videoSource =
-    movie.video_sources?.find((source) => source.is_active && source.is_default) ??
-    movie.video_sources?.find((source) => source.is_active) ??
-    movie.videoSources?.find((source) => source.is_active && source.is_default) ??
-    movie.videoSources?.find((source) => source.is_active)
+  const videoSource = preferredVideoSource(movie.video_sources ?? movie.videoSources ?? [])
+  const episodes = seasons
+    .flatMap((season) => {
+      return (season.episodes ?? []).map((episode) => {
+        const episodeSource = preferredVideoSource(episode.video_sources ?? episode.videoSources ?? [])
+
+        return {
+          id: episode.id,
+          slug: episode.slug,
+          title: episode.title ?? `Tập ${episode.episode_number}`,
+          number: episode.episode_number,
+          seasonId: season.id,
+          seasonNumber: season.season_number,
+          seasonTitle: season.title,
+          overview: episode.overview,
+          runtimeMinutes: episode.runtime_minutes,
+          still: absoluteAssetUrl(episode.still_path),
+          status: episode.status,
+          publishedAt: episode.published_at,
+          videoUrl: streamUrl(episodeSource),
+          videoType: episodeSource?.source_type ?? '',
+        }
+      })
+    })
+    .filter((episode) => episode.status !== 'archived' && episode.status !== 'draft')
+    .sort((a, b) => (a.seasonNumber - b.seasonNumber) || (a.number - b.number))
 
   return {
     id: movie.id,
@@ -143,14 +221,15 @@ export function normalizeMovie(movie) {
     imdb: Number(movie.average_rating ?? 0).toFixed(1),
     genres: (movie.genres ?? []).map((genre) => genre.name),
     countries: (movie.countries ?? []).map((country) => country.name),
-    poster: absoluteAssetUrl(movie.poster_path) || posterFallback,
-    backdrop: absoluteAssetUrl(movie.backdrop_path) || backdropFallback,
+    poster: absoluteAssetUrl(movie.poster_path),
+    backdrop: absoluteAssetUrl(movie.backdrop_path),
     description:
       movie.overview ??
       'Nội dung đang được ZMovie cập nhật. Bạn có thể theo dõi phim này để nhận thông tin mới nhất.',
     isFeatured: Boolean(movie.is_featured),
     viewCount: movie.view_count ?? 0,
-    videoUrl: streamUrl(videoSource) || playableUrl(movie.trailer_url ?? videoFallback),
+    episodes,
+    videoUrl: streamUrl(videoSource) || playableUrl(movie.trailer_url),
     videoType: videoSource?.source_type ?? 'mp4',
     raw: movie,
   }
@@ -190,8 +269,16 @@ export async function fetchLookups() {
   return request('/lookups')
 }
 
+export const userApi = {
+  login: (payload) => sendWithToken('/auth/login', 'POST', payload),
+  register: (payload) => sendWithToken('/auth/register', 'POST', payload),
+  me: (token) => requestWithToken('/auth/me', token),
+  logout: (token) => sendWithToken('/auth/logout', 'POST', null, token),
+}
+
 export const adminApi = {
   login: (payload) => send('/auth/login', 'POST', payload),
+  logout: () => send('/auth/logout', 'POST'),
   me: () => request('/auth/me'),
   demoAccounts: () => request('/auth/demo-accounts'),
   listMovies: (params) => request('/movies', { per_page: 100, ...params }),

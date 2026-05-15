@@ -25,8 +25,7 @@ zmovie_build:
     - docker:dind
   rules:
       - <<: *if-mr-to-dev-main
-        when: manual
-  allow_failure: true
+  allow_failure: false
   # Add before_script to set up cache directory
   before_script:
     - mkdir -p .docker/cache
@@ -60,9 +59,18 @@ server_build:
   script:
     - echo "Logging into GitLab Registry..."
     - echo "$DEPLOY_PASSWORD" | docker login -u "$DEPLOY_USERNAME" --password-stdin $DOCKER_REGISTRY
-    - docker build -t $SERVER_IMAGE_NAME:$DOCKER_TAG -f docker/build/zmovie.prod.Dockerfile docker
+    - |
+      docker build \
+        --pull \
+        --build-arg API_IMAGE=$ZMOVIE_IMAGE_NAME \
+        --build-arg API_TAG=$CI_COMMIT_SHORT_SHA \
+        -t $SERVER_IMAGE_NAME:$DOCKER_TAG \
+        -t $SERVER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA \
+        -f docker/build/zmovie.prod.Dockerfile \
+        docker
     - echo "Pushing Docker image to registry..."
     - docker push $SERVER_IMAGE_NAME:$DOCKER_TAG
+    - docker push $SERVER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA
 
 deploy_to_portainer:
   image: debian:trixie-slim

@@ -3,24 +3,32 @@ import {
   ChevronDown,
   ChevronRight,
   Heart,
+  LogOut,
   Menu,
   Play,
   Search,
   Star,
+  User,
   X,
 } from 'lucide-vue-next'
 import Hls from 'hls.js'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminPanel from './AdminPanel.vue'
 import logoUrl from './assets/zmovie-logo.png'
 import logoMarkUrl from './assets/zmovie-mark.png'
-import { fetchLookups, fetchMovie, fetchMovies, searchMovies } from './services/api'
+import { fetchLookups, fetchMovie, fetchMovies, searchMovies, userApi } from './services/api'
 
 const route = useRoute()
 const router = useRouter()
 
+const USER_SESSION_KEY = 'zmovie_user_session'
 const menuOpen = ref(false)
+const authOpen = ref(false)
+const authMode = ref('login')
+const authLoading = ref(false)
+const authError = ref('')
+const userSession = ref(readUserSession())
 const searchQuery = ref('')
 const activeHeroIndex = ref(0)
 const currentView = ref('home')
@@ -33,6 +41,7 @@ const lookups = ref(null)
 const catalogMovies = ref([])
 const selectedCategory = ref('Tất cả')
 const selectedTopic = ref(null)
+const selectedEpisodeId = ref(null)
 const videoRef = ref(null)
 const heroStripRef = ref(null)
 const heroHoverPaused = ref(false)
@@ -46,6 +55,17 @@ const heroDragState = {
   startScrollLeft: 0,
   wasDragged: false,
 }
+
+const loginForm = reactive({
+  email: '',
+  password: '',
+})
+const registerForm = reactive({
+  name: '',
+  email: '',
+  password: '',
+  password_confirmation: '',
+})
 
 const navItems = ['ZMovie', 'Phim Bộ', 'Phim Lẻ', 'TV Show', 'Phim Chiếu Rạp']
 const filterItems = ['Thể Loại Phim', 'Quốc Gia', 'Năm']
@@ -88,258 +108,34 @@ const topicSlugs = {
   tvshow: 'TV Show',
 }
 
-const fallbackMovies = [
-  {
-    id: 'the-favor',
-    title: 'Kẻ Cứu Rỗi',
-    original: 'The Favor',
-    category: 'Phim Lẻ Mới',
-    year: '2025',
-    meta: 'Full',
-    badge: 'P.Đề',
-    imdb: '0',
-    genres: ['Chính kịch', 'Kinh Dị'],
-    poster:
-      'https://images.unsplash.com/photo-1608889825103-eb5ed706fc64?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Phim Kẻ Cứu Rỗi là một tác phẩm điện ảnh Hàn Quốc đầy kịch tính, khám phá ranh giới mong manh giữa phép màu và lời nguyền trong cuộc sống gia đình.',
-  },
-  {
-    id: 'enchanting-cranium',
-    title: 'Liêu Trai: Mỹ Nhân Thủ',
-    original: 'The Enchanting Cranium Mystery',
-    category: 'Phim Lẻ Mới',
-    year: '2025',
-    meta: 'Full',
-    badge: 'P.Đề',
-    imdb: '7.1',
-    genres: ['Cổ Trang', 'Bí Ẩn'],
-    poster:
-      'https://images.unsplash.com/photo-1526816229784-65d5d54ac8bc?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Một vụ án kỳ bí kéo những nhân vật trẻ vào vòng xoáy bí mật, tình yêu và những lời nguyền cổ xưa.',
-  },
-  {
-    id: 'gabriels-inferno',
-    title: 'Giáo Sư Gabriel: Phần 2',
-    original: "Gabriel's Inferno: Part II",
-    category: 'Phim Lẻ Mới',
-    year: '2024',
-    meta: 'Full',
-    badge: 'P.Đề',
-    imdb: '6.8',
-    genres: ['Tình Cảm', 'Tâm Lý'],
-    poster:
-      'https://images.unsplash.com/photo-1516585427167-9f4af9627e6c?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Một chuyện tình nhiều tổn thương tiếp tục mở ra giữa những lựa chọn khó nói và quá khứ chưa khép lại.',
-  },
-  {
-    id: 'in-the-name-father',
-    title: 'Điệp Án Truy Tung',
-    original: 'In The Name Of The Father',
-    category: 'Phim Lẻ Mới',
-    year: '2025',
-    meta: 'Full',
-    badge: 'P.Đề',
-    imdb: '7.4',
-    genres: ['Hành Động', 'Gia Đình'],
-    poster:
-      'https://images.unsplash.com/photo-1518709268805-4e9042af2176?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Một người cha bị cuốn vào cuộc truy tìm nguy hiểm khi sự thật về gia đình dần bị phơi bày.',
-  },
-  {
-    id: 'the-gates',
-    title: 'Khu Khép Kín',
-    original: 'The Gates',
-    category: 'Phim Lẻ Mới',
-    year: '2025',
-    meta: 'Full',
-    badge: 'P.Đề',
-    imdb: '6.5',
-    genres: ['Kinh Dị', 'Giật Gân'],
-    poster:
-      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1518709911915-712d5fd04677?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Một khu nhà tưởng chừng bình yên che giấu những cánh cửa dẫn đến bí mật chết người.',
-  },
-  {
-    id: 'filing-love',
-    title: 'Thanh Tra Bí Mật',
-    original: 'Filing for Love',
-    category: 'Phim Bộ Mới',
-    year: '2025',
-    meta: 'Tập 8',
-    badge: 'P.Đề',
-    imdb: '7.0',
-    genres: ['Hài', 'Tình Cảm'],
-    poster:
-      'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Một cặp đôi bất đắc dĩ cùng điều tra những hồ sơ kỳ lạ, vừa phá án vừa học cách tin nhau.',
-  },
-  {
-    id: 'we-are-trying',
-    title: 'Cuộc Chiến Trong Chúng Ta',
-    original: 'We Are All Trying Here',
-    category: 'Phim Bộ Mới',
-    year: '2025',
-    meta: 'Tập 10',
-    badge: 'P.Đề',
-    imdb: '7.2',
-    genres: ['Đời Thường', 'Tâm Lý'],
-    poster:
-      'https://images.unsplash.com/photo-1511882150382-421056c89033?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Những con người trẻ đối mặt với áp lực đô thị, tình bạn và những lựa chọn trưởng thành.',
-  },
-  {
-    id: 'lillys-verschwinden',
-    title: 'Lilly Mất Tích (Phần 1)',
-    original: 'Lillys Verschwinden (Season 1)',
-    category: 'Phim Bộ Mới',
-    year: '2025',
-    meta: 'Tập 6',
-    badge: 'P.Đề',
-    imdb: '7.3',
-    genres: ['Bí Ẩn', 'Tội Phạm'],
-    poster:
-      'https://images.unsplash.com/photo-1497032205916-ac775f0649ae?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Vụ mất tích của Lilly buộc cả thị trấn phải nhìn lại những bí mật đã bị chôn giấu nhiều năm.',
-  },
-  {
-    id: 'funny-af',
-    title: 'Funny AF With Kevin Hart',
-    original: 'Funny AF with Kevin Hart',
-    category: 'Phim Bộ Mới',
-    year: '2025',
-    meta: 'Tập 4',
-    badge: 'P.Đề',
-    imdb: '6.9',
-    genres: ['Hài', 'TV Show'],
-    poster:
-      'https://images.unsplash.com/photo-1527224538127-2104bb71c51b?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1508973379184-7517410fb0bc?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Chuỗi sân khấu hài độc thoại với nhịp nhanh, nhiều khách mời và các câu chuyện đời thường sắc bén.',
-  },
-  {
-    id: 'all-blue-sky',
-    title: 'Xanh Ngắt Bầu Trời',
-    original: 'All the Blue in the Sky',
-    category: 'Phim Bộ Mới',
-    year: '2025',
-    meta: 'Tập 12',
-    badge: 'P.Đề',
-    imdb: '7.6',
-    genres: ['Phiêu Lưu', 'Gia Đình'],
-    poster:
-      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Một hành trình đường dài mở ra những kết nối mới giữa các thành viên trong một gia đình rạn nứt.',
-  },
-  {
-    id: 'embers-love',
-    title: 'Tân Hoa Duyên',
-    original: 'Embers of Love',
-    category: 'Phim Chiếu Rạp',
-    year: '2025',
-    meta: 'Full',
-    badge: 'P.Đề',
-    imdb: '7.5',
-    genres: ['Cổ Trang', 'Lãng Mạn'],
-    poster:
-      'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1526816229784-65d5d54ac8bc?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Giữa chiến loạn, một mối tình cũ được thắp lại bằng những lựa chọn đầy hy sinh.',
-  },
-  {
-    id: 'mf-ghost',
-    title: 'MF GHOST (Phần 3)',
-    original: 'MF GHOST (Season 3)',
-    category: 'Phim Chiếu Rạp',
-    year: '2025',
-    meta: 'Tập 3',
-    badge: 'P.Đề',
-    imdb: '7.8',
-    genres: ['Anime', 'Thể Thao'],
-    poster:
-      'https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Những tay đua trẻ bước vào mùa giải mới với tốc độ, chiến thuật và áp lực lớn hơn trước.',
-  },
-  {
-    id: 'street-trash',
-    title: 'Rác Đường Phố',
-    original: 'Street Trash',
-    category: 'Phim Chiếu Rạp',
-    year: '2024',
-    meta: 'Full',
-    badge: 'P.Đề',
-    imdb: '6.1',
-    genres: ['Kinh Dị', 'Hài Đen'],
-    poster:
-      'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Một đô thị hỗn loạn biến thành sân khấu cho những tình huống kinh dị quái dị và châm biếm.',
-  },
-  {
-    id: 'sparklehorse',
-    title: 'Tia Sáng Tuyệt Đẹp',
-    original: 'This Is Sparklehorse',
-    category: 'Phim Chiếu Rạp',
-    year: '2024',
-    meta: 'Full',
-    badge: 'P.Đề',
-    imdb: '7.7',
-    genres: ['Tài Liệu', 'Âm Nhạc'],
-    poster:
-      'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=520&q=85',
-    backdrop:
-      'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=2200&q=85',
-    description:
-      'Một lát cắt tài liệu về âm nhạc, ký ức và những giai đoạn sáng tạo đầy biến động.',
-  },
-]
-
 const sections = ['Phim Lẻ Mới', 'Phim Bộ Mới', 'Phim Chiếu Rạp']
-const movies = ref(fallbackMovies)
+const movies = ref([])
 
-const allMovies = computed(() => movies.value.length ? movies.value : fallbackMovies)
+const allMovies = computed(() => movies.value)
 const featuredMovies = computed(() => {
   const featured = allMovies.value.filter((movie) => movie.isFeatured)
   return (featured.length ? featured : allMovies.value).slice(0, 7)
 })
 
 const activeHeroMovie = computed(() => {
-  return featuredMovies.value[activeHeroIndex.value] ?? featuredMovies.value[0] ?? fallbackMovies[0]
+  return featuredMovies.value[activeHeroIndex.value] ?? featuredMovies.value[0] ?? null
+})
+
+const activeEpisodes = computed(() => {
+  return activeMovie.value?.episodes ?? []
+})
+
+const activeEpisode = computed(() => {
+  if (!activeEpisodes.value.length) return null
+
+  return (
+    activeEpisodes.value.find((episode) => String(episode.id) === String(selectedEpisodeId.value)) ??
+    activeEpisodes.value[0]
+  )
+})
+
+const activeVideoUrl = computed(() => {
+  return activeEpisode.value?.videoUrl || activeMovie.value?.videoUrl || ''
 })
 
 const isAdminRoute = computed(() => route.name === 'admin' || route.name === 'admin-login')
@@ -411,6 +207,79 @@ function findMovieByRouteId(id) {
   })
 }
 
+function readUserSession() {
+  try {
+    return JSON.parse(window.localStorage.getItem(USER_SESSION_KEY) ?? 'null')
+  } catch {
+    return null
+  }
+}
+
+function saveUserSession(payload) {
+  userSession.value = {
+    accessToken: payload.access_token,
+    user: payload.user,
+    permissions: payload.permissions ?? [],
+  }
+  window.localStorage.setItem(USER_SESSION_KEY, JSON.stringify(userSession.value))
+}
+
+function openAuth(mode = 'login') {
+  authMode.value = mode
+  authError.value = ''
+  authOpen.value = true
+  menuOpen.value = false
+}
+
+async function submitAuth() {
+  authLoading.value = true
+  authError.value = ''
+
+  try {
+    const payload =
+      authMode.value === 'register'
+        ? await userApi.register(registerForm)
+        : await userApi.login(loginForm)
+
+    saveUserSession(payload)
+    authOpen.value = false
+  } catch (error) {
+    authError.value = error.message
+  } finally {
+    authLoading.value = false
+  }
+}
+
+async function logoutUser() {
+  const token = userSession.value?.accessToken
+
+  try {
+    if (token) {
+      await userApi.logout(token)
+    }
+  } catch {
+    // Local logout should still work if the token expired.
+  } finally {
+    window.localStorage.removeItem(USER_SESSION_KEY)
+    userSession.value = null
+  }
+}
+
+function ensureSelectedEpisode(movie = activeMovie.value) {
+  const episodes = movie?.episodes ?? []
+
+  if (!episodes.length) {
+    selectedEpisodeId.value = null
+    return
+  }
+
+  const selectedExists = episodes.some((episode) => String(episode.id) === String(selectedEpisodeId.value))
+
+  if (!selectedExists) {
+    selectedEpisodeId.value = episodes[0].id
+  }
+}
+
 function topicBySlug(slug) {
   const topicTitle = topicSlugs[slug]
   if (topicTitle === 'TV Show') {
@@ -424,27 +293,33 @@ async function applyRouteState() {
   menuOpen.value = false
 
   if (route.name === 'movie-detail' || route.name === 'watch') {
+    currentView.value = route.name === 'watch' ? 'watch' : 'detail'
+    selectedCategory.value = 'Tất cả'
+    selectedTopic.value = null
+
     const movie = findMovieByRouteId(route.params.id)
+
     if (movie) {
       activeMovie.value = movie
-      currentView.value = route.name === 'watch' ? 'watch' : 'detail'
-      selectedCategory.value = 'Tất cả'
-      selectedTopic.value = null
+      ensureSelectedEpisode(movie)
 
-      if (movie.id && typeof movie.id !== 'string') {
-        try {
-          const freshMovie = await fetchMovie(movie.id)
-          activeMovie.value = freshMovie
-        } catch (error) {
-          apiError.value = error.message
-        }
-      }
+    }
+
+    try {
+      const freshMovie = await fetchMovie(route.params.id)
+      activeMovie.value = freshMovie
+      ensureSelectedEpisode(freshMovie)
       return
+    } catch (error) {
+      apiError.value = error.message
+
+      if (movie) return
     }
   }
 
   currentView.value = 'home'
   activeMovie.value = null
+  selectedEpisodeId.value = null
 
   if (route.name === 'category') {
     selectedCategory.value = categoryRoutes[route.params.slug] ?? 'Tất cả'
@@ -482,16 +357,16 @@ async function loadInitialData() {
       fetchLookups().catch(() => null),
     ])
 
-    movies.value = movieData.length ? movieData : fallbackMovies
+    movies.value = movieData
     catalogMovies.value = movieData
     lookups.value = lookupData
     backendStatus.value = movieData.length
       ? `Đã đồng bộ ${movieData.length} phim từ backend`
-      : 'Backend chưa có phim published, đang dùng dữ liệu demo'
+      : 'Backend chưa có phim published'
   } catch (error) {
-    movies.value = fallbackMovies
+    movies.value = []
     apiError.value = error.message
-    backendStatus.value = 'Không kết nối được backend, đang dùng dữ liệu demo'
+    backendStatus.value = 'Không kết nối được backend'
   } finally {
     isLoading.value = false
     await applyRouteState()
@@ -516,17 +391,25 @@ async function runSearch(query) {
   } catch (error) {
     apiError.value = error.message
     backendStatus.value = 'Search API lỗi, đang lọc cục bộ'
-    movies.value = catalogMovies.value.length ? catalogMovies.value : fallbackMovies
+    movies.value = catalogMovies.value
   } finally {
     isSearching.value = false
   }
 }
 
 async function openMovie(movie) {
+  if (!movie) return
+
   await router.push({ name: 'movie-detail', params: { id: movieRouteId(movie) } })
 }
 
-function openPlayer(movie) {
+function openPlayer(movie, episode = null) {
+  if (!movie) return
+
+  if (episode) {
+    selectedEpisodeId.value = episode.id
+  }
+
   router.push({ name: 'watch', params: { id: movieRouteId(movie) } })
 }
 
@@ -549,6 +432,14 @@ function clearFilters() {
 
 function selectHero(index) {
   activeHeroIndex.value = index
+}
+
+function selectEpisode(episode, shouldPlay = false) {
+  selectedEpisodeId.value = episode.id
+
+  if (shouldPlay && activeMovie.value) {
+    openPlayer(activeMovie.value, episode)
+  }
 }
 
 function advanceHero() {
@@ -634,6 +525,8 @@ function handleHeroThumbnailClick(index) {
 }
 
 function playActiveHero() {
+  if (!activeHeroMovie.value) return
+
   openPlayer(activeHeroMovie.value)
 }
 
@@ -641,9 +534,18 @@ function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+function handleImageError(event) {
+  const image = event.currentTarget
+  if (!image || image.dataset.imageErrorHandled) return
+
+  image.dataset.imageErrorHandled = 'true'
+  image.src = logoMarkUrl
+  image.classList.add('object-contain', 'p-3')
+}
+
 function setupPlayerSource() {
   const video = videoRef.value
-  const url = activeMovie.value?.videoUrl
+  const url = activeVideoUrl.value
 
   if (!video || !url) return
 
@@ -697,7 +599,7 @@ watch(
 )
 
 watch(
-  () => [currentView.value, activeMovie.value?.videoUrl],
+  () => [currentView.value, activeVideoUrl.value, activeEpisode.value?.id],
   async () => {
     if (currentView.value === 'watch') {
       await nextTick()
@@ -734,10 +636,10 @@ onBeforeUnmount(() => {
   <AdminPanel v-if="isAdminRoute" />
   <div v-else class="min-h-screen overflow-x-hidden bg-[#11131d] text-slate-50">
     <header
-      class="sticky top-0 z-20 grid min-h-[74px] grid-cols-[1fr_auto] items-center gap-4 border-b border-white/7 bg-[#090a12]/92 px-4 py-3 backdrop-blur-[18px] md:grid-cols-[auto_minmax(240px,420px)_auto] md:gap-5 md:px-[clamp(20px,4vw,52px)] md:py-0 xl:grid-cols-[auto_minmax(260px,420px)_1fr]"
+      class="sticky top-0 z-20 grid min-h-[72px] grid-cols-[minmax(0,1fr)_44px] items-center gap-4 border-b border-white/7 bg-[#090a12]/94 px-4 py-3 backdrop-blur-[18px] md:grid-cols-[auto_minmax(240px,420px)_auto] md:gap-5 md:px-[clamp(20px,4vw,52px)] md:py-0 xl:grid-cols-[auto_minmax(250px,420px)_1fr]"
     >
       <button
-        class="flex min-w-max items-center gap-2.5 text-left"
+        class="flex min-w-0 items-center gap-2.5 text-left"
         type="button"
         aria-label="ZMovie home"
         @click="showHome"
@@ -750,7 +652,7 @@ onBeforeUnmount(() => {
       </button>
 
       <div
-        class="order-3 col-span-full flex h-10 items-center gap-3 rounded-lg border border-white/6 bg-[#20232d] px-4 text-slate-300 transition focus-within:border-[#ffe182]/70 md:order-none md:col-span-1 md:h-[46px] md:px-[18px]"
+        class="order-3 col-span-full flex h-10 min-w-0 items-center gap-3 rounded-lg border border-white/6 bg-[#20232d] px-4 text-slate-300 transition focus-within:border-[#ffe182]/70 md:order-none md:col-span-1 md:h-[46px] md:px-[18px]"
       >
         <Search :size="20" />
         <input
@@ -772,7 +674,7 @@ onBeforeUnmount(() => {
       </div>
 
       <button
-        class="grid h-11 w-11 cursor-pointer place-items-center rounded-lg border border-white/10 bg-[#20232d] text-white xl:hidden"
+        class="grid h-11 w-11 cursor-pointer place-items-center justify-self-end rounded-lg border border-white/10 bg-[#20232d] text-white xl:hidden"
         type="button"
         aria-label="Mở menu"
         @click="menuOpen = !menuOpen"
@@ -783,7 +685,7 @@ onBeforeUnmount(() => {
 
       <nav
         :class="[
-          'absolute left-5 right-5 top-32 hidden rounded-xl border border-white/8 bg-[#10121c]/98 p-4 text-sm font-bold text-[#f5f7fb] shadow-[0_22px_60px_rgba(0,0,0,0.45)] md:top-[74px] xl:static xl:flex xl:items-center xl:justify-end xl:gap-[clamp(18px,2vw,36px)] xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none',
+          'absolute left-5 right-5 top-32 hidden rounded-xl border border-white/8 bg-[#10121c]/98 p-4 text-sm font-bold text-[#f5f7fb] shadow-[0_22px_60px_rgba(0,0,0,0.45)] md:top-[74px] xl:static xl:flex xl:items-center xl:justify-end xl:gap-[clamp(14px,1.6vw,28px)] xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none',
           menuOpen ? 'grid gap-1 md:grid-cols-2 xl:flex' : 'xl:flex',
         ]"
       >
@@ -791,7 +693,7 @@ onBeforeUnmount(() => {
           v-for="item in navItems"
           :key="item"
           :class="[
-            'inline-flex min-h-10 items-center gap-1 px-2.5 text-left transition-colors hover:text-[#ffe182] xl:px-0',
+            'inline-flex min-h-10 items-center gap-1 px-2.5 text-left whitespace-nowrap transition-colors hover:text-[#ffe182] xl:px-0',
             (item === 'ZMovie' && selectedCategory === 'Tất cả') || item === selectedCategory
               ? 'text-[#ffe182]'
               : '',
@@ -810,27 +712,177 @@ onBeforeUnmount(() => {
         <button
           v-for="item in filterItems"
           :key="item"
-          class="inline-flex min-h-10 items-center gap-1 px-2.5 text-left transition-colors hover:text-[#ffe182] xl:px-0"
+          class="inline-flex min-h-10 items-center gap-1 px-2.5 text-left whitespace-nowrap transition-colors hover:text-[#ffe182] xl:px-0"
           type="button"
           @click="selectCategory('Tất cả')"
         >
           {{ item }}
           <ChevronDown :size="14" />
         </button>
+        <div class="mt-2 flex flex-wrap items-center gap-2 border-t border-white/8 pt-3 xl:mt-0 xl:border-t-0 xl:pt-0">
+          <template v-if="userSession">
+            <span class="inline-flex min-h-10 max-w-44 items-center gap-2 overflow-hidden rounded-lg bg-white/8 px-3 text-sm font-bold text-white">
+              <User :size="16" />
+              <span class="truncate">{{ userSession.user?.name }}</span>
+            </span>
+            <button
+              class="grid h-10 w-10 cursor-pointer place-items-center rounded-lg border border-white/10 bg-white/7 text-slate-200 transition hover:border-[#ffe182] hover:text-[#ffe182]"
+              type="button"
+              aria-label="Đăng xuất"
+              @click="logoutUser"
+            >
+              <LogOut :size="16" />
+            </button>
+          </template>
+          <template v-else>
+            <button
+              class="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/12 bg-white/7 px-3 text-sm font-bold text-white transition hover:border-[#ffe182] hover:text-[#ffe182]"
+              type="button"
+              @click="openAuth('login')"
+            >
+              <User :size="16" />
+              Đăng nhập
+            </button>
+            <button
+              class="inline-flex min-h-10 cursor-pointer items-center rounded-lg bg-[#ffe182] px-3 text-sm font-black text-[#11131d] transition hover:bg-[#ffd058]"
+              type="button"
+              @click="openAuth('register')"
+            >
+              Đăng ký
+            </button>
+          </template>
+        </div>
       </nav>
     </header>
 
+    <div
+      v-if="authOpen"
+      class="fixed inset-0 z-40 grid place-items-center bg-black/70 px-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      @click.self="authOpen = false"
+    >
+      <form
+        class="w-full max-w-md rounded-2xl border border-white/10 bg-[#171922] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.45)]"
+        @submit.prevent="submitAuth"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-xs font-black uppercase tracking-[0.18em] text-[#ffe182]">Tài khoản</p>
+            <h2 class="mt-1 text-2xl font-black text-white">
+              {{ authMode === 'register' ? 'Đăng ký' : 'Đăng nhập' }}
+            </h2>
+          </div>
+          <button
+            class="grid h-9 w-9 cursor-pointer place-items-center rounded-lg border border-white/10 bg-white/7 text-slate-200 transition hover:border-[#ffe182] hover:text-[#ffe182]"
+            type="button"
+            aria-label="Đóng"
+            @click="authOpen = false"
+          >
+            <X :size="18" />
+          </button>
+        </div>
+
+        <div class="mt-5 grid gap-4">
+          <label v-if="authMode === 'register'" class="block text-sm font-bold text-slate-200">
+            Tên hiển thị
+            <input
+              v-model="registerForm.name"
+              class="mt-2 h-11 w-full rounded-lg border border-white/10 bg-white/6 px-3 text-white outline-none transition focus:border-[#ffe182]"
+              type="text"
+              autocomplete="name"
+              required
+            />
+          </label>
+
+          <label class="block text-sm font-bold text-slate-200">
+            Email
+            <input
+              v-if="authMode === 'register'"
+              v-model="registerForm.email"
+              class="mt-2 h-11 w-full rounded-lg border border-white/10 bg-white/6 px-3 text-white outline-none transition focus:border-[#ffe182]"
+              type="email"
+              autocomplete="email"
+              required
+            />
+            <input
+              v-else
+              v-model="loginForm.email"
+              class="mt-2 h-11 w-full rounded-lg border border-white/10 bg-white/6 px-3 text-white outline-none transition focus:border-[#ffe182]"
+              type="email"
+              autocomplete="email"
+              required
+            />
+          </label>
+
+          <label class="block text-sm font-bold text-slate-200">
+            Mật khẩu
+            <input
+              v-if="authMode === 'register'"
+              v-model="registerForm.password"
+              class="mt-2 h-11 w-full rounded-lg border border-white/10 bg-white/6 px-3 text-white outline-none transition focus:border-[#ffe182]"
+              type="password"
+              autocomplete="new-password"
+              minlength="8"
+              required
+            />
+            <input
+              v-else
+              v-model="loginForm.password"
+              class="mt-2 h-11 w-full rounded-lg border border-white/10 bg-white/6 px-3 text-white outline-none transition focus:border-[#ffe182]"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </label>
+
+          <label v-if="authMode === 'register'" class="block text-sm font-bold text-slate-200">
+            Nhập lại mật khẩu
+            <input
+              v-model="registerForm.password_confirmation"
+              class="mt-2 h-11 w-full rounded-lg border border-white/10 bg-white/6 px-3 text-white outline-none transition focus:border-[#ffe182]"
+              type="password"
+              autocomplete="new-password"
+              minlength="8"
+              required
+            />
+          </label>
+        </div>
+
+        <p v-if="authError" class="mt-4 rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-sm font-bold text-red-200">
+          {{ authError }}
+        </p>
+
+        <button
+          class="mt-5 inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-lg bg-[#ffe182] px-4 text-sm font-black text-[#11131d] transition hover:bg-[#ffd058] disabled:opacity-60"
+          type="submit"
+          :disabled="authLoading"
+        >
+          {{ authLoading ? 'Đang xử lý...' : authMode === 'register' ? 'Tạo tài khoản' : 'Đăng nhập' }}
+        </button>
+
+        <button
+          class="mt-4 w-full cursor-pointer text-center text-sm font-bold text-slate-300 transition hover:text-[#ffe182]"
+          type="button"
+          @click="authMode = authMode === 'register' ? 'login' : 'register'; authError = ''"
+        >
+          {{ authMode === 'register' ? 'Đã có tài khoản? Đăng nhập' : 'Chưa có tài khoản? Đăng ký' }}
+        </button>
+      </form>
+    </div>
+
     <main v-if="currentView === 'home'">
       <section
-        class="hero-bg relative min-h-[560px] px-[18px] md:min-h-[430px] md:px-[clamp(20px,7vw,140px)] 2xl:px-[clamp(20px,14vw,370px)]"
-        :style="{ backgroundImage: `linear-gradient(90deg, #171922 0%, rgba(23,25,34,.9) 16%, rgba(23,25,34,.16) 52%, #171922 100%), linear-gradient(180deg, rgba(23,25,34,0) 48%, #171922 100%), url(${activeHeroMovie.backdrop})` }"
+        v-if="activeHeroMovie"
+        class="hero-bg relative min-h-[540px] px-[18px] md:min-h-[500px] md:px-[clamp(20px,7vw,140px)] 2xl:px-[clamp(20px,14vw,370px)]"
+        :style="{ backgroundImage: `linear-gradient(90deg, #131722 0%, rgba(19,23,34,.88) 26%, rgba(19,23,34,.32) 58%, #131722 100%), linear-gradient(180deg, rgba(19,23,34,0) 48%, #11131d 100%), url(${activeHeroMovie.backdrop})` }"
         @mouseenter="pauseHeroAutoplay"
         @mouseleave="resumeHeroAutoplay"
         @focusin="pauseHeroAutoplay"
         @focusout="resumeHeroAutoplay"
       >
-        <div class="relative z-[1] max-w-xl pt-10 md:pt-14">
-          <h1 class="mb-2 text-3xl font-black text-white">{{ activeHeroMovie.title }}</h1>
+        <div class="relative z-[1] max-w-xl pt-12 md:pt-16">
+          <h1 class="mb-2 text-[clamp(30px,3vw,48px)] leading-tight font-black text-white">{{ activeHeroMovie.title }}</h1>
           <p class="mb-3.5 text-base font-bold text-[#ffe182]">{{ activeHeroMovie.original }}</p>
           <div class="flex max-w-80 flex-wrap gap-2.5">
             <span class="tag border-[#ffe182] text-[#ffe182]">IMDb {{ activeHeroMovie.imdb }}</span>
@@ -840,23 +892,33 @@ onBeforeUnmount(() => {
               {{ genre }}
             </span>
           </div>
-          <p class="my-6 line-clamp-3 max-w-[520px] text-sm font-semibold leading-[1.65] text-slate-50 md:my-8 md:text-[15px]">
+          <p class="my-6 line-clamp-3 max-w-[520px] text-sm font-semibold leading-[1.65] text-slate-100 md:my-7 md:text-[15px]">
             {{ activeHeroMovie.description }}
           </p>
-          <button
-            class="grid h-[72px] w-[72px] cursor-pointer place-items-center rounded-full border-0 bg-linear-to-br from-[#ffe58f] to-[#ffd058] text-[#11131d] shadow-[0_18px_48px_rgba(255,208,88,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_56px_rgba(255,208,88,0.32)]"
-            type="button"
-            aria-label="Xem phim"
-            @click="playActiveHero"
-          >
-            <Play :size="28" fill="currentColor" />
-          </button>
+          <div class="flex flex-wrap items-center gap-3">
+            <button
+              class="inline-flex h-12 cursor-pointer items-center gap-2 rounded-lg border-0 bg-linear-to-br from-[#ffe58f] to-[#ffd058] px-5 text-sm font-black text-[#11131d] shadow-[0_18px_48px_rgba(255,208,88,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_56px_rgba(255,208,88,0.32)]"
+              type="button"
+              @click="playActiveHero"
+            >
+              <Play :size="18" fill="currentColor" />
+              Xem phim
+            </button>
+            <button
+              class="inline-flex h-12 cursor-pointer items-center gap-2 rounded-lg border border-white/14 bg-white/9 px-5 text-sm font-bold text-white transition hover:border-[#ffe182] hover:text-[#ffe182]"
+              type="button"
+              @click="openMovie(activeHeroMovie)"
+            >
+              Chi tiết
+              <ChevronRight :size="16" />
+            </button>
+          </div>
         </div>
 
         <div
           ref="heroStripRef"
           :class="[
-            'absolute bottom-[86px] left-[18px] right-[18px] z-[1] flex touch-pan-x select-none gap-3 overflow-x-auto scroll-smooth md:bottom-32 md:left-auto md:right-[clamp(20px,7vw,140px)] 2xl:right-[clamp(24px,14vw,360px)]',
+            'absolute bottom-8 left-[18px] right-[18px] z-[1] flex touch-pan-x select-none gap-3 overflow-x-auto scroll-smooth md:bottom-12 md:left-auto md:right-[clamp(20px,7vw,140px)] 2xl:right-[clamp(24px,14vw,360px)]',
             isHeroDragging ? 'cursor-grabbing scroll-auto' : 'cursor-grab',
           ]"
           aria-label="Phim nổi bật"
@@ -876,7 +938,7 @@ onBeforeUnmount(() => {
             type="button"
             @click="handleHeroThumbnailClick(index)"
           >
-            <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" />
+            <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" @error="handleImageError" />
             <span
               :class="[
                 'absolute bottom-0 left-0 h-0.5 bg-[#ffe182] transition-all duration-[4500ms] group-hover:bg-white',
@@ -886,12 +948,26 @@ onBeforeUnmount(() => {
           </button>
         </div>
       </section>
+      <section
+        v-else
+        class="mx-auto max-w-[1810px] px-[18px] py-16 md:px-[clamp(20px,7vw,140px)] 2xl:px-[clamp(20px,14vw,370px)]"
+      >
+        <div class="rounded-2xl border border-white/8 bg-white/5 px-6 py-12 text-center">
+          <h1 class="text-2xl font-black text-white">Chưa có phim để hiển thị</h1>
+          <p class="mt-2 text-sm font-semibold text-slate-400">
+            {{ isLoading ? 'Đang tải dữ liệu từ backend...' : backendStatus }}
+          </p>
+          <p v-if="apiError" class="mt-3 text-sm font-bold text-amber-200">
+            {{ apiError }}
+          </p>
+        </div>
+      </section>
 
       <section
         id="catalog"
-        class="mx-auto -mt-12 max-w-[1810px] px-[18px] pb-16 md:-mt-[78px] md:px-[clamp(20px,7vw,140px)] md:pb-20 2xl:px-[clamp(20px,14vw,370px)]"
+        class="mx-auto max-w-[1810px] px-[18px] py-12 md:px-[clamp(20px,7vw,140px)] md:py-14 2xl:px-[clamp(20px,14vw,370px)]"
       >
-        <h2 class="relative z-[2] max-w-[980px] text-2xl leading-tight font-extrabold text-slate-50 md:text-[clamp(24px,2vw,32px)]">
+        <h2 class="relative z-[2] max-w-[980px] text-2xl leading-tight font-extrabold text-slate-50 md:text-[clamp(24px,2vw,34px)]">
           ZMovie - Kho Phim Full HD - Xem Phim Online Vietsub, Thuyết Minh
         </h2>
         <div class="relative z-[2] mt-4 flex flex-wrap items-center gap-3 text-xs font-semibold">
@@ -928,18 +1004,18 @@ onBeforeUnmount(() => {
           </span>
         </div>
 
-        <div class="relative z-[2] mt-7 grid grid-cols-1 gap-4 min-[421px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div class="relative z-[2] mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <RouterLink
             v-for="(topic, index) in topics"
             :key="topic.title"
             :to="{ name: 'topic', params: { slug: topic.slug } }"
             :class="[
-              'flex min-h-[126px] cursor-pointer flex-col justify-between overflow-hidden rounded-lg bg-linear-to-br p-4.5 text-left text-white transition hover:-translate-y-0.5 hover:brightness-105 md:min-h-[152px] md:p-6',
+              'flex min-h-[118px] cursor-pointer flex-col justify-between overflow-hidden rounded-lg bg-linear-to-br p-4.5 text-left text-white shadow-[0_16px_42px_rgba(0,0,0,0.2)] transition hover:-translate-y-0.5 hover:brightness-105 md:min-h-[134px] md:p-5',
               topicTones[index],
               selectedTopic?.title === topic.title ? 'ring-2 ring-white' : '',
             ]"
           >
-            <strong class="max-w-[170px] text-[clamp(21px,1.35vw,30px)] leading-tight">
+            <strong class="max-w-[170px] text-[clamp(20px,1.2vw,26px)] leading-tight">
               {{ topic.title }}
             </strong>
             <span class="inline-flex items-center gap-1.5 text-sm font-bold">
@@ -964,13 +1040,13 @@ onBeforeUnmount(() => {
             <article v-for="(movie, index) in filteredMovies.slice(0, 8)" :key="movie.id" class="group min-w-0">
               <button
                 :class="[
-                  'relative block aspect-2/3 w-full overflow-hidden rounded-lg bg-[#252938] text-left shadow-[0_14px_38px_rgba(0,0,0,0.26)] transition group-hover:-translate-y-1 group-hover:shadow-[0_18px_52px_rgba(0,0,0,0.42)]',
+                  'relative block aspect-2/3 w-full cursor-pointer overflow-hidden rounded-lg bg-[#252938] text-left shadow-[0_14px_38px_rgba(0,0,0,0.26)] transition group-hover:-translate-y-1 group-hover:shadow-[0_18px_52px_rgba(0,0,0,0.42)]',
                   index === 7 ? 'ring-3 ring-[#ffe182]' : 'ring-1 ring-white/8',
                 ]"
                 type="button"
                 @click="openMovie(movie)"
               >
-                <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" />
+                <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" @error="handleImageError" />
                 <span class="absolute right-2 bottom-2 max-w-[calc(100%-16px)] overflow-hidden rounded-md bg-[#303543]/92 px-2 py-1 text-[11px] font-black text-ellipsis whitespace-nowrap text-white shadow-lg backdrop-blur">
                   {{ movie.badge }} {{ movie.meta }}
                 </span>
@@ -991,7 +1067,7 @@ onBeforeUnmount(() => {
                   </small>
                 </div>
                 <button
-                  class="col-span-2 mt-1 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-white/8 bg-white/8 px-3 text-xs font-black whitespace-nowrap text-slate-100 transition hover:border-[#ffe182] hover:bg-[#ffe182] hover:text-[#11131d]"
+                  class="col-span-2 mt-1 inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-white/8 bg-white/8 px-3 text-xs font-black whitespace-nowrap text-slate-100 transition hover:border-[#ffe182] hover:bg-[#ffe182] hover:text-[#11131d]"
                   type="button"
                   @click="openPlayer(movie)"
                 >
@@ -1026,11 +1102,11 @@ onBeforeUnmount(() => {
           <div class="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4 xl:grid-cols-8">
             <article v-for="movie in section.items" :key="movie.id" class="min-w-0">
               <button
-                class="group relative block aspect-2/3 w-full overflow-hidden rounded-lg bg-[#252938] text-left"
+                class="group relative block aspect-2/3 w-full cursor-pointer overflow-hidden rounded-lg bg-[#252938] text-left"
                 type="button"
                 @click="openPlayer(movie)"
               >
-                <img class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.04]" :src="movie.poster" :alt="movie.title" />
+                <img class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.04]" :src="movie.poster" :alt="movie.title" @error="handleImageError" />
                 <span class="absolute right-2 bottom-2 rounded-[5px] bg-[#3f4454]/92 px-2 py-1 text-[11px] font-black text-white">
                   {{ movie.badge }}
                 </span>
@@ -1047,7 +1123,7 @@ onBeforeUnmount(() => {
                 {{ movie.original }}
               </p>
               <button
-                class="mx-auto mt-2 flex items-center gap-1 rounded-full bg-white/8 px-3 py-1 text-xs font-bold text-slate-200 transition hover:bg-[#ffe182] hover:text-[#11131d]"
+                class="mx-auto mt-2 flex h-7 cursor-pointer items-center gap-1 rounded-lg bg-white/8 px-3 text-xs font-bold text-slate-200 transition hover:bg-[#ffe182] hover:text-[#11131d]"
                 type="button"
                 @click="openMovie(movie)"
               >
@@ -1086,7 +1162,7 @@ onBeforeUnmount(() => {
               {{ activeMovie.title }}
             </h1>
             <p class="mt-1 truncate text-sm font-semibold text-slate-400">
-              {{ activeMovie.original }} · {{ activeMovie.year }} · {{ activeMovie.meta }}
+              {{ activeMovie.original }} · {{ activeMovie.year }} · {{ activeEpisode?.title ?? activeMovie.meta }}
             </p>
           </div>
 
@@ -1111,26 +1187,76 @@ onBeforeUnmount(() => {
         <video
           ref="videoRef"
           class="aspect-video w-full rounded-2xl bg-black shadow-[0_24px_90px_rgba(0,0,0,0.45)]"
-          :key="activeMovie.id"
-          :poster="activeMovie.backdrop"
+          :key="`${activeMovie.id}-${activeEpisode?.id ?? 'movie'}`"
+          :poster="activeEpisode?.still || activeMovie.backdrop"
           controls
           autoplay
           playsinline
         ></video>
+
+        <section v-if="activeEpisodes.length" class="mt-5 rounded-2xl border border-white/8 bg-white/5 p-4">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <h2 class="text-lg font-black text-white">Chọn tập</h2>
+            <span class="text-xs font-bold text-slate-400">
+              {{ activeEpisodes.length }} tập
+            </span>
+          </div>
+          <div class="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12">
+            <button
+              v-for="episode in activeEpisodes"
+              :key="episode.id"
+              :class="[
+                'h-10 cursor-pointer rounded-lg border px-3 text-sm font-black transition',
+                activeEpisode?.id === episode.id
+                  ? 'border-[#ffe182] bg-[#ffe182] text-[#11131d]'
+                  : 'border-white/10 bg-white/7 text-slate-100 hover:border-[#ffe182] hover:text-[#ffe182]',
+              ]"
+              type="button"
+              @click="selectEpisode(episode)"
+            >
+              Tập {{ episode.number }}
+            </button>
+          </div>
+        </section>
 
         <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
           <section class="rounded-2xl border border-white/8 bg-white/5 p-5">
             <div class="flex flex-wrap gap-2">
               <span class="tag border-[#ffe182] text-[#ffe182]">IMDb {{ activeMovie.imdb }}</span>
               <span class="tag">{{ activeMovie.year }}</span>
-              <span class="tag">{{ activeMovie.meta }}</span>
+              <span class="tag">{{ activeEpisode?.title ?? activeMovie.meta }}</span>
               <span v-for="genre in activeMovie.genres" :key="genre" class="tag">
                 {{ genre }}
               </span>
             </div>
             <p class="mt-5 line-clamp-4 text-sm leading-7 text-slate-300 md:text-[15px]">
-              {{ activeMovie.description }}
+              {{ activeEpisode?.overview || activeMovie.description }}
             </p>
+
+            <div v-if="activeEpisodes.length" class="mt-6">
+              <div class="mb-3 flex items-center justify-between gap-3">
+                <h2 class="text-lg font-black text-white">Danh sách tập</h2>
+                <span class="text-xs font-bold text-slate-400">
+                  {{ activeEpisodes.length }} tập
+                </span>
+              </div>
+              <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8">
+                <button
+                  v-for="episode in activeEpisodes"
+                  :key="episode.id"
+                  :class="[
+                    'h-10 rounded-lg border px-3 text-sm font-black transition',
+                    activeEpisode?.id === episode.id
+                      ? 'border-[#ffe182] bg-[#ffe182] text-[#11131d]'
+                      : 'border-white/10 bg-white/7 text-slate-100 hover:border-[#ffe182] hover:text-[#ffe182]',
+                  ]"
+                  type="button"
+                  @click="selectEpisode(episode)"
+                >
+                  Tập {{ episode.number }}
+                </button>
+              </div>
+            </div>
           </section>
 
           <aside class="rounded-2xl border border-white/8 bg-white/5 p-5">
@@ -1146,7 +1272,7 @@ onBeforeUnmount(() => {
                 type="button"
                 @click="openPlayer(movie)"
               >
-                <img class="aspect-2/3 w-full object-cover" :src="movie.poster" :alt="movie.title" />
+                <img class="aspect-2/3 w-full object-cover" :src="movie.poster" :alt="movie.title" @error="handleImageError" />
               </button>
             </div>
           </aside>
@@ -1156,10 +1282,10 @@ onBeforeUnmount(() => {
 
     <main v-else-if="activeMovie" class="pb-20">
       <section
-        class="relative mx-auto mt-2 min-h-[500px] max-w-[1800px] overflow-hidden rounded-none px-5 py-12 md:mt-2 md:min-h-[500px] md:rounded-2xl md:px-12 md:py-14"
+        class="relative mx-auto mt-2 min-h-[500px] max-w-[1800px] overflow-hidden rounded-none px-5 pt-12 pb-44 md:mt-2 md:min-h-[560px] md:rounded-2xl md:px-12 md:pt-14 md:pb-52"
         :style="{ backgroundImage: `linear-gradient(90deg, rgba(35,39,56,.98) 0%, rgba(35,39,56,.9) 28%, rgba(35,39,56,.15) 63%, rgba(35,39,56,.75) 100%), linear-gradient(180deg, rgba(35,39,56,0) 64%, #171922 100%), url(${activeMovie.backdrop})`, backgroundSize: 'cover', backgroundPosition: 'center' }"
       >
-        <div class="relative z-[1] max-w-xl">
+        <div class="relative z-[2] max-w-xl">
           <h1 class="text-3xl font-black text-white">{{ activeMovie.title }}</h1>
           <p class="mt-2 font-bold text-[#ffe182]">{{ activeMovie.original }}</p>
           <div class="mt-4 flex flex-wrap gap-2">
@@ -1176,7 +1302,7 @@ onBeforeUnmount(() => {
           <button
             class="mt-9 grid h-[72px] w-[72px] cursor-pointer place-items-center rounded-full bg-linear-to-br from-[#ffe58f] to-[#ffd058] text-[#11131d] shadow-[0_18px_48px_rgba(255,208,88,0.24)]"
             type="button"
-            @click="openPlayer(activeMovie)"
+            @click="openPlayer(activeMovie, activeEpisode)"
           >
             <Play :size="28" fill="currentColor" />
           </button>
@@ -1184,7 +1310,7 @@ onBeforeUnmount(() => {
             <button
               class="rounded-full bg-white px-5 py-2 text-sm font-black text-[#11131d] transition hover:bg-[#ffe182]"
               type="button"
-              @click="openPlayer(activeMovie)"
+              @click="openPlayer(activeMovie, activeEpisode)"
             >
               Xem phim
             </button>
@@ -1195,6 +1321,31 @@ onBeforeUnmount(() => {
             >
               Quay lại danh sách
             </button>
+          </div>
+
+          <div v-if="activeEpisodes.length" class="mt-8">
+            <div class="mb-3 flex flex-wrap items-center gap-3">
+              <h2 class="text-lg font-black text-white">Chọn tập</h2>
+              <span class="rounded-full bg-white/9 px-3 py-1 text-xs font-bold text-slate-300">
+                {{ activeEpisodes.length }} tập
+              </span>
+            </div>
+            <div class="grid max-w-[560px] grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+              <button
+                v-for="episode in activeEpisodes"
+                :key="episode.id"
+                :class="[
+                  'h-10 rounded-lg border px-3 text-sm font-black transition',
+                  activeEpisode?.id === episode.id
+                    ? 'border-[#ffe182] bg-[#ffe182] text-[#11131d]'
+                    : 'border-white/14 bg-white/9 text-white hover:border-[#ffe182] hover:text-[#ffe182]',
+                ]"
+                type="button"
+                @click="selectEpisode(episode, true)"
+              >
+                Tập {{ episode.number }}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1209,7 +1360,7 @@ onBeforeUnmount(() => {
             type="button"
             @click="openMovie(movie)"
           >
-            <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" />
+            <img class="h-full w-full object-cover" :src="movie.poster" :alt="movie.title" @error="handleImageError" />
           </button>
         </div>
       </section>
@@ -1267,13 +1418,12 @@ onBeforeUnmount(() => {
     </footer>
 
     <button
-      class="fixed right-4 bottom-4 z-10 grid h-[58px] w-[58px] cursor-pointer place-items-center rounded-[14px] border border-white/16 bg-white text-[9px] font-black text-[#0f111a] uppercase md:right-6 md:bottom-6"
+      class="fixed right-4 bottom-4 z-10 inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border border-white/16 bg-white text-[#0f111a] shadow-[0_16px_44px_rgba(0,0,0,0.28)] transition hover:bg-[#ffe182] md:right-6 md:bottom-6"
       type="button"
       aria-label="Lên đầu trang"
       @click="scrollToTop"
     >
       <ChevronDown class="rotate-180" :size="18" />
-      <span>Đầu trang</span>
     </button>
 
   </div>
