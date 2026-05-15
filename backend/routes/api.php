@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ContentLicenseController;
 use App\Http\Controllers\Api\ContentProviderController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DatabaseDebugController;
 use App\Http\Controllers\Api\LegalDocumentController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\MovieController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Api\VideoStreamController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', fn () => ['status' => 'ok']);
+Route::get('/debug/db-connection', [DatabaseDebugController::class, 'show']);
 
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/register', [AuthController::class, 'register']);
