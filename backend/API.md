@@ -6,16 +6,37 @@ Base URL:
 http://127.0.0.1:8000/api/v1
 ```
 
-Dev auth:
+Auth:
 
 ```text
-X-User-Id: 1
+Authorization: Bearer <access_token>
 ```
 
 Trong seed mac dinh:
 
 - `admin@zmovie.local` co role `super-admin`.
 - `provider@zmovie.local` co role `provider-owner`.
+
+Lay token bang endpoint:
+
+```http
+POST /api/v1/auth/login
+```
+
+Body:
+
+```json
+{
+  "email": "admin@zmovie.local",
+  "password": "password"
+}
+```
+
+Dang xuat va thu hoi token hien tai:
+
+```http
+POST /api/v1/auth/logout
+```
 
 ## Public
 

@@ -1,5 +1,4 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api/v1'
-const API_USER_ID = import.meta.env.VITE_API_USER_ID ?? ''
 const ADMIN_SESSION_KEY = 'zmovie_admin_session'
 
 const posterFallback =
@@ -21,16 +20,16 @@ async function request(path, params = {}) {
     Accept: 'application/json',
   }
 
-  const userId = currentUserId()
+  const token = currentAccessToken()
 
-  if (userId) {
-    headers['X-User-Id'] = userId
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
 
   const response = await fetch(url, { headers })
 
   if (!response.ok) {
-    throw new Error(`API ${response.status}: ${response.statusText}`)
+    throw new Error(await errorMessage(response))
   }
 
   return response.json()
@@ -42,10 +41,10 @@ async function send(path, method, body) {
     'Content-Type': 'application/json',
   }
 
-  const userId = currentUserId()
+  const token = currentAccessToken()
 
-  if (userId) {
-    headers['X-User-Id'] = userId
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -55,21 +54,32 @@ async function send(path, method, body) {
   })
 
   if (!response.ok) {
-    throw new Error(`API ${response.status}: ${response.statusText}`)
+    throw new Error(await errorMessage(response))
   }
 
   if (response.status === 204) return null
   return response.json()
 }
 
-function currentUserId() {
-  if (API_USER_ID) return API_USER_ID
-
+function currentAccessToken() {
   try {
     const session = JSON.parse(window.localStorage.getItem(ADMIN_SESSION_KEY) ?? 'null')
-    return session?.user?.id ? String(session.user.id) : ''
+    return session?.accessToken ?? ''
   } catch {
     return ''
+  }
+}
+
+async function errorMessage(response) {
+  try {
+    const payload = await response.json()
+    const firstValidationError = payload.errors
+      ? Object.values(payload.errors).flat().find(Boolean)
+      : ''
+
+    return firstValidationError || payload.message || `API ${response.status}: ${response.statusText}`
+  } catch {
+    return `API ${response.status}: ${response.statusText}`
   }
 }
 
@@ -192,6 +202,7 @@ export async function fetchLookups() {
 
 export const adminApi = {
   login: (payload) => send('/auth/login', 'POST', payload),
+  logout: () => send('/auth/logout', 'POST'),
   me: () => request('/auth/me'),
   demoAccounts: () => request('/auth/demo-accounts'),
   listMovies: (params) => request('/movies', { per_page: 100, ...params }),

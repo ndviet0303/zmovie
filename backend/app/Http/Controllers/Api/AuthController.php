@@ -29,11 +29,23 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($user->status !== 'active') {
+            throw ValidationException::withMessages([
+                'email' => ['Tài khoản đã bị khóa hoặc chưa được kích hoạt.'],
+            ]);
+        }
+
         $user->update(['last_login_at' => now()]);
+        $user->tokens()->where('name', 'admin-console')->delete();
+
+        $permissions = $this->permissions($user);
+        $token = $user->createToken('admin-console', $permissions)->plainTextToken;
 
         return response()->json([
+            'token_type' => 'Bearer',
+            'access_token' => $token,
             'user' => $user,
-            'permissions' => $this->permissions($user),
+            'permissions' => $permissions,
         ]);
     }
 
@@ -52,6 +64,13 @@ class AuthController extends Controller
             'user' => $user,
             'permissions' => $this->permissions($user),
         ]);
+    }
+
+    public function logout(Request $request)
+    {
+        $request->user()?->currentAccessToken()?->delete();
+
+        return response()->noContent();
     }
 
     private function permissions(User $user): array

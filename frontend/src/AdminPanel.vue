@@ -72,6 +72,8 @@ function readSession() {
 
 function saveSession(payload) {
   const nextSession = {
+    accessToken: payload.access_token,
+    tokenType: payload.token_type ?? 'Bearer',
     user: payload.user,
     permissions: payload.permissions ?? [],
   }
@@ -224,7 +226,13 @@ async function loadDemoAccounts() {
   }
 }
 
-function logout() {
+async function logout() {
+  try {
+    await adminApi.logout()
+  } catch {
+    // Local logout should still work if the token is already expired or revoked.
+  }
+
   window.localStorage.removeItem(SESSION_KEY)
   session.value = null
   router.push({ name: 'admin-login' })

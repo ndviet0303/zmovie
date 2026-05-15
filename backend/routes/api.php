@@ -14,9 +14,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/health', fn () => ['status' => 'ok']);
 
-Route::prefix('v1')->middleware('api.user')->group(function () {
+Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [AuthController::class, 'login']);
-    Route::get('/auth/me', [AuthController::class, 'me']);
     Route::get('/auth/demo-accounts', [AuthController::class, 'demoAccounts']);
 
     Route::get('/lookups', [LookupController::class, 'index']);
@@ -26,40 +25,45 @@ Route::prefix('v1')->middleware('api.user')->group(function () {
     Route::get('/movies/{movie}', [MovieController::class, 'show']);
     Route::get('/video-sources/{videoSource}/stream', [VideoStreamController::class, 'show']);
 
-    Route::middleware('permission:movies.manage')->group(function () {
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/auth/me', [AuthController::class, 'me']);
+        Route::post('/auth/logout', [AuthController::class, 'logout']);
+    });
+
+    Route::middleware(['auth:sanctum', 'permission:movies.manage'])->group(function () {
         Route::post('/movies', [MovieController::class, 'store']);
         Route::put('/movies/{movie}', [MovieController::class, 'update']);
         Route::delete('/movies/{movie}', [MovieController::class, 'destroy']);
     });
 
     Route::post('/movies/{movie}/publish', [MovieController::class, 'publish'])
-        ->middleware('permission:movies.publish');
+        ->middleware(['auth:sanctum', 'permission:movies.publish']);
 
     Route::apiResource('content-providers', ContentProviderController::class)
-        ->middleware('permission:providers.manage');
+        ->middleware(['auth:sanctum', 'permission:providers.manage']);
 
     Route::post('/content-providers/{contentProvider}/members', [ContentProviderController::class, 'attachMember'])
-        ->middleware('permission:providers.members.manage');
+        ->middleware(['auth:sanctum', 'permission:providers.members.manage']);
 
     Route::apiResource('content-licenses', ContentLicenseController::class)
-        ->middleware('permission:legal.submit');
+        ->middleware(['auth:sanctum', 'permission:legal.submit']);
 
     Route::post('/content-licenses/{contentLicense}/approve', [ContentLicenseController::class, 'approve'])
-        ->middleware('permission:licenses.approve');
+        ->middleware(['auth:sanctum', 'permission:licenses.approve']);
 
     Route::apiResource('legal-documents', LegalDocumentController::class)
         ->only(['index', 'store', 'show', 'update'])
-        ->middleware('permission:legal.submit');
+        ->middleware(['auth:sanctum', 'permission:legal.submit']);
 
     Route::apiResource('movie-uploads', MovieUploadController::class)
-        ->middleware('permission:uploads.create');
+        ->middleware(['auth:sanctum', 'permission:uploads.create']);
 
     Route::post('/movie-uploads/{movieUpload}/submit', [MovieUploadController::class, 'submit'])
-        ->middleware('permission:uploads.create');
+        ->middleware(['auth:sanctum', 'permission:uploads.create']);
 
     Route::post('/movie-uploads/{movieUpload}/approve', [MovieUploadController::class, 'approve'])
-        ->middleware('permission:movies.review');
+        ->middleware(['auth:sanctum', 'permission:movies.review']);
 
-    Route::get('/roles', [RbacController::class, 'roles'])->middleware('permission:roles.manage');
-    Route::get('/permissions', [RbacController::class, 'permissions'])->middleware('permission:roles.manage');
+    Route::get('/roles', [RbacController::class, 'roles'])->middleware(['auth:sanctum', 'permission:roles.manage']);
+    Route::get('/permissions', [RbacController::class, 'permissions'])->middleware(['auth:sanctum', 'permission:roles.manage']);
 });

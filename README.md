@@ -212,10 +212,16 @@ Hệ thống có seed tài khoản demo phục vụ kiểm thử:
 | admin@zmovie.local | password | Super Admin |
 | provider@zmovie.local | password | Provider Owner |
 
-Khi gọi API ở môi trường phát triển, có thể sử dụng header:
+Khi gọi API quản trị, đăng nhập để lấy `access_token`:
 
-```text
-X-User-Id: 1
+```http
+POST /api/v1/auth/login
+```
+
+Sau đó gửi token trong các request quản trị:
+
+```http
+Authorization: Bearer <access_token>
 ```
 
 ## Kiểm thử
@@ -240,6 +246,7 @@ npm run build
 - Xây dựng được trang quản trị hỗ trợ đăng nhập demo và quản lý phim.
 - Thiết kế backend RESTful API bằng Laravel.
 - Thiết kế cơ sở dữ liệu phục vụ nghiệp vụ phim, bản quyền, đối tác, upload và phân quyền.
+- Tích hợp Laravel Sanctum cho API token auth, endpoint đăng nhập, `/auth/me`, đăng xuất và bảo vệ route quản trị.
 - Tích hợp phân quyền theo vai trò và quyền hạn.
 - Chuẩn bị tài liệu API, thiết kế CSDL và hướng dẫn triển khai.
 
@@ -247,7 +254,6 @@ npm run build
 
 - Chưa tích hợp cổng thanh toán thật.
 - Chưa triển khai hệ thống transcode video thực tế.
-- Chưa tích hợp xác thực production như OAuth2, JWT hoặc Laravel Sanctum đầy đủ.
 - Chưa có hệ thống recommendation cá nhân hóa.
 - Dữ liệu demo còn giới hạn.
 

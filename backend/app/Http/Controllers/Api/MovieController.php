@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Movie;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -12,12 +13,18 @@ class MovieController extends Controller
 {
     public function index(Request $request)
     {
+        $user = Auth::guard('sanctum')->user();
+        $canManageMovies = $user?->hasPermission('movies.manage') ?? false;
+
         $movies = Movie::query()
             ->with(['contentProvider:id,name,slug', 'genres:id,name,slug', 'countries:id,name,code', 'videoSources'])
+            ->when(! $canManageMovies, fn ($query) => $query
+                ->where('status', 'published')
+                ->where('rights_status', 'cleared'))
             ->when($request->query('q'), fn ($query, $q) => $query->where('title', 'like', "%{$q}%"))
             ->when($request->query('type'), fn ($query, $type) => $query->where('type', $type))
-            ->when($request->query('status'), fn ($query, $status) => $query->where('status', $status))
-            ->when($request->query('rights_status'), fn ($query, $status) => $query->where('rights_status', $status))
+            ->when($canManageMovies && $request->query('status'), fn ($query, $status) => $query->where('status', $status))
+            ->when($canManageMovies && $request->query('rights_status'), fn ($query, $status) => $query->where('rights_status', $status))
             ->latest('published_at')
             ->latest('id')
             ->paginate((int) $request->query('per_page', 15));
@@ -47,10 +54,15 @@ class MovieController extends Controller
 
     public function show(string $movie)
     {
+        $user = Auth::guard('sanctum')->user();
+        $canManageMovies = $user?->hasPermission('movies.manage') ?? false;
+
         $movie = Movie::query()
             ->when(ctype_digit($movie), fn ($query) => $query->whereKey((int) $movie))
             ->orWhere('slug', $movie)
             ->firstOrFail();
+
+        abort_unless($canManageMovies || $this->isPubliclyPlayable($movie), 404);
 
         return response()->json($movie->load([
             'contentProvider',
@@ -161,5 +173,10 @@ class MovieController extends Controller
         if (array_key_exists('tag_ids', $data)) {
             $movie->tags()->sync($data['tag_ids']);
         }
+    }
+
+    private function isPubliclyPlayable(Movie $movie): bool
+    {
+        return $movie->status === 'published' && $movie->rights_status === 'cleared';
     }
 }

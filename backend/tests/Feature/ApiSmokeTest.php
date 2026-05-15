@@ -7,6 +7,7 @@ use App\Models\ContentProvider;
 use App\Models\Movie;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class ApiSmokeTest extends TestCase
@@ -16,9 +17,10 @@ class ApiSmokeTest extends TestCase
     public function test_admin_can_create_clear_and_publish_movie(): void
     {
         $this->seed();
+        $admin = User::where('email', 'admin@zmovie.local')->firstOrFail();
+        Sanctum::actingAs($admin);
 
-        $movieId = $this->withHeader('X-User-Id', '1')
-            ->postJson('/api/v1/movies', [
+        $movieId = $this->postJson('/api/v1/movies', [
                 'content_provider_id' => 1,
                 'title' => 'API Smoke Movie',
                 'slug' => 'api-smoke-movie',
@@ -30,8 +32,7 @@ class ApiSmokeTest extends TestCase
             ->assertCreated()
             ->json('id');
 
-        $licenseId = $this->withHeader('X-User-Id', '1')
-            ->postJson('/api/v1/content-licenses', [
+        $licenseId = $this->postJson('/api/v1/content-licenses', [
                 'content_provider_id' => 1,
                 'movie_id' => $movieId,
                 'licensor_name' => 'Smoke Licensor',
@@ -43,14 +44,12 @@ class ApiSmokeTest extends TestCase
             ->assertCreated()
             ->json('id');
 
-        $this->withHeader('X-User-Id', '1')
-            ->postJson("/api/v1/content-licenses/{$licenseId}/approve", [
+        $this->postJson("/api/v1/content-licenses/{$licenseId}/approve", [
                 'review_note' => 'ok',
             ])
             ->assertOk();
 
-        $this->withHeader('X-User-Id', '1')
-            ->postJson("/api/v1/movies/{$movieId}/publish")
+        $this->postJson("/api/v1/movies/{$movieId}/publish")
             ->assertOk()
             ->assertJsonPath('status', 'published')
             ->assertJsonPath('rights_status', 'cleared');
@@ -62,11 +61,11 @@ class ApiSmokeTest extends TestCase
     public function test_provider_owner_can_create_movie_upload(): void
     {
         $this->seed();
-        $providerOwnerId = User::where('email', 'provider@zmovie.local')->value('id');
+        $providerOwner = User::where('email', 'provider@zmovie.local')->firstOrFail();
         $providerId = ContentProvider::where('slug', 'demo-content-partner')->value('id');
+        Sanctum::actingAs($providerOwner);
 
-        $this->withHeader('X-User-Id', (string) $providerOwnerId)
-            ->postJson('/api/v1/movie-uploads', [
+        $this->postJson('/api/v1/movie-uploads', [
                 'content_provider_id' => $providerId,
                 'title' => 'Provider Upload',
                 'upload_type' => 'new_movie',
@@ -81,7 +80,52 @@ class ApiSmokeTest extends TestCase
                 ],
             ])
             ->assertCreated()
-            ->assertJsonPath('uploaded_by', $providerOwnerId)
+            ->assertJsonPath('uploaded_by', $providerOwner->id)
             ->assertJsonCount(1, 'files');
+    }
+
+    public function test_login_returns_bearer_token_and_me_requires_it(): void
+    {
+        $this->seed();
+
+        $this->getJson('/api/v1/auth/me')->assertUnauthorized();
+
+        $token = $this->postJson('/api/v1/auth/login', [
+            'email' => 'admin@zmovie.local',
+            'password' => 'password',
+        ])
+            ->assertOk()
+            ->assertJsonPath('token_type', 'Bearer')
+            ->assertJsonPath('user.email', 'admin@zmovie.local')
+            ->json('access_token');
+
+        $this->withToken($token)
+            ->getJson('/api/v1/auth/me')
+            ->assertOk()
+            ->assertJsonPath('user.email', 'admin@zmovie.local');
+    }
+
+    public function test_public_movie_catalog_hides_drafts_even_when_filtered(): void
+    {
+        $this->seed();
+
+        Movie::create([
+            'title' => 'Public Movie',
+            'slug' => 'public-movie',
+            'status' => 'published',
+            'rights_status' => 'cleared',
+        ]);
+
+        Movie::create([
+            'title' => 'Draft Movie',
+            'slug' => 'draft-movie',
+            'status' => 'draft',
+            'rights_status' => 'cleared',
+        ]);
+
+        $this->getJson('/api/v1/movies?status=draft')
+            ->assertOk()
+            ->assertJsonMissing(['slug' => 'draft-movie'])
+            ->assertJsonFragment(['slug' => 'public-movie']);
     }
 }
