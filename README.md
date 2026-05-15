@@ -260,6 +260,15 @@ cd frontend
 npm run build
 ```
 
+Deploy frontend len Cloudflare Workers:
+
+```bash
+cd frontend
+npm run deploy
+```
+
+Lenh deploy frontend se build lai `dist`, upload Worker version, roi promote version moi len production traffic.
+
 ## Kết quả đạt được
 
 - Xây dựng được giao diện website xem phim với trang chủ, danh sách phim, tìm kiếm, chi tiết và phát video.
