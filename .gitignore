@@ -28,6 +28,8 @@ lerna-debug.log*
 .env
 .env.*
 !.env.example
+docker/env/*.env
+!docker/env/*.env.example
 *.local
 
 # Node
