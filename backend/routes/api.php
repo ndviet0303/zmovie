@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\VideoStreamController;
 use Illuminate\Support\Facades\Route;
 
+// DEBUG_VERSION: 2026-05-16-02-40
 Route::get('/health', fn () => ['status' => 'ok']);
 Route::get('/probe', fn () => [
     'status' => 'ok',
