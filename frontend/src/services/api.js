@@ -84,17 +84,25 @@ async function errorMessage(response) {
 }
 
 function resolveApiBaseUrl() {
-  const configuredUrl = import.meta.env.VITE_API_BASE_URL
-
-  if (configuredUrl) {
-    return configuredUrl.replace(/\/+$/, '')
+  if (typeof window !== 'undefined') {
+    return normalizeApiBaseUrl(window.location.origin)
   }
 
-  if (import.meta.env.PROD && typeof window !== 'undefined') {
-    return `${window.location.origin}/api/v1`
+  return '/api/v1'
+}
+
+function normalizeApiBaseUrl(value) {
+  const trimmedUrl = String(value).replace(/\/+$/, '')
+
+  if (!trimmedUrl || trimmedUrl === '/') {
+    return '/api/v1'
   }
 
-  return 'http://127.0.0.1:8000/api/v1'
+  if (/\/api\/v\d+$/i.test(trimmedUrl)) {
+    return trimmedUrl
+  }
+
+  return `${trimmedUrl}/api/v1`
 }
 
 export function absoluteAssetUrl(path) {
