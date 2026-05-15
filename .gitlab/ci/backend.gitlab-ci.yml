@@ -42,7 +42,7 @@ zmovie_build:
         --build-arg BUILDKIT_INLINE_CACHE=1 \
         -t $ZMOVIE_IMAGE_NAME:$DOCKER_TAG \
         -t $ZMOVIE_IMAGE_NAME:$CI_COMMIT_SHORT_SHA \
-        -f docker/backend.Dockerfile \
+        -f backend/Dockerfile \
         $BACKEND_PATH
 
     - echo "Pushing Docker image to registry..."
