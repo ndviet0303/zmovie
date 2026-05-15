@@ -26,10 +26,7 @@ function createApiProxy(mode) {
       target: targetUrl.origin,
       changeOrigin: true,
       secure: true,
-      rewrite: (path) => {
-        const apiPath = path.replace(/^\/api\/v\d+/i, '')
-        return `${targetPath}${apiPath}`.replace(/\/{2,}/g, '/')
-      },
+      rewrite: (path) => `${targetPath}${path.replace(/^\/api/i, '')}`.replace(/\/{2,}/g, '/'),
     },
   }
 }
@@ -41,9 +38,5 @@ function normalizeApiBaseUrl(value) {
     return ''
   }
 
-  if (/\/api\/v\d+$/i.test(trimmedUrl)) {
-    return trimmedUrl
-  }
-
-  return `${trimmedUrl}/api/v1`
+  return trimmedUrl
 }

@@ -5,18 +5,14 @@ function normalizeApiBaseUrl(value) {
     return null
   }
 
-  if (/\/api\/v\d+$/i.test(trimmedUrl)) {
-    return trimmedUrl
-  }
-
-  return `${trimmedUrl}/api/v1`
+  return trimmedUrl
 }
 
 function proxiedApiRequest(request, apiBaseUrl) {
   const sourceUrl = new URL(request.url)
   const targetBase = new URL(apiBaseUrl)
   const targetUrl = new URL(targetBase.origin)
-  const incomingApiPath = sourceUrl.pathname.replace(/^\/api\/v\d+/i, '')
+  const incomingApiPath = sourceUrl.pathname.replace(/^\/api/i, '')
 
   targetUrl.pathname = `${targetBase.pathname}${incomingApiPath}`.replace(/\/{2,}/g, '/')
   targetUrl.search = sourceUrl.search

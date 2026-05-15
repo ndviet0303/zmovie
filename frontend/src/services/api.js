@@ -94,21 +94,13 @@ function resolveApiBaseUrl() {
     return normalizeApiBaseUrl(window.location.origin)
   }
 
-  return '/api/v1'
+  return ''
 }
 
 function normalizeApiBaseUrl(value) {
   const trimmedUrl = String(value).replace(/\/+$/, '')
 
-  if (!trimmedUrl || trimmedUrl === '/') {
-    return '/api/v1'
-  }
-
-  if (/\/api\/v\d+$/i.test(trimmedUrl)) {
-    return trimmedUrl
-  }
-
-  return `${trimmedUrl}/api/v1`
+  return trimmedUrl === '/' ? '' : trimmedUrl
 }
 
 export function absoluteAssetUrl(path) {
@@ -135,8 +127,7 @@ function streamUrl(source) {
   if (source.source_type === 'hls') return playableUrl(source.url)
   if (/^https?:\/\//i.test(source.url) || !source.id) return playableUrl(source.url)
 
-  const apiUrl = new URL(API_BASE_URL)
-  return `${apiUrl.origin}/api/v1/video-sources/${source.id}/stream`
+  return `${API_BASE_URL}/video-sources/${source.id}/stream`
 }
 
 function movieCategory(movie) {

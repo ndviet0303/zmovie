@@ -20,7 +20,7 @@ class ApiSmokeTest extends TestCase
         $admin = User::where('email', 'admin@zmovie.local')->firstOrFail();
         Sanctum::actingAs($admin);
 
-        $movieId = $this->postJson('/api/v1/movies', [
+        $movieId = $this->postJson('/movies', [
                 'content_provider_id' => 1,
                 'title' => 'API Smoke Movie',
                 'slug' => 'api-smoke-movie',
@@ -32,7 +32,7 @@ class ApiSmokeTest extends TestCase
             ->assertCreated()
             ->json('id');
 
-        $licenseId = $this->postJson('/api/v1/content-licenses', [
+        $licenseId = $this->postJson('/content-licenses', [
                 'content_provider_id' => 1,
                 'movie_id' => $movieId,
                 'licensor_name' => 'Smoke Licensor',
@@ -44,12 +44,12 @@ class ApiSmokeTest extends TestCase
             ->assertCreated()
             ->json('id');
 
-        $this->postJson("/api/v1/content-licenses/{$licenseId}/approve", [
+        $this->postJson("/content-licenses/{$licenseId}/approve", [
                 'review_note' => 'ok',
             ])
             ->assertOk();
 
-        $this->postJson("/api/v1/movies/{$movieId}/publish")
+        $this->postJson("/movies/{$movieId}/publish")
             ->assertOk()
             ->assertJsonPath('status', 'published')
             ->assertJsonPath('rights_status', 'cleared');
@@ -65,7 +65,7 @@ class ApiSmokeTest extends TestCase
         $providerId = ContentProvider::where('slug', 'demo-content-partner')->value('id');
         Sanctum::actingAs($providerOwner);
 
-        $this->postJson('/api/v1/movie-uploads', [
+        $this->postJson('/movie-uploads', [
                 'content_provider_id' => $providerId,
                 'title' => 'Provider Upload',
                 'upload_type' => 'new_movie',
@@ -88,9 +88,9 @@ class ApiSmokeTest extends TestCase
     {
         $this->seed();
 
-        $this->getJson('/api/v1/auth/me')->assertUnauthorized();
+        $this->getJson('/auth/me')->assertUnauthorized();
 
-        $token = $this->postJson('/api/v1/auth/login', [
+        $token = $this->postJson('/auth/login', [
             'email' => 'admin@zmovie.local',
             'password' => 'password',
         ])
@@ -100,7 +100,7 @@ class ApiSmokeTest extends TestCase
             ->json('access_token');
 
         $this->withToken($token)
-            ->getJson('/api/v1/auth/me')
+            ->getJson('/auth/me')
             ->assertOk()
             ->assertJsonPath('user.email', 'admin@zmovie.local');
     }
@@ -123,7 +123,7 @@ class ApiSmokeTest extends TestCase
             'rights_status' => 'cleared',
         ]);
 
-        $this->getJson('/api/v1/movies?status=draft')
+        $this->getJson('/movies?status=draft')
             ->assertOk()
             ->assertJsonMissing(['slug' => 'draft-movie'])
             ->assertJsonFragment(['slug' => 'public-movie']);
