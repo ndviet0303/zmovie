@@ -73,7 +73,12 @@ backend/.env
 backend/vendor/
 backend/node_modules/
 backend/.phpunit.result.cache
-backend/storage/
+# ignore most of backend storage but allow specific public demo files (see negations below)
+backend/storage/*
+
+!backend/storage/
+!backend/storage/app/
+!backend/storage/app/public/
 backend/public/storage/
 
 frontend/node_modules/
@@ -86,4 +91,8 @@ frontend/.env
 # Ignore common media and cache files that sometimes get accidentally added
 # (narrow scope: backend storage/media)
 backend/storage/app/public/*
+
+# Allow committing demo videos used for offline/demo purposes
+!backend/storage/app/public/demo-videos/
+!backend/storage/app/public/demo-videos/*
 
