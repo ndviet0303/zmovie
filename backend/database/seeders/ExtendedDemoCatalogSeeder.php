@@ -14,10 +14,7 @@ use Illuminate\Support\Str;
 class ExtendedDemoCatalogSeeder extends Seeder
 {
     private const VIDEOS = [
-        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
-        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+        'demo-videos/sintel-trailer-720p.mp4',
     ];
 
     private const POSTERS = [
@@ -129,7 +126,7 @@ class ExtendedDemoCatalogSeeder extends Seeder
                 'source_type' => 'mp4',
                 'quality' => '720p',
                 'url' => self::VIDEOS[$index % count(self::VIDEOS)],
-                'cdn_provider' => 'google-sample',
+                'cdn_provider' => 'local-public-storage',
                 'duration_seconds' => ($movie->runtime_minutes ?: 90) * 60,
                 'is_default' => true,
                 'is_active' => true,
@@ -169,7 +166,7 @@ class ExtendedDemoCatalogSeeder extends Seeder
                     'source_type' => 'mp4',
                     'quality' => '720p',
                     'url' => self::VIDEOS[($index + $episodeNumber) % count(self::VIDEOS)],
-                    'cdn_provider' => 'google-sample',
+                    'cdn_provider' => 'local-public-storage',
                     'duration_seconds' => ($movie->runtime_minutes ?: 42) * 60,
                     'is_default' => true,
                     'is_active' => true,

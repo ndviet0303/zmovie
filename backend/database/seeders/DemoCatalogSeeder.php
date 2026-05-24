@@ -38,7 +38,7 @@ use Illuminate\Support\Str;
 
 class DemoCatalogSeeder extends Seeder
 {
-    private const DEMO_VIDEO_URL = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+    private const DEMO_VIDEO_URL = 'demo-videos/sintel-trailer-720p.mp4';
 
     private const BACKDROP_URLS = [
         'https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=1800&q=85',
@@ -492,7 +492,7 @@ class DemoCatalogSeeder extends Seeder
                 'source_type' => 'mp4',
                 'quality' => '720p',
                 'url' => self::DEMO_VIDEO_URL,
-                'cdn_provider' => 'google-sample',
+                'cdn_provider' => 'local-public-storage',
                 'duration_seconds' => ($movie->runtime_minutes ?: 90) * 60,
                 'is_default' => true,
                 'is_active' => $movie->status === 'published',
@@ -545,7 +545,7 @@ class DemoCatalogSeeder extends Seeder
                     'source_type' => 'mp4',
                     'quality' => '720p',
                     'url' => self::DEMO_VIDEO_URL,
-                    'cdn_provider' => 'google-sample',
+                    'cdn_provider' => 'local-public-storage',
                     'duration_seconds' => ($movie->runtime_minutes ?: 40) * 60,
                     'is_default' => true,
                     'is_active' => true,
