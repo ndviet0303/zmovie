@@ -660,7 +660,6 @@ onBeforeUnmount(() => {
           class="w-full border-0 bg-transparent text-[15px] text-slate-50 outline-none placeholder:text-slate-200"
           type="search"
           placeholder="Tìm kiếm phim, diễn viên"
-          @focus="currentView = 'home'"
         />
         <button
           v-if="searchQuery"
