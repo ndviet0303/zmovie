@@ -74,7 +74,7 @@ const registerForm = reactive({
   password_confirmation: '',
 })
 
-const navItems = ['ZMovie', 'Phim Bộ', 'Phim Lẻ', 'TV Show', 'Phim Chiếu Rạp']
+const navItems = ['Phim Bộ', 'Phim Lẻ', 'TV Show', 'Phim Chiếu Rạp']
 
 const topics = [
   { slug: 'drama', title: 'Bền Bỉ: Chẳng Tiến...', query: 'Chính kịch', aliases: ['kịch', 'gia đình'], hint: 'Drama' },
@@ -811,23 +811,19 @@ onBeforeUnmount(() => {
   <AdminPanel v-if="isAdminRoute" />
   <div v-else class="min-h-screen overflow-x-hidden bg-[#11131d] text-slate-50">
     <header
-      class="sticky top-0 z-20 grid min-h-[72px] grid-cols-[minmax(0,1fr)_44px] items-center gap-4 border-b border-white/7 bg-[#090a12]/94 px-4 py-3 backdrop-blur-[18px] md:grid-cols-[auto_minmax(240px,420px)_auto] md:gap-5 md:px-[clamp(20px,4vw,52px)] md:py-0 xl:grid-cols-[auto_minmax(250px,420px)_1fr]"
+      class="sticky top-0 z-20 grid min-h-[72px] grid-cols-[minmax(0,1fr)_44px] items-center gap-4 border-b border-white/7 bg-[#090a12]/94 px-4 py-3 backdrop-blur-[18px] md:grid-cols-[auto_minmax(240px,420px)_auto] md:gap-5 md:px-[clamp(20px,4vw,52px)] md:py-0 xl:grid-cols-[auto_1fr]"
     >
       <button
-        class="flex min-w-0 items-center gap-2.5 text-left"
+        class="flex min-w-0 items-center text-left"
         type="button"
         aria-label="ZMovie home"
         @click="showHome"
       >
-        <img class="h-11 w-11 rounded-full object-contain" :src="logoMarkUrl" alt="" />
-        <span>
-          <strong class="block text-[22px] leading-none text-white">ZMovie</strong>
-          <small class="mt-0.5 block text-xs text-slate-400">Stream cinema</small>
-        </span>
+        <img class="h-12 w-[168px] object-contain object-left" :src="logoUrl" alt="ZMovie" />
       </button>
 
       <div
-        class="order-3 col-span-full flex h-10 min-w-0 items-center gap-3 rounded-lg border border-white/6 bg-[#20232d] px-4 text-slate-300 transition focus-within:border-[#ffe182]/70 md:order-none md:col-span-1 md:h-[46px] md:px-[18px]"
+        class="order-3 col-span-full flex h-10 min-w-0 items-center gap-3 rounded-lg border border-white/6 bg-[#20232d] px-4 text-slate-300 transition focus-within:border-[#ffe182]/70 md:order-none md:col-span-1 md:h-[46px] md:px-[18px] xl:hidden"
       >
         <Search :size="20" />
         <input
@@ -868,15 +864,11 @@ onBeforeUnmount(() => {
           :key="item"
           :class="[
             'inline-flex min-h-10 items-center gap-1 px-2 text-left whitespace-nowrap transition-colors hover:text-[#ffe182] xl:px-0',
-            (item === 'ZMovie' && selectedCategory === 'Tất cả') || item === selectedCategory
-              ? 'text-[#ffe182]'
-              : '',
+            item === selectedCategory ? 'text-[#ffe182]' : '',
           ]"
           type="button"
           @click="
-            item === 'ZMovie'
-              ? showHome()
-              : item === 'TV Show'
+            item === 'TV Show'
                 ? selectTopic({ slug: 'tvshow', title: 'TV Show', query: 'TV Show', hint: 'Show' })
                 : selectCategory(item === 'Phim Lẻ' ? 'Phim Lẻ Mới' : item)
           "
