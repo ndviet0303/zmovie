@@ -144,7 +144,7 @@ const activeVideoUrl = computed(() => {
   return activeEpisode.value?.videoUrl || activeMovie.value?.videoUrl || ''
 })
 
-const isAdminRoute = computed(() => route.name === 'admin' || route.name === 'admin-login')
+const isAdminRoute = computed(() => ['admin', 'admin-login', 'admin-movies-create'].includes(route.name))
 const selectedDemoAccount = computed(() => {
   return demoAccounts.value.find((account) => account.email === selectedDemoEmail.value) ?? null
 })
@@ -811,7 +811,7 @@ onBeforeUnmount(() => {
   <AdminPanel v-if="isAdminRoute" />
   <div v-else class="min-h-screen overflow-x-hidden bg-[#11131d] text-slate-50">
     <header
-      class="sticky top-0 z-20 grid min-h-[72px] grid-cols-[minmax(0,1fr)_44px] items-center gap-4 border-b border-white/7 bg-[#090a12]/94 px-4 py-3 backdrop-blur-[18px] md:grid-cols-[auto_minmax(240px,420px)_auto] md:gap-5 md:px-[clamp(20px,4vw,52px)] md:py-0 xl:grid-cols-[auto_1fr]"
+      class="sticky top-0 z-20 grid min-h-[72px] grid-cols-[minmax(0,1fr)_44px] items-center gap-4 border-b border-white/7 bg-[#090a12]/94 px-4 py-3 backdrop-blur-[18px] md:grid-cols-[auto_minmax(240px,420px)_auto] md:gap-5 md:px-[clamp(20px,7vw,140px)] md:py-0 xl:grid-cols-[auto_1fr] 2xl:px-[clamp(20px,14vw,370px)]"
     >
       <button
         class="flex min-w-0 items-center text-left"
@@ -819,7 +819,7 @@ onBeforeUnmount(() => {
         aria-label="ZMovie home"
         @click="showHome"
       >
-        <img class="h-12 w-[168px] object-contain object-left" :src="logoUrl" alt="ZMovie" />
+        <img class="h-12 w-[168px] object-contain object-left xl:w-[184px]" :src="logoUrl" alt="ZMovie" />
       </button>
 
       <div

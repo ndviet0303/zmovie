@@ -19,6 +19,19 @@ import logoUrl from './assets/zmovie-logo.svg'
 import { absoluteAssetUrl, adminApi, fetchLookups } from './services/api'
 
 const SESSION_KEY = 'zmovie_admin_session'
+const MOVIE_STATUS_LABELS = {
+  draft: 'Bản nháp',
+  published: 'Đã xuất bản',
+  archived: 'Đã lưu trữ',
+}
+const RIGHTS_STATUS_LABELS = {
+  cleared: 'Đủ quyền',
+  pending: 'Chờ duyệt',
+  unknown: 'Chưa rõ',
+  expired: 'Hết hạn',
+  disputed: 'Tranh chấp',
+  blocked: 'Bị chặn',
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -43,7 +56,12 @@ const errorMessage = ref('')
 const successMessage = ref('')
 
 const isLoginView = computed(() => route.name === 'admin-login' || !session.value)
+const isCreateMovieView = computed(() => route.name === 'admin-movies-create')
 const canManageMovies = computed(() => session.value?.permissions?.includes('movies.manage'))
+const adminPageTitle = computed(() => {
+  if (isCreateMovieView.value) return editingMovie.value ? 'Sửa phim' : 'Tạo phim mới'
+  return 'Quản lý phim'
+})
 const publishedCount = computed(() => movies.value.filter((movie) => movie.status === 'published').length)
 const draftCount = computed(() => movies.value.filter((movie) => movie.status === 'draft').length)
 const clearedCount = computed(() => movies.value.filter((movie) => movie.rights_status === 'cleared').length)
@@ -103,11 +121,29 @@ function blankMovie() {
   }
 }
 
+function movieStatusLabel(status) {
+  return MOVIE_STATUS_LABELS[status] ?? status ?? 'Không rõ'
+}
+
+function rightsStatusLabel(status) {
+  return RIGHTS_STATUS_LABELS[status] ?? status ?? 'Không rõ'
+}
+
 function resetForm() {
   Object.assign(movieForm, blankMovie())
   editingMovie.value = null
   errorMessage.value = ''
   successMessage.value = ''
+}
+
+function openMovieList() {
+  resetForm()
+  router.push({ name: 'admin' })
+}
+
+function openCreateMovie() {
+  resetForm()
+  router.push({ name: 'admin-movies-create' })
 }
 
 function slugify(value) {
@@ -157,6 +193,7 @@ function editMovie(movie) {
     is_featured: Boolean(normalized.is_featured),
   })
   editingMovie.value = movie
+  router.push({ name: 'admin-movies-create' })
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
@@ -275,6 +312,7 @@ async function saveMovie() {
     }
     resetForm()
     await loadAdminData()
+    await router.push({ name: 'admin' })
   } catch (error) {
     errorMessage.value = error.message
   } finally {
@@ -370,16 +408,43 @@ onMounted(async () => {
       </form>
     </section>
 
-    <section v-else class="mx-auto max-w-[1500px] px-4 py-5 md:px-8">
-      <header class="flex flex-wrap items-center justify-between gap-4 border-b border-white/8 pb-5">
-        <div class="flex items-center gap-4">
-          <img class="h-12 w-40 object-contain object-left" :src="logoUrl" alt="ZMovie" />
-          <div>
-            <p class="text-xs font-black uppercase tracking-[0.18em] text-[#ffe182]">Admin Console</p>
-            <h1 class="text-2xl font-black text-white">Quản lý phim</h1>
-          </div>
+    <section v-else class="min-h-screen lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
+      <aside class="border-b border-white/8 bg-[#11131d] px-4 py-4 lg:sticky lg:top-0 lg:h-screen lg:border-r lg:border-b-0 lg:px-5">
+        <button class="flex w-full items-center text-left" type="button" @click="openMovieList">
+          <img class="h-14 w-44 object-contain object-left" :src="logoUrl" alt="ZMovie" />
+        </button>
+
+        <nav class="mt-6 grid gap-2 text-sm font-bold">
+          <button
+            :class="[
+              'flex h-11 items-center gap-3 rounded-lg px-3 text-left transition hover:bg-white/8 hover:text-[#ffe182]',
+              !isCreateMovieView ? 'bg-white/8 text-[#ffe182]' : 'text-slate-300',
+            ]"
+            type="button"
+            @click="openMovieList"
+          >
+            <LayoutDashboard :size="18" />
+            Tổng quan phim
+          </button>
+          <button
+            :class="[
+              'flex h-11 items-center gap-3 rounded-lg px-3 text-left transition hover:bg-white/8 hover:text-[#ffe182]',
+              isCreateMovieView ? 'bg-white/8 text-[#ffe182]' : 'text-slate-300',
+            ]"
+            type="button"
+            @click="openCreateMovie"
+          >
+            <Plus :size="18" />
+            Thêm phim
+          </button>
+        </nav>
+
+        <div class="mt-6 rounded-xl border border-white/8 bg-white/5 p-3 text-sm">
+          <p class="font-black text-white">{{ session.user?.name }}</p>
+          <p class="mt-1 truncate text-xs font-semibold text-slate-400">{{ session.user?.email }}</p>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
+
+        <div class="mt-4 grid gap-2">
           <button class="inline-flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-white/6 px-3 text-sm font-bold text-white hover:border-[#ffe182]" type="button" @click="router.push({ name: 'home' })">
             <ArrowLeft :size="16" />
             Trang phim
@@ -389,9 +454,29 @@ onMounted(async () => {
             Đăng xuất
           </button>
         </div>
+      </aside>
+
+      <div class="mx-auto w-full max-w-[1500px] px-4 py-5 md:px-8">
+      <header class="flex flex-wrap items-center justify-between gap-4 border-b border-white/8 pb-5">
+        <div class="flex items-center gap-4">
+          <div>
+            <p class="text-xs font-black uppercase tracking-[0.18em] text-[#ffe182]">Admin Console</p>
+            <h1 class="text-2xl font-black text-white">{{ adminPageTitle }}</h1>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button v-if="!isCreateMovieView" class="inline-flex h-10 items-center gap-2 rounded-lg bg-[#ffe182] px-3 text-sm font-black text-[#11131d] hover:bg-[#ffd058]" type="button" @click="openCreateMovie">
+            <Plus :size="16" />
+            Thêm phim
+          </button>
+          <button v-else class="inline-flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-white/6 px-3 text-sm font-bold text-white hover:border-[#ffe182]" type="button" @click="openMovieList">
+            <ArrowLeft :size="16" />
+            Danh sách phim
+          </button>
+        </div>
       </header>
 
-      <div class="mt-6 grid gap-4 md:grid-cols-4">
+      <div v-if="!isCreateMovieView" class="mt-6 grid gap-4 md:grid-cols-4">
         <div class="rounded-xl border border-white/8 bg-white/6 p-4">
           <LayoutDashboard class="text-[#ffe182]" :size="22" />
           <p class="mt-3 text-2xl font-black">{{ movies.length }}</p>
@@ -420,8 +505,8 @@ onMounted(async () => {
       <p v-if="errorMessage" class="mt-5 rounded-xl bg-red-500/12 p-4 text-sm font-bold text-red-100">{{ errorMessage }}</p>
       <p v-if="successMessage" class="mt-5 rounded-xl bg-emerald-500/12 p-4 text-sm font-bold text-emerald-100">{{ successMessage }}</p>
 
-      <div class="mt-6 grid gap-6 xl:grid-cols-[420px_1fr]">
-        <form class="rounded-2xl border border-white/8 bg-[#171922] p-5" @submit.prevent="saveMovie">
+      <div class="mt-6">
+        <form v-if="isCreateMovieView" class="max-w-4xl rounded-2xl border border-white/8 bg-[#171922] p-5" @submit.prevent="saveMovie">
           <div class="flex items-center justify-between gap-3">
             <h2 class="text-lg font-black text-white">{{ editingMovie ? 'Sửa phim' : 'Thêm phim' }}</h2>
             <button v-if="editingMovie" class="rounded-lg bg-white/8 p-2 text-slate-300 hover:text-white" type="button" @click="resetForm">
@@ -460,20 +545,20 @@ onMounted(async () => {
               <label class="text-sm font-bold text-slate-300">
                 Trạng thái
                 <select v-model="movieForm.status" class="admin-input">
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
-                  <option value="archived">Archived</option>
+                  <option value="draft">Bản nháp</option>
+                  <option value="published">Đã xuất bản</option>
+                  <option value="archived">Đã lưu trữ</option>
                 </select>
               </label>
               <label class="text-sm font-bold text-slate-300">
                 Bản quyền
                 <select v-model="movieForm.rights_status" class="admin-input">
-                  <option value="cleared">Cleared</option>
-                  <option value="pending">Pending</option>
-                  <option value="unknown">Unknown</option>
-                  <option value="expired">Expired</option>
-                  <option value="disputed">Disputed</option>
-                  <option value="blocked">Blocked</option>
+                  <option value="cleared">Đủ quyền</option>
+                  <option value="pending">Chờ duyệt</option>
+                  <option value="unknown">Chưa rõ</option>
+                  <option value="expired">Hết hạn</option>
+                  <option value="disputed">Tranh chấp</option>
+                  <option value="blocked">Bị chặn</option>
                 </select>
               </label>
             </div>
@@ -527,19 +612,23 @@ onMounted(async () => {
           </div>
         </form>
 
-        <section class="rounded-2xl border border-white/8 bg-[#171922] p-5">
+        <section v-else class="rounded-2xl border border-white/8 bg-[#171922] p-5">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <h2 class="text-lg font-black text-white">Danh sách phim</h2>
             <div class="flex flex-wrap gap-2">
+              <button class="inline-flex h-10 items-center gap-2 rounded-lg bg-[#ffe182] px-3 text-sm font-black text-[#11131d] hover:bg-[#ffd058]" type="button" @click="openCreateMovie">
+                <Plus :size="16" />
+                Thêm phim
+              </button>
               <label class="relative">
                 <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" :size="16" />
                 <input v-model="searchQuery" class="h-10 rounded-lg border border-white/10 bg-white/6 pl-9 pr-3 text-sm outline-none focus:border-[#ffe182]" placeholder="Tìm phim..." />
               </label>
               <select v-model="statusFilter" class="h-10 rounded-lg border border-white/10 bg-white/6 px-3 text-sm outline-none focus:border-[#ffe182]" @change="loadAdminData">
                 <option value="">Tất cả trạng thái</option>
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-                <option value="archived">Archived</option>
+                <option value="draft">Bản nháp</option>
+                <option value="published">Đã xuất bản</option>
+                <option value="archived">Đã lưu trữ</option>
               </select>
               <button class="inline-flex h-10 items-center gap-2 rounded-lg bg-white/8 px-3 text-sm font-bold hover:bg-white/14" type="button" @click="loadAdminData">
                 <RefreshCw :size="16" />
@@ -572,10 +661,10 @@ onMounted(async () => {
                   </td>
                   <td class="border-b border-white/6 py-3 pr-4 text-slate-300">{{ movie.type }}</td>
                   <td class="border-b border-white/6 py-3 pr-4">
-                    <span class="rounded-full bg-emerald-400/12 px-2 py-1 text-xs font-bold text-emerald-200">{{ movie.rights_status }}</span>
+                    <span class="rounded-full bg-emerald-400/12 px-2 py-1 text-xs font-bold text-emerald-200">{{ rightsStatusLabel(movie.rights_status) }}</span>
                   </td>
                   <td class="border-b border-white/6 py-3 pr-4">
-                    <span class="rounded-full bg-white/8 px-2 py-1 text-xs font-bold text-slate-200">{{ movie.status }}</span>
+                    <span class="rounded-full bg-white/8 px-2 py-1 text-xs font-bold text-slate-200">{{ movieStatusLabel(movie.status) }}</span>
                   </td>
                   <td class="border-b border-white/6 py-3 text-right">
                     <div class="inline-flex gap-1">
@@ -598,6 +687,7 @@ onMounted(async () => {
             </div>
           </div>
         </section>
+      </div>
       </div>
     </section>
   </main>

@@ -11,6 +11,7 @@ export const routes = [
   { path: '/the-loai/:slug', redirect: (to) => ({ name: 'topic', params: to.params }) },
   { path: '/tim-kiem', name: 'search', component: Shell },
   { path: '/admin/login', name: 'admin-login', component: Shell },
+  { path: '/admin/movies/create', name: 'admin-movies-create', component: Shell },
   { path: '/admin', name: 'admin', component: Shell },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
