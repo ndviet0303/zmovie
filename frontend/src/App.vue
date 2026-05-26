@@ -43,6 +43,9 @@ const lookups = ref(null)
 const catalogMovies = ref([])
 const selectedCategory = ref('Tất cả')
 const selectedTopic = ref(null)
+const selectedGenre = ref('')
+const selectedCountry = ref('')
+const selectedYear = ref('')
 const selectedEpisodeId = ref(null)
 const videoRef = ref(null)
 const heroStripRef = ref(null)
@@ -70,7 +73,6 @@ const registerForm = reactive({
 })
 
 const navItems = ['ZMovie', 'Phim Bộ', 'Phim Lẻ', 'TV Show', 'Phim Chiếu Rạp']
-const filterItems = ['Thể Loại Phim', 'Quốc Gia', 'Năm']
 
 const topics = [
   { slug: 'drama', title: 'Bền Bỉ: Chẳng Tiến...', query: 'Chính kịch', aliases: ['kịch', 'gia đình'], hint: 'Drama' },
@@ -145,6 +147,34 @@ const selectedDemoAccount = computed(() => {
   return demoAccounts.value.find((account) => account.email === selectedDemoEmail.value) ?? null
 })
 
+const genreOptions = computed(() => {
+  const lookupGenres = (lookups.value?.genres ?? []).map((genre) => genre.name).filter(Boolean)
+  const movieGenres = catalogMovies.value.flatMap((movie) => movie.genres ?? [])
+  return uniqueSortedOptions([...lookupGenres, ...movieGenres])
+})
+
+const countryOptions = computed(() => {
+  const lookupCountries = (lookups.value?.countries ?? []).map((country) => country.name).filter(Boolean)
+  const movieCountries = catalogMovies.value.flatMap((movie) => movie.countries ?? [])
+  return uniqueSortedOptions([...lookupCountries, ...movieCountries])
+})
+
+const yearOptions = computed(() => {
+  return [...new Set(catalogMovies.value.map((movie) => movie.year).filter(Boolean))]
+    .sort((a, b) => Number(b) - Number(a))
+})
+
+const hasActiveFilters = computed(() => {
+  return Boolean(
+    selectedCategory.value !== 'Tất cả' ||
+      selectedTopic.value ||
+      searchQuery.value ||
+      selectedGenre.value ||
+      selectedCountry.value ||
+      selectedYear.value,
+  )
+})
+
 const filteredMovies = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   const topicTerms = selectedTopic.value
@@ -176,10 +206,19 @@ const filteredMovies = computed(() => {
       !topicTerms.length || topicTerms.some((term) => searchableText.includes(term))
 
     const queryMatches = !query || searchableText.includes(query)
+    const genreMatches =
+      !selectedGenre.value || (movie.genres ?? []).includes(selectedGenre.value)
+    const countryMatches =
+      !selectedCountry.value || (movie.countries ?? []).includes(selectedCountry.value)
+    const yearMatches = !selectedYear.value || movie.year === selectedYear.value
 
-    return categoryMatches && topicMatches && queryMatches
+    return categoryMatches && topicMatches && queryMatches && genreMatches && countryMatches && yearMatches
   })
 })
+
+function uniqueSortedOptions(items) {
+  return [...new Set(items.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'))
+}
 
 const visibleSections = computed(() => {
   const sectionTitles =
@@ -460,6 +499,10 @@ function openPlayer(movie, episode = null) {
 }
 
 function showHome() {
+  selectedGenre.value = ''
+  selectedCountry.value = ''
+  selectedYear.value = ''
+  searchQuery.value = ''
   router.push({ name: 'home' })
 }
 
@@ -472,7 +515,24 @@ function selectTopic(topic) {
   router.push({ name: 'topic', params: { slug: topic.slug } })
 }
 
+async function selectCatalogFilter() {
+  if (route.name === 'movie-detail' || route.name === 'watch') {
+    await router.push({ name: 'home' })
+  }
+
+  menuOpen.value = false
+  currentView.value = 'home'
+  activeMovie.value = null
+  selectedEpisodeId.value = null
+}
+
 function clearFilters() {
+  selectedCategory.value = 'Tất cả'
+  selectedTopic.value = null
+  selectedGenre.value = ''
+  selectedCountry.value = ''
+  selectedYear.value = ''
+  searchQuery.value = ''
   router.push({ name: 'home' })
 }
 
@@ -755,16 +815,57 @@ onBeforeUnmount(() => {
         >
           {{ item }}
         </button>
-        <button
-          v-for="item in filterItems"
-          :key="item"
-          class="inline-flex min-h-10 items-center gap-1 px-2.5 text-left whitespace-nowrap transition-colors hover:text-[#ffe182] xl:px-0"
-          type="button"
-          @click="selectCategory('Tất cả')"
-        >
-          {{ item }}
-          <ChevronDown :size="14" />
-        </button>
+        <label class="relative min-w-0 xl:min-w-[128px]">
+          <span class="sr-only">Thể Loại Phim</span>
+          <select
+            v-model="selectedGenre"
+            :class="[
+              'h-10 w-full cursor-pointer appearance-none rounded-lg border border-white/10 bg-[#10121c] py-0 pr-8 pl-2.5 text-sm font-bold text-white outline-none transition hover:border-[#ffe182]/50 focus:border-[#ffe182] xl:border-transparent xl:bg-transparent xl:pl-0',
+              selectedGenre ? 'text-[#ffe182]' : 'text-[#f5f7fb]',
+            ]"
+            @change="selectCatalogFilter"
+          >
+            <option value="">Thể Loại Phim</option>
+            <option v-for="genre in genreOptions" :key="genre" :value="genre">
+              {{ genre }}
+            </option>
+          </select>
+          <ChevronDown class="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-current" :size="14" />
+        </label>
+        <label class="relative min-w-0 xl:min-w-[104px]">
+          <span class="sr-only">Quốc Gia</span>
+          <select
+            v-model="selectedCountry"
+            :class="[
+              'h-10 w-full cursor-pointer appearance-none rounded-lg border border-white/10 bg-[#10121c] py-0 pr-8 pl-2.5 text-sm font-bold text-white outline-none transition hover:border-[#ffe182]/50 focus:border-[#ffe182] xl:border-transparent xl:bg-transparent xl:pl-0',
+              selectedCountry ? 'text-[#ffe182]' : 'text-[#f5f7fb]',
+            ]"
+            @change="selectCatalogFilter"
+          >
+            <option value="">Quốc Gia</option>
+            <option v-for="country in countryOptions" :key="country" :value="country">
+              {{ country }}
+            </option>
+          </select>
+          <ChevronDown class="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-current" :size="14" />
+        </label>
+        <label class="relative min-w-0 xl:min-w-[76px]">
+          <span class="sr-only">Năm</span>
+          <select
+            v-model="selectedYear"
+            :class="[
+              'h-10 w-full cursor-pointer appearance-none rounded-lg border border-white/10 bg-[#10121c] py-0 pr-8 pl-2.5 text-sm font-bold text-white outline-none transition hover:border-[#ffe182]/50 focus:border-[#ffe182] xl:border-transparent xl:bg-transparent xl:pl-0',
+              selectedYear ? 'text-[#ffe182]' : 'text-[#f5f7fb]',
+            ]"
+            @change="selectCatalogFilter"
+          >
+            <option value="">Năm</option>
+            <option v-for="year in yearOptions" :key="year" :value="year">
+              {{ year }}
+            </option>
+          </select>
+          <ChevronDown class="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-current" :size="14" />
+        </label>
         <div class="mt-2 flex flex-wrap items-center gap-2 border-t border-white/8 pt-3 xl:mt-0 xl:border-t-0 xl:pt-0">
           <template v-if="userSession">
             <span class="inline-flex min-h-10 max-w-44 items-center gap-2 overflow-hidden rounded-lg bg-white/8 px-3 text-sm font-bold text-white">
@@ -1054,7 +1155,7 @@ onBeforeUnmount(() => {
             {{ lookups.genres.length }} thể loại
           </span>
           <button
-            v-if="selectedCategory !== 'Tất cả' || selectedTopic || searchQuery"
+            v-if="hasActiveFilters"
             class="rounded-full bg-[#ffe182] px-3 py-1.5 text-[#11131d] transition hover:bg-[#ffd058]"
             type="button"
             @click="clearFilters"
@@ -1063,12 +1164,21 @@ onBeforeUnmount(() => {
           </button>
         </div>
         <div
-          v-if="selectedCategory !== 'Tất cả' || selectedTopic"
+          v-if="selectedCategory !== 'Tất cả' || selectedTopic || selectedGenre || selectedCountry || selectedYear"
           class="relative z-[2] mt-4 text-sm font-semibold text-slate-300"
         >
           Đang xem:
           <span class="text-[#ffe182]">
-            {{ selectedTopic ? `Chủ đề ${selectedTopic.title}` : selectedCategory }}
+            {{
+              [
+                selectedTopic ? `Chủ đề ${selectedTopic.title}` : selectedCategory !== 'Tất cả' ? selectedCategory : '',
+                selectedGenre,
+                selectedCountry,
+                selectedYear,
+              ]
+                .filter(Boolean)
+                .join(' / ')
+            }}
           </span>
         </div>
 
