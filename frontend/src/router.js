@@ -16,6 +16,7 @@ export const routes = [
   { path: '/admin/licenses', name: 'admin-licenses', component: Shell },
   { path: '/admin/providers', name: 'admin-providers', component: Shell },
   { path: '/admin/legal', name: 'admin-legal', component: Shell },
+  { path: '/admin/rbac', name: 'admin-rbac', component: Shell },
   { path: '/admin', name: 'admin', component: Shell },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]

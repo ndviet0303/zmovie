@@ -145,7 +145,7 @@ const activeVideoUrl = computed(() => {
 })
 
 const isAdminRoute = computed(() =>
-  ['admin', 'admin-login', 'admin-movies-create', 'admin-uploads', 'admin-licenses', 'admin-providers', 'admin-legal'].includes(route.name),
+  ['admin', 'admin-login', 'admin-movies-create', 'admin-uploads', 'admin-licenses', 'admin-providers', 'admin-legal', 'admin-rbac'].includes(route.name),
 )
 const selectedDemoAccount = computed(() => {
   return demoAccounts.value.find((account) => account.email === selectedDemoEmail.value) ?? null

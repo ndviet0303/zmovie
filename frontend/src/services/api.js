@@ -306,11 +306,13 @@ export const adminApi = {
   updateLegalDocument: (id, payload) => send(`/legal-documents/${id}`, 'PUT', payload),
 
   listMovieUploads: (params) => request('/movie-uploads', params),
+  getMovieUpload: (id) => request(`/movie-uploads/${id}`),
   createMovieUpload: (payload) => send('/movie-uploads', 'POST', payload),
   updateMovieUpload: (id, payload) => send(`/movie-uploads/${id}`, 'PUT', payload),
   deleteMovieUpload: (id) => send(`/movie-uploads/${id}`, 'DELETE'),
   submitMovieUpload: (id) => send(`/movie-uploads/${id}/submit`, 'POST'),
   approveMovieUpload: (id) => send(`/movie-uploads/${id}/approve`, 'POST'),
+  transcodeMovieUpload: (id) => send(`/movie-uploads/${id}/transcode`, 'POST'),
 
   listRoles: () => request('/roles'),
   listPermissions: () => request('/permissions'),
