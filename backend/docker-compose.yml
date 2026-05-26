@@ -18,7 +18,7 @@ services:
         condition: service_started
 
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     container_name: zmovie_backend_postgres
     ports:
       - "${DB_FORWARD_PORT:-5432}:5432"
