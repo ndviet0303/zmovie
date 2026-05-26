@@ -15,7 +15,7 @@ import {
 } from 'lucide-vue-next'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import logoUrl from './assets/zmovie-logo.png'
+import logoUrl from './assets/zmovie-logo.svg'
 import { absoluteAssetUrl, adminApi, fetchLookups } from './services/api'
 
 const SESSION_KEY = 'zmovie_admin_session'

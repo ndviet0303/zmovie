@@ -15,8 +15,8 @@ import Hls from 'hls.js'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminPanel from './AdminPanel.vue'
-import logoUrl from './assets/zmovie-logo.png'
-import logoMarkUrl from './assets/zmovie-mark.png'
+import logoUrl from './assets/zmovie-logo.svg'
+import logoMarkUrl from './assets/zmovie-mark.svg'
 import { fetchLookups, fetchMovie, fetchMovies, searchMovies, userApi } from './services/api'
 
 const route = useRoute()
@@ -25,6 +25,7 @@ const router = useRouter()
 const USER_SESSION_KEY = 'zmovie_user_session'
 const menuOpen = ref(false)
 const userMenuOpen = ref(false)
+const activeCatalogMenu = ref('')
 const authOpen = ref(false)
 const authMode = ref('login')
 const authLoading = ref(false)
@@ -189,6 +190,30 @@ const canOpenAdmin = computed(() => {
   )
 })
 
+const catalogFilters = computed(() => [
+  {
+    key: 'genre',
+    label: selectedGenre.value || 'Thể Loại Phim',
+    emptyLabel: 'Tất cả thể loại',
+    activeValue: selectedGenre.value,
+    options: genreOptions.value,
+  },
+  {
+    key: 'country',
+    label: selectedCountry.value || 'Quốc Gia',
+    emptyLabel: 'Tất cả quốc gia',
+    activeValue: selectedCountry.value,
+    options: countryOptions.value,
+  },
+  {
+    key: 'year',
+    label: selectedYear.value || 'Năm',
+    emptyLabel: 'Tất cả năm',
+    activeValue: selectedYear.value,
+    options: yearOptions.value,
+  },
+])
+
 const filteredMovies = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   const topicTerms = selectedTopic.value
@@ -288,6 +313,7 @@ function openAuth(mode = 'login') {
   authOpen.value = true
   menuOpen.value = false
   userMenuOpen.value = false
+  activeCatalogMenu.value = ''
 }
 
 function selectDemoAccount(email) {
@@ -521,25 +547,38 @@ function showHome() {
   searchQuery.value = ''
   menuOpen.value = false
   userMenuOpen.value = false
+  activeCatalogMenu.value = ''
   router.push({ name: 'home' })
 }
 
 function selectCategory(category) {
+  activeCatalogMenu.value = ''
   const slug = categorySlugs[category]
   router.push(slug ? { name: 'category', params: { slug } } : { name: 'home' })
 }
 
 function selectTopic(topic) {
+  activeCatalogMenu.value = ''
   router.push({ name: 'topic', params: { slug: topic.slug } })
 }
 
-async function selectCatalogFilter() {
+function toggleCatalogMenu(key) {
+  activeCatalogMenu.value = activeCatalogMenu.value === key ? '' : key
+  userMenuOpen.value = false
+}
+
+async function selectCatalogFilter(key, value) {
+  if (key === 'genre') selectedGenre.value = value
+  if (key === 'country') selectedCountry.value = value
+  if (key === 'year') selectedYear.value = value
+
   if (route.name === 'movie-detail' || route.name === 'watch') {
     await router.push({ name: 'home' })
   }
 
   menuOpen.value = false
   userMenuOpen.value = false
+  activeCatalogMenu.value = ''
   currentView.value = 'home'
   activeMovie.value = null
   selectedEpisodeId.value = null
@@ -554,12 +593,14 @@ function clearFilters() {
   searchQuery.value = ''
   menuOpen.value = false
   userMenuOpen.value = false
+  activeCatalogMenu.value = ''
   router.push({ name: 'home' })
 }
 
 function openAdminPanel() {
   userMenuOpen.value = false
   menuOpen.value = false
+  activeCatalogMenu.value = ''
   router.push({ name: 'admin' })
 }
 
@@ -842,57 +883,61 @@ onBeforeUnmount(() => {
         >
           {{ item }}
         </button>
-        <label class="relative w-full min-w-0 md:w-[150px] xl:w-[136px]">
-          <span class="sr-only">Thể Loại Phim</span>
-          <select
-            v-model="selectedGenre"
+        <div
+          v-for="filter in catalogFilters"
+          :key="filter.key"
+          class="relative"
+          @keydown.esc="activeCatalogMenu = ''"
+        >
+          <button
             :class="[
-              'h-10 w-full cursor-pointer appearance-none truncate rounded-lg border border-white/10 bg-[#10121c] py-0 pr-7 pl-2.5 text-sm font-bold text-white outline-none transition hover:border-[#ffe182]/50 focus:border-[#ffe182] xl:border-transparent xl:bg-transparent xl:pl-0 xl:focus:border-transparent',
-              selectedGenre ? 'text-[#ffe182]' : 'text-[#f5f7fb]',
+              'inline-flex min-h-10 w-full cursor-pointer items-center gap-1.5 px-2 text-left font-bold whitespace-nowrap transition-colors hover:text-[#ffe182] md:w-auto xl:px-0',
+              filter.activeValue || activeCatalogMenu === filter.key ? 'text-[#ffe182]' : 'text-[#f5f7fb]',
             ]"
-            @change="selectCatalogFilter"
+            type="button"
+            :aria-expanded="activeCatalogMenu === filter.key"
+            aria-haspopup="menu"
+            @click="toggleCatalogMenu(filter.key)"
           >
-            <option value="">Thể Loại Phim</option>
-            <option v-for="genre in genreOptions" :key="genre" :value="genre">
-              {{ genre }}
-            </option>
-          </select>
-          <ChevronDown class="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-current" :size="14" />
-        </label>
-        <label class="relative w-full min-w-0 md:w-[118px] xl:w-[108px]">
-          <span class="sr-only">Quốc Gia</span>
-          <select
-            v-model="selectedCountry"
-            :class="[
-              'h-10 w-full cursor-pointer appearance-none truncate rounded-lg border border-white/10 bg-[#10121c] py-0 pr-7 pl-2.5 text-sm font-bold text-white outline-none transition hover:border-[#ffe182]/50 focus:border-[#ffe182] xl:border-transparent xl:bg-transparent xl:pl-0 xl:focus:border-transparent',
-              selectedCountry ? 'text-[#ffe182]' : 'text-[#f5f7fb]',
-            ]"
-            @change="selectCatalogFilter"
+            <span class="max-w-36 truncate">{{ filter.label }}</span>
+            <ChevronDown
+              :class="['transition-transform', activeCatalogMenu === filter.key ? 'rotate-180' : '']"
+              :size="14"
+            />
+          </button>
+          <div
+            v-if="activeCatalogMenu === filter.key"
+            class="mt-2 max-h-[70vh] overflow-y-auto rounded-xl border border-white/8 bg-[#10141f]/98 p-4 text-base text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)] backdrop-blur md:absolute md:left-0 md:top-11 md:z-40 md:mt-0 md:w-[min(760px,calc(100vw-40px))] md:p-6 xl:fixed xl:left-1/2 xl:top-[76px] xl:-translate-x-1/2"
+            role="menu"
           >
-            <option value="">Quốc Gia</option>
-            <option v-for="country in countryOptions" :key="country" :value="country">
-              {{ country }}
-            </option>
-          </select>
-          <ChevronDown class="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-current" :size="14" />
-        </label>
-        <label class="relative w-full min-w-0 md:w-[82px] xl:w-[74px]">
-          <span class="sr-only">Năm</span>
-          <select
-            v-model="selectedYear"
-            :class="[
-              'h-10 w-full cursor-pointer appearance-none truncate rounded-lg border border-white/10 bg-[#10121c] py-0 pr-7 pl-2.5 text-sm font-bold text-white outline-none transition hover:border-[#ffe182]/50 focus:border-[#ffe182] xl:border-transparent xl:bg-transparent xl:pl-0 xl:focus:border-transparent',
-              selectedYear ? 'text-[#ffe182]' : 'text-[#f5f7fb]',
-            ]"
-            @change="selectCatalogFilter"
-          >
-            <option value="">Năm</option>
-            <option v-for="year in yearOptions" :key="year" :value="year">
-              {{ year }}
-            </option>
-          </select>
-          <ChevronDown class="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-current" :size="14" />
-        </label>
+            <div class="grid grid-cols-2 gap-x-8 gap-y-1 md:grid-cols-4 md:gap-x-12 md:gap-y-4">
+              <button
+                :class="[
+                  'min-h-11 cursor-pointer rounded-lg px-3 text-left text-[17px] font-bold transition hover:bg-white/8 hover:text-[#ffe182]',
+                  !filter.activeValue ? 'text-[#ffe182]' : 'text-white',
+                ]"
+                type="button"
+                role="menuitem"
+                @click="selectCatalogFilter(filter.key, '')"
+              >
+                {{ filter.emptyLabel }}
+              </button>
+              <button
+                v-for="option in filter.options"
+                :key="option"
+                :class="[
+                  'min-h-11 cursor-pointer rounded-lg px-3 text-left text-[17px] font-bold transition hover:bg-white/8 hover:text-[#ffe182]',
+                  filter.activeValue === option ? 'text-[#ffe182]' : 'text-white',
+                ]"
+                type="button"
+                role="menuitem"
+                @click="selectCatalogFilter(filter.key, option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </div>
+        </div>
         <div class="mt-2 flex flex-wrap items-center gap-2 border-t border-white/8 pt-3 xl:mt-0 xl:border-t-0 xl:pt-0">
           <template v-if="userSession">
             <div class="relative w-full md:w-auto" @keydown.esc="userMenuOpen = false">
