@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "predeploy": "npm run build",
+    "deploy": "wrangler deploy && wrangler versions deploy --yes",
     "preview": "vite preview"
   },
   "dependencies": {

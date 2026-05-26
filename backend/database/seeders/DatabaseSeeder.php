@@ -121,6 +121,9 @@ class DatabaseSeeder extends Seeder
             'joined_at' => now(),
         ]);
 
-        $this->call(DemoAccountSeeder::class);
+        $this->call([
+            DemoAccountSeeder::class,
+            DemoCatalogSeeder::class,
+        ]);
     }
 }

@@ -12,25 +12,11 @@ class LegalDemoVideoSourceSeeder extends Seeder
 {
     private const SOURCES = [
         [
-            'label' => 'Demo video 5s',
+            'label' => 'Sintel trailer 720p',
             'source_type' => 'mp4',
             'quality' => '720p',
-            'remote_url' => 'https://samplelib.com/lib/preview/mp4/sample-5s.mp4',
-            'storage_path' => 'demo-videos/sample-5s.mp4',
-        ],
-        [
-            'label' => 'Demo video 10s',
-            'source_type' => 'mp4',
-            'quality' => '720p',
-            'remote_url' => 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4',
-            'storage_path' => 'demo-videos/sample-10s.mp4',
-        ],
-        [
-            'label' => 'Demo video 15s',
-            'source_type' => 'mp4',
-            'quality' => '720p',
-            'remote_url' => 'https://samplelib.com/lib/preview/mp4/sample-15s.mp4',
-            'storage_path' => 'demo-videos/sample-15s.mp4',
+            'remote_url' => 'https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4',
+            'storage_path' => 'demo-videos/sintel-trailer-720p.mp4',
         ],
     ];
 

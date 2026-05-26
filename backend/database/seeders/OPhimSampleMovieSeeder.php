@@ -22,7 +22,7 @@ class OPhimSampleMovieSeeder extends Seeder
         'lat-mat-2015',
     ];
 
-    private const DEMO_VIDEO_URL = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+    private const DEMO_VIDEO_URL = 'demo-videos/sintel-trailer-720p.mp4';
 
     public function run(): void
     {
@@ -96,7 +96,7 @@ class OPhimSampleMovieSeeder extends Seeder
                         'source_type' => 'mp4',
                         'quality' => '720p',
                         'url' => self::DEMO_VIDEO_URL,
-                        'cdn_provider' => 'google-sample',
+                        'cdn_provider' => 'local-public-storage',
                         'is_default' => true,
                         'is_active' => true,
                     ],

@@ -1,8 +1,13 @@
 <script setup>
 import {
   ArrowLeft,
+  Building2,
   CheckCircle2,
+  Eye,
+  FileCheck2,
+  FileText,
   Film,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Pencil,
@@ -10,15 +15,62 @@ import {
   RefreshCw,
   Save,
   Search,
+  ShieldCheck,
   Trash2,
+  UploadCloud,
   X,
 } from 'lucide-vue-next'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import logoUrl from './assets/zmovie-logo.png'
-import { adminApi, fetchLookups } from './services/api'
+import logoUrl from './assets/zmovie-logo.svg'
+import { absoluteAssetUrl, adminApi, fetchLookups } from './services/api'
 
 const SESSION_KEY = 'zmovie_admin_session'
+const MOVIE_STATUS_LABELS = {
+  draft: 'Bản nháp',
+  published: 'Đã xuất bản',
+  archived: 'Đã lưu trữ',
+}
+const RIGHTS_STATUS_LABELS = {
+  cleared: 'Đủ quyền',
+  pending: 'Chờ duyệt',
+  unknown: 'Chưa rõ',
+  expired: 'Hết hạn',
+  disputed: 'Tranh chấp',
+  blocked: 'Bị chặn',
+}
+const UPLOAD_STATUS_LABELS = {
+  draft: 'Bản nháp',
+  submitted: 'Chờ duyệt',
+  uploading: 'Đang tải lên',
+  transcoding: 'Đang xử lý',
+  legal_review: 'Duyệt pháp lý',
+  content_review: 'Duyệt nội dung',
+  approved: 'Đã duyệt',
+  rejected: 'Từ chối',
+  published: 'Đã xuất bản',
+  canceled: 'Đã hủy',
+}
+const LICENSE_STATUS_LABELS = {
+  draft: 'Bản nháp',
+  pending_review: 'Chờ duyệt',
+  approved: 'Đã duyệt',
+  rejected: 'Từ chối',
+  expired: 'Hết hạn',
+  terminated: 'Đã chấm dứt',
+}
+const PROVIDER_STATUS_LABELS = {
+  pending: 'Chờ xác minh',
+  verified: 'Đã xác minh',
+  rejected: 'Từ chối',
+  suspended: 'Tạm khóa',
+}
+const LEGAL_STATUS_LABELS = {
+  pending: 'Chờ kiểm tra',
+  verified: 'Đã xác minh',
+  rejected: 'Từ chối',
+  expired: 'Hết hạn',
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -30,6 +82,13 @@ const loginForm = reactive({
 })
 const movieForm = reactive(blankMovie())
 const movies = ref([])
+const movieUploads = ref([])
+const selectedUpload = ref(null)
+const selectedLicense = ref(null)
+const contentLicenses = ref([])
+const legalDocuments = ref([])
+const roles = ref([])
+const permissions = ref([])
 const lookups = ref(null)
 const providers = ref([])
 const demoAccounts = ref([])
@@ -42,8 +101,35 @@ const isSaving = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 
+const selectedUploadFiles = computed(() => selectedUpload.value?.files ?? [])
+
 const isLoginView = computed(() => route.name === 'admin-login' || !session.value)
+const isCreateMovieView = computed(() => route.name === 'admin-movies-create')
+const isMovieListView = computed(() => route.name === 'admin')
+const isUploadsView = computed(() => route.name === 'admin-uploads')
+const isLicensesView = computed(() => route.name === 'admin-licenses')
+const isProvidersView = computed(() => route.name === 'admin-providers')
+const isLegalView = computed(() => route.name === 'admin-legal')
+const isRbacView = computed(() => route.name === 'admin-rbac')
 const canManageMovies = computed(() => session.value?.permissions?.includes('movies.manage'))
+const canPublishMovies = computed(() => hasAnyPermission(['movies.publish']))
+const canReviewMovies = computed(() => hasAnyPermission(['movies.review']))
+const canViewUploads = computed(() => hasAnyPermission(['uploads.create', 'uploads.manage', 'uploads.view', 'movies.review']))
+const canViewLicenses = computed(() => hasAnyPermission(['legal.submit', 'legal.review', 'licenses.approve']))
+const canApproveLicenses = computed(() => hasAnyPermission(['licenses.approve']))
+const canManageProviders = computed(() => hasAnyPermission(['providers.manage']))
+const canViewLegalDocuments = computed(() => hasAnyPermission(['legal.submit', 'legal.review']))
+const canReviewLegalDocuments = computed(() => hasAnyPermission(['legal.review']))
+const canManageRoles = computed(() => hasAnyPermission(['roles.manage']))
+const adminPageTitle = computed(() => {
+  if (isCreateMovieView.value) return editingMovie.value ? 'Sửa phim' : 'Tạo phim mới'
+  if (isUploadsView.value) return 'Duyệt phim'
+  if (isLicensesView.value) return 'Duyệt bản quyền'
+  if (isProvidersView.value) return 'Nhà cung cấp'
+  if (isLegalView.value) return 'Hồ sơ pháp lý'
+  if (isRbacView.value) return 'Phân quyền'
+  return 'Quản lý phim'
+})
 const publishedCount = computed(() => movies.value.filter((movie) => movie.status === 'published').length)
 const draftCount = computed(() => movies.value.filter((movie) => movie.status === 'draft').length)
 const clearedCount = computed(() => movies.value.filter((movie) => movie.rights_status === 'cleared').length)
@@ -70,8 +156,15 @@ function readSession() {
   }
 }
 
+function hasAnyPermission(permissions) {
+  const granted = session.value?.permissions ?? []
+  return permissions.some((permission) => granted.includes(permission))
+}
+
 function saveSession(payload) {
   const nextSession = {
+    accessToken: payload.access_token,
+    tokenType: payload.token_type ?? 'Bearer',
     user: payload.user,
     permissions: payload.permissions ?? [],
   }
@@ -101,11 +194,59 @@ function blankMovie() {
   }
 }
 
+function movieStatusLabel(status) {
+  return MOVIE_STATUS_LABELS[status] ?? status ?? 'Không rõ'
+}
+
+function rightsStatusLabel(status) {
+  return RIGHTS_STATUS_LABELS[status] ?? status ?? 'Không rõ'
+}
+
+function uploadStatusLabel(status) {
+  return UPLOAD_STATUS_LABELS[status] ?? status ?? 'Không rõ'
+}
+
+function licenseStatusLabel(status) {
+  return LICENSE_STATUS_LABELS[status] ?? status ?? 'Không rõ'
+}
+
+function providerStatusLabel(status) {
+  return PROVIDER_STATUS_LABELS[status] ?? status ?? 'Không rõ'
+}
+
+function legalStatusLabel(status) {
+  return LEGAL_STATUS_LABELS[status] ?? status ?? 'Không rõ'
+}
+
+function fileSizeLabel(bytes) {
+  const size = Number(bytes ?? 0)
+  if (!size) return '-'
+  if (size >= 1024 ** 3) return `${(size / 1024 ** 3).toFixed(2)} GB`
+  if (size >= 1024 ** 2) return `${(size / 1024 ** 2).toFixed(1)} MB`
+  if (size >= 1024) return `${(size / 1024).toFixed(1)} KB`
+  return `${size} B`
+}
+
 function resetForm() {
   Object.assign(movieForm, blankMovie())
   editingMovie.value = null
   errorMessage.value = ''
   successMessage.value = ''
+}
+
+function openMovieList() {
+  resetForm()
+  router.push({ name: 'admin' })
+}
+
+function openCreateMovie() {
+  resetForm()
+  router.push({ name: 'admin-movies-create' })
+}
+
+function openAdminRoute(name) {
+  resetForm()
+  router.push({ name })
 }
 
 function slugify(value) {
@@ -155,6 +296,7 @@ function editMovie(movie) {
     is_featured: Boolean(normalized.is_featured),
   })
   editingMovie.value = movie
+  router.push({ name: 'admin-movies-create' })
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
@@ -224,7 +366,13 @@ async function loadDemoAccounts() {
   }
 }
 
-function logout() {
+async function logout() {
+  try {
+    await adminApi.logout()
+  } catch {
+    // Local logout should still work if the token is already expired or revoked.
+  }
+
   window.localStorage.removeItem(SESSION_KEY)
   session.value = null
   router.push({ name: 'admin-login' })
@@ -237,14 +385,24 @@ async function loadAdminData() {
   errorMessage.value = ''
 
   try {
-    const [moviePayload, lookupPayload, providerPayload] = await Promise.all([
+    const [moviePayload, lookupPayload, providerPayload, uploadPayload, licensePayload, legalPayload, rolePayload, permissionPayload] = await Promise.all([
       adminApi.listMovies({ status: statusFilter.value || undefined }),
       fetchLookups(),
-      adminApi.listContentProviders({ per_page: 100 }).catch(() => ({ data: [] })),
+      canManageProviders.value ? adminApi.listContentProviders({ per_page: 100 }).catch(() => ({ data: [] })) : { data: [] },
+      canViewUploads.value ? adminApi.listMovieUploads({ per_page: 100 }).catch(() => ({ data: [] })) : { data: [] },
+      canViewLicenses.value ? adminApi.listContentLicenses({ per_page: 100 }).catch(() => ({ data: [] })) : { data: [] },
+      canViewLegalDocuments.value ? adminApi.listLegalDocuments({ per_page: 100 }).catch(() => ({ data: [] })) : { data: [] },
+      canManageRoles.value ? adminApi.listRoles().catch(() => []) : [],
+      canManageRoles.value ? adminApi.listPermissions().catch(() => []) : [],
     ])
     movies.value = moviePayload.data ?? moviePayload
     lookups.value = lookupPayload
     providers.value = providerPayload.data ?? providerPayload
+    movieUploads.value = uploadPayload.data ?? uploadPayload
+    contentLicenses.value = licensePayload.data ?? licensePayload
+    legalDocuments.value = legalPayload.data ?? legalPayload
+    roles.value = rolePayload.data ?? rolePayload
+    permissions.value = permissionPayload.data ?? permissionPayload
   } catch (error) {
     errorMessage.value = error.message
   } finally {
@@ -267,6 +425,7 @@ async function saveMovie() {
     }
     resetForm()
     await loadAdminData()
+    await router.push({ name: 'admin' })
   } catch (error) {
     errorMessage.value = error.message
   } finally {
@@ -292,6 +451,106 @@ async function deleteMovie(movie) {
   try {
     await adminApi.deleteMovie(movie.id)
     successMessage.value = 'Đã xóa phim.'
+    await loadAdminData()
+  } catch (error) {
+    errorMessage.value = error.message
+  }
+}
+
+async function approveUpload(upload) {
+  try {
+    await adminApi.approveMovieUpload(upload.id)
+    successMessage.value = `Đã duyệt upload "${upload.title}".`
+    await loadAdminData()
+  } catch (error) {
+    errorMessage.value = error.message
+  }
+}
+
+async function openUploadDetail(upload) {
+  errorMessage.value = ''
+
+  try {
+    selectedUpload.value = await adminApi.getMovieUpload(upload.id)
+  } catch (error) {
+    errorMessage.value = error.message
+  }
+}
+
+async function submitUpload(upload) {
+  try {
+    await adminApi.submitMovieUpload(upload.id)
+    successMessage.value = `Đã gửi duyệt upload "${upload.title}".`
+    await loadAdminData()
+  } catch (error) {
+    errorMessage.value = error.message
+  }
+}
+
+async function transcodeUpload(upload) {
+  try {
+    await adminApi.transcodeMovieUpload(upload.id)
+    successMessage.value = `Đã đưa "${upload.title}" vào hàng chờ transcode.`
+    await loadAdminData()
+  } catch (error) {
+    errorMessage.value = error.message
+  }
+}
+
+async function deleteUpload(upload) {
+  if (!window.confirm(`Xóa upload "${upload.title}"?`)) return
+
+  try {
+    await adminApi.deleteMovieUpload(upload.id)
+    successMessage.value = 'Đã xóa upload.'
+    await loadAdminData()
+  } catch (error) {
+    errorMessage.value = error.message
+  }
+}
+
+async function previewUploadFile(file) {
+  errorMessage.value = ''
+
+  try {
+    const url = await adminApi.previewUploadFile(file.id)
+    window.open(url, '_blank', 'noopener')
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch (error) {
+    errorMessage.value = error.message
+  }
+}
+
+async function previewLegalDocument(document) {
+  errorMessage.value = ''
+
+  try {
+    const url = await adminApi.previewLegalDocument(document.id)
+    window.open(url, '_blank', 'noopener')
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch (error) {
+    errorMessage.value = error.message
+  }
+}
+
+async function approveLicense(license) {
+  try {
+    await adminApi.approveContentLicense(license.id)
+    successMessage.value = `Đã duyệt bản quyền ${license.contract_number || license.licensor_name}.`
+    await loadAdminData()
+  } catch (error) {
+    errorMessage.value = error.message
+  }
+}
+
+async function openLicenseDetail(license) {
+  selectedLicense.value = license
+}
+
+async function verifyLegalDocument(document) {
+  try {
+    await adminApi.updateLegalDocument(document.id, { status: 'verified' })
+    successMessage.value = `Đã xác minh hồ sơ "${document.title}".`
     await loadAdminData()
   } catch (error) {
     errorMessage.value = error.message
@@ -362,16 +621,103 @@ onMounted(async () => {
       </form>
     </section>
 
-    <section v-else class="mx-auto max-w-[1500px] px-4 py-5 md:px-8">
-      <header class="flex flex-wrap items-center justify-between gap-4 border-b border-white/8 pb-5">
-        <div class="flex items-center gap-4">
-          <img class="h-12 w-40 object-contain object-left" :src="logoUrl" alt="ZMovie" />
-          <div>
-            <p class="text-xs font-black uppercase tracking-[0.18em] text-[#ffe182]">Admin Console</p>
-            <h1 class="text-2xl font-black text-white">Quản lý phim</h1>
-          </div>
+    <section v-else class="min-h-screen lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
+      <aside class="border-b border-white/8 bg-[#11131d] px-4 py-4 lg:sticky lg:top-0 lg:h-screen lg:border-r lg:border-b-0 lg:px-5">
+        <button class="flex w-full items-center text-left" type="button" @click="openMovieList">
+          <img class="h-14 w-44 object-contain object-left" :src="logoUrl" alt="ZMovie" />
+        </button>
+
+        <nav class="mt-6 grid gap-2 text-sm font-bold">
+          <button
+            v-if="canViewUploads"
+            :class="[
+              'flex h-11 items-center gap-3 rounded-lg px-3 text-left transition hover:bg-white/8 hover:text-[#ffe182]',
+              isMovieListView ? 'bg-white/8 text-[#ffe182]' : 'text-slate-300',
+            ]"
+            type="button"
+            @click="openAdminRoute('admin')"
+          >
+            <LayoutDashboard :size="18" />
+            Tổng quan phim
+          </button>
+          <button
+            v-if="canViewLicenses"
+            :class="[
+              'flex h-11 items-center gap-3 rounded-lg px-3 text-left transition hover:bg-white/8 hover:text-[#ffe182]',
+              isCreateMovieView ? 'bg-white/8 text-[#ffe182]' : 'text-slate-300',
+            ]"
+            type="button"
+            @click="openCreateMovie"
+          >
+            <Plus :size="18" />
+            Thêm phim
+          </button>
+          <button
+            v-if="canManageProviders"
+            :class="[
+              'flex h-11 items-center gap-3 rounded-lg px-3 text-left transition hover:bg-white/8 hover:text-[#ffe182]',
+              isUploadsView ? 'bg-white/8 text-[#ffe182]' : 'text-slate-300',
+            ]"
+            type="button"
+            @click="openAdminRoute('admin-uploads')"
+          >
+            <UploadCloud :size="18" />
+            Duyệt phim
+          </button>
+          <button
+            v-if="canViewLegalDocuments"
+            :class="[
+              'flex h-11 items-center gap-3 rounded-lg px-3 text-left transition hover:bg-white/8 hover:text-[#ffe182]',
+              isLicensesView ? 'bg-white/8 text-[#ffe182]' : 'text-slate-300',
+            ]"
+            type="button"
+            @click="openAdminRoute('admin-licenses')"
+          >
+            <ShieldCheck :size="18" />
+            Bản quyền
+          </button>
+          <button
+            :class="[
+              'flex h-11 items-center gap-3 rounded-lg px-3 text-left transition hover:bg-white/8 hover:text-[#ffe182]',
+              isProvidersView ? 'bg-white/8 text-[#ffe182]' : 'text-slate-300',
+            ]"
+            type="button"
+            @click="openAdminRoute('admin-providers')"
+          >
+            <Building2 :size="18" />
+            Nhà cung cấp
+          </button>
+          <button
+            :class="[
+              'flex h-11 items-center gap-3 rounded-lg px-3 text-left transition hover:bg-white/8 hover:text-[#ffe182]',
+              isLegalView ? 'bg-white/8 text-[#ffe182]' : 'text-slate-300',
+            ]"
+            type="button"
+            @click="openAdminRoute('admin-legal')"
+          >
+            <FileText :size="18" />
+            Hồ sơ pháp lý
+          </button>
+          <button
+            v-if="canManageRoles"
+            :class="[
+              'flex h-11 items-center gap-3 rounded-lg px-3 text-left transition hover:bg-white/8 hover:text-[#ffe182]',
+              isRbacView ? 'bg-white/8 text-[#ffe182]' : 'text-slate-300',
+            ]"
+            type="button"
+            @click="openAdminRoute('admin-rbac')"
+          >
+            <KeyRound :size="18" />
+            Phân quyền
+          </button>
+        </nav>
+
+        <div class="mt-6 rounded-xl border border-white/8 bg-white/5 p-3 text-sm">
+          <p class="font-black text-white">{{ session.user?.name }}</p>
+          <p class="mt-1 truncate text-xs font-semibold text-slate-400">{{ session.user?.email }}</p>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
+
+        <div class="mt-4 grid gap-2">
           <button class="inline-flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-white/6 px-3 text-sm font-bold text-white hover:border-[#ffe182]" type="button" @click="router.push({ name: 'home' })">
             <ArrowLeft :size="16" />
             Trang phim
@@ -381,9 +727,29 @@ onMounted(async () => {
             Đăng xuất
           </button>
         </div>
+      </aside>
+
+      <div class="mx-auto w-full max-w-[1500px] px-4 py-5 md:px-8">
+      <header class="flex flex-wrap items-center justify-between gap-4 border-b border-white/8 pb-5">
+        <div class="flex items-center gap-4">
+          <div>
+            <p class="text-xs font-black uppercase tracking-[0.18em] text-[#ffe182]">Admin Console</p>
+            <h1 class="text-2xl font-black text-white">{{ adminPageTitle }}</h1>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button v-if="isMovieListView" class="inline-flex h-10 items-center gap-2 rounded-lg bg-[#ffe182] px-3 text-sm font-black text-[#11131d] hover:bg-[#ffd058]" type="button" @click="openCreateMovie">
+            <Plus :size="16" />
+            Thêm phim
+          </button>
+          <button v-if="isCreateMovieView" class="inline-flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-white/6 px-3 text-sm font-bold text-white hover:border-[#ffe182]" type="button" @click="openMovieList">
+            <ArrowLeft :size="16" />
+            Danh sách phim
+          </button>
+        </div>
       </header>
 
-      <div class="mt-6 grid gap-4 md:grid-cols-4">
+      <div v-if="isMovieListView" class="mt-6 grid gap-4 md:grid-cols-4">
         <div class="rounded-xl border border-white/8 bg-white/6 p-4">
           <LayoutDashboard class="text-[#ffe182]" :size="22" />
           <p class="mt-3 text-2xl font-black">{{ movies.length }}</p>
@@ -406,14 +772,14 @@ onMounted(async () => {
         </div>
       </div>
 
-      <p v-if="!canManageMovies" class="mt-5 rounded-xl bg-amber-400/12 p-4 text-sm font-bold text-amber-100">
+      <p v-if="(isMovieListView || isCreateMovieView) && !canManageMovies" class="mt-5 rounded-xl bg-amber-400/12 p-4 text-sm font-bold text-amber-100">
         Tài khoản hiện tại thiếu quyền <code>movies.manage</code>.
       </p>
       <p v-if="errorMessage" class="mt-5 rounded-xl bg-red-500/12 p-4 text-sm font-bold text-red-100">{{ errorMessage }}</p>
       <p v-if="successMessage" class="mt-5 rounded-xl bg-emerald-500/12 p-4 text-sm font-bold text-emerald-100">{{ successMessage }}</p>
 
-      <div class="mt-6 grid gap-6 xl:grid-cols-[420px_1fr]">
-        <form class="rounded-2xl border border-white/8 bg-[#171922] p-5" @submit.prevent="saveMovie">
+      <div class="mt-6">
+        <form v-if="isCreateMovieView" class="max-w-4xl rounded-2xl border border-white/8 bg-[#171922] p-5" @submit.prevent="saveMovie">
           <div class="flex items-center justify-between gap-3">
             <h2 class="text-lg font-black text-white">{{ editingMovie ? 'Sửa phim' : 'Thêm phim' }}</h2>
             <button v-if="editingMovie" class="rounded-lg bg-white/8 p-2 text-slate-300 hover:text-white" type="button" @click="resetForm">
@@ -452,20 +818,20 @@ onMounted(async () => {
               <label class="text-sm font-bold text-slate-300">
                 Trạng thái
                 <select v-model="movieForm.status" class="admin-input">
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
-                  <option value="archived">Archived</option>
+                  <option value="draft">Bản nháp</option>
+                  <option value="published">Đã xuất bản</option>
+                  <option value="archived">Đã lưu trữ</option>
                 </select>
               </label>
               <label class="text-sm font-bold text-slate-300">
                 Bản quyền
                 <select v-model="movieForm.rights_status" class="admin-input">
-                  <option value="cleared">Cleared</option>
-                  <option value="pending">Pending</option>
-                  <option value="unknown">Unknown</option>
-                  <option value="expired">Expired</option>
-                  <option value="disputed">Disputed</option>
-                  <option value="blocked">Blocked</option>
+                  <option value="cleared">Đủ quyền</option>
+                  <option value="pending">Chờ duyệt</option>
+                  <option value="unknown">Chưa rõ</option>
+                  <option value="expired">Hết hạn</option>
+                  <option value="disputed">Tranh chấp</option>
+                  <option value="blocked">Bị chặn</option>
                 </select>
               </label>
             </div>
@@ -519,19 +885,23 @@ onMounted(async () => {
           </div>
         </form>
 
-        <section class="rounded-2xl border border-white/8 bg-[#171922] p-5">
+        <section v-if="isMovieListView" class="rounded-2xl border border-white/8 bg-[#171922] p-5">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <h2 class="text-lg font-black text-white">Danh sách phim</h2>
             <div class="flex flex-wrap gap-2">
+              <button class="inline-flex h-10 items-center gap-2 rounded-lg bg-[#ffe182] px-3 text-sm font-black text-[#11131d] hover:bg-[#ffd058]" type="button" @click="openCreateMovie">
+                <Plus :size="16" />
+                Thêm phim
+              </button>
               <label class="relative">
                 <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" :size="16" />
                 <input v-model="searchQuery" class="h-10 rounded-lg border border-white/10 bg-white/6 pl-9 pr-3 text-sm outline-none focus:border-[#ffe182]" placeholder="Tìm phim..." />
               </label>
               <select v-model="statusFilter" class="h-10 rounded-lg border border-white/10 bg-white/6 px-3 text-sm outline-none focus:border-[#ffe182]" @change="loadAdminData">
                 <option value="">Tất cả trạng thái</option>
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-                <option value="archived">Archived</option>
+                <option value="draft">Bản nháp</option>
+                <option value="published">Đã xuất bản</option>
+                <option value="archived">Đã lưu trữ</option>
               </select>
               <button class="inline-flex h-10 items-center gap-2 rounded-lg bg-white/8 px-3 text-sm font-bold hover:bg-white/14" type="button" @click="loadAdminData">
                 <RefreshCw :size="16" />
@@ -555,7 +925,7 @@ onMounted(async () => {
                 <tr v-for="movie in filteredMovies" :key="movie.id" class="align-middle">
                   <td class="border-b border-white/6 py-3 pr-4">
                     <div class="flex items-center gap-3">
-                      <img class="h-16 w-11 rounded-md object-cover ring-1 ring-white/10" :src="movie.poster_path?.startsWith('http') ? movie.poster_path : `http://127.0.0.1:8000/storage/${movie.poster_path}`" :alt="movie.title" />
+                      <img class="h-16 w-11 rounded-md object-cover ring-1 ring-white/10" :src="absoluteAssetUrl(movie.poster_path)" :alt="movie.title" />
                       <div class="min-w-0">
                         <p class="line-clamp-1 font-black text-white">{{ movie.title }}</p>
                         <p class="line-clamp-1 text-xs text-slate-400">{{ movie.slug }}</p>
@@ -564,17 +934,17 @@ onMounted(async () => {
                   </td>
                   <td class="border-b border-white/6 py-3 pr-4 text-slate-300">{{ movie.type }}</td>
                   <td class="border-b border-white/6 py-3 pr-4">
-                    <span class="rounded-full bg-emerald-400/12 px-2 py-1 text-xs font-bold text-emerald-200">{{ movie.rights_status }}</span>
+                    <span class="rounded-full bg-emerald-400/12 px-2 py-1 text-xs font-bold text-emerald-200">{{ rightsStatusLabel(movie.rights_status) }}</span>
                   </td>
                   <td class="border-b border-white/6 py-3 pr-4">
-                    <span class="rounded-full bg-white/8 px-2 py-1 text-xs font-bold text-slate-200">{{ movie.status }}</span>
+                    <span class="rounded-full bg-white/8 px-2 py-1 text-xs font-bold text-slate-200">{{ movieStatusLabel(movie.status) }}</span>
                   </td>
                   <td class="border-b border-white/6 py-3 text-right">
                     <div class="inline-flex gap-1">
                       <button class="rounded-lg bg-white/8 p-2 text-slate-200 hover:bg-white/14" type="button" title="Sửa" @click="editMovie(movie)">
                         <Pencil :size="16" />
                       </button>
-                      <button class="rounded-lg bg-emerald-400/12 p-2 text-emerald-200 hover:bg-emerald-400/20" type="button" title="Publish" @click="publishMovie(movie)">
+                      <button v-if="canPublishMovies" class="rounded-lg bg-emerald-400/12 p-2 text-emerald-200 hover:bg-emerald-400/20" type="button" title="Publish" @click="publishMovie(movie)">
                         <CheckCircle2 :size="16" />
                       </button>
                       <button class="rounded-lg bg-red-500/12 p-2 text-red-200 hover:bg-red-500/20" type="button" title="Xóa" @click="deleteMovie(movie)">
@@ -590,6 +960,350 @@ onMounted(async () => {
             </div>
           </div>
         </section>
+
+        <section v-if="isUploadsView" class="rounded-2xl border border-white/8 bg-[#171922] p-5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-lg font-black text-white">Hàng chờ duyệt phim</h2>
+            <button class="inline-flex h-10 items-center gap-2 rounded-lg bg-white/8 px-3 text-sm font-bold hover:bg-white/14" type="button" @click="loadAdminData">
+              <RefreshCw :size="16" />
+              Tải lại
+            </button>
+          </div>
+          <div class="mt-5 overflow-x-auto">
+            <table class="w-full min-w-[760px] border-separate border-spacing-0 text-left text-sm">
+              <thead class="text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="border-b border-white/8 py-3 pr-4">Upload</th>
+                  <th class="border-b border-white/8 py-3 pr-4">Provider</th>
+                  <th class="border-b border-white/8 py-3 pr-4">Loại</th>
+                  <th class="border-b border-white/8 py-3 pr-4">Trạng thái</th>
+                  <th class="border-b border-white/8 py-3 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="upload in movieUploads" :key="upload.id">
+                  <td class="border-b border-white/6 py-3 pr-4">
+                    <p class="font-black text-white">{{ upload.title }}</p>
+                    <p class="text-xs text-slate-400">{{ upload.files_count ?? 0 }} tệp · {{ upload.movie?.title ?? 'Chưa gắn phim' }}</p>
+                  </td>
+                  <td class="border-b border-white/6 py-3 pr-4 text-slate-300">{{ upload.content_provider?.name ?? '-' }}</td>
+                  <td class="border-b border-white/6 py-3 pr-4 text-slate-300">{{ upload.upload_type }}</td>
+                  <td class="border-b border-white/6 py-3 pr-4">
+                    <span class="rounded-full bg-white/8 px-2 py-1 text-xs font-bold text-slate-200">{{ uploadStatusLabel(upload.status) }}</span>
+                  </td>
+                  <td class="border-b border-white/6 py-3 text-right">
+                    <div class="inline-flex flex-wrap justify-end gap-1">
+                      <button class="inline-flex h-9 items-center gap-2 rounded-lg bg-white/8 px-3 text-xs font-black text-slate-200 hover:bg-white/14" type="button" :disabled="upload.status !== 'draft'" @click="submitUpload(upload)">
+                        <UploadCloud :size="15" />
+                        Gửi duyệt
+                      </button>
+                      <button class="inline-flex h-9 items-center gap-2 rounded-lg bg-white/8 px-3 text-xs font-black text-slate-200 hover:bg-white/14" type="button" @click="openUploadDetail(upload)">
+                        <FileText :size="15" />
+                        Chi tiết
+                      </button>
+                      <button v-if="canReviewMovies" class="inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-400/12 px-3 text-xs font-black text-emerald-200 hover:bg-emerald-400/20" type="button" :disabled="upload.status === 'approved'" @click="approveUpload(upload)">
+                        <CheckCircle2 :size="15" />
+                        Duyệt
+                      </button>
+                      <button v-if="canReviewMovies" class="inline-flex h-9 items-center gap-2 rounded-lg bg-sky-400/12 px-3 text-xs font-black text-sky-200 hover:bg-sky-400/20" type="button" @click="transcodeUpload(upload)">
+                        <RefreshCw :size="15" />
+                        Transcode
+                      </button>
+                      <button class="inline-flex h-9 items-center gap-2 rounded-lg bg-red-500/12 px-3 text-xs font-black text-red-200 hover:bg-red-500/20" type="button" @click="deleteUpload(upload)">
+                        <Trash2 :size="15" />
+                        Xóa
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-if="!movieUploads.length" class="grid min-h-40 place-items-center text-sm font-bold text-slate-500">Chưa có upload cần duyệt.</div>
+          </div>
+          <div v-if="selectedUpload" class="mt-6 rounded-xl border border-white/8 bg-white/5 p-4">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p class="text-xs font-black uppercase tracking-[0.16em] text-[#ffe182]">Chi tiết upload</p>
+                <h3 class="mt-1 text-xl font-black text-white">{{ selectedUpload.title }}</h3>
+                <p class="mt-1 text-sm text-slate-400">
+                  {{ selectedUpload.content_provider?.name ?? '-' }} · {{ selectedUpload.uploader?.name ?? '-' }} · {{ uploadStatusLabel(selectedUpload.status) }}
+                </p>
+              </div>
+              <button class="rounded-lg bg-white/8 p-2 text-slate-300 hover:text-white" type="button" @click="selectedUpload = null">
+                <X :size="18" />
+              </button>
+            </div>
+
+            <div class="mt-4 grid gap-3 md:grid-cols-3">
+              <div class="rounded-lg bg-[#11131d] p-3">
+                <p class="text-xs font-bold text-slate-500">Phim liên quan</p>
+                <p class="mt-1 font-bold text-white">{{ selectedUpload.movie?.title ?? 'Chưa gắn phim' }}</p>
+              </div>
+              <div class="rounded-lg bg-[#11131d] p-3">
+                <p class="text-xs font-bold text-slate-500">License</p>
+                <p class="mt-1 font-bold text-white">{{ selectedUpload.license?.contract_number ?? 'Chưa gắn license' }}</p>
+              </div>
+              <div class="rounded-lg bg-[#11131d] p-3">
+                <p class="text-xs font-bold text-slate-500">Số file</p>
+                <p class="mt-1 font-bold text-white">{{ selectedUploadFiles.length }}</p>
+              </div>
+            </div>
+
+            <div class="mt-4 overflow-x-auto">
+              <table class="w-full min-w-[760px] border-separate border-spacing-0 text-left text-sm">
+                <thead class="text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th class="border-b border-white/8 py-3 pr-4">File</th>
+                    <th class="border-b border-white/8 py-3 pr-4">Loại</th>
+                    <th class="border-b border-white/8 py-3 pr-4">Dung lượng</th>
+                    <th class="border-b border-white/8 py-3 pr-4">Trạng thái</th>
+                    <th class="border-b border-white/8 py-3 pr-4">Đường dẫn</th>
+                    <th class="border-b border-white/8 py-3 text-right">Xem</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="file in selectedUploadFiles" :key="file.id">
+                    <td class="border-b border-white/6 py-3 pr-4">
+                      <p class="font-black text-white">{{ file.original_filename || file.path }}</p>
+                      <p class="text-xs text-slate-400">{{ file.mime_type || '-' }} · {{ file.quality || 'auto' }}</p>
+                    </td>
+                    <td class="border-b border-white/6 py-3 pr-4 text-slate-300">{{ file.file_type }}</td>
+                    <td class="border-b border-white/6 py-3 pr-4 text-slate-300">{{ fileSizeLabel(file.file_size_bytes) }}</td>
+                    <td class="border-b border-white/6 py-3 pr-4">
+                      <span class="rounded-full bg-white/8 px-2 py-1 text-xs font-bold text-slate-200">{{ file.status }}</span>
+                    </td>
+                    <td class="max-w-sm border-b border-white/6 py-3 pr-4">
+                      <code class="block truncate rounded bg-black/30 px-2 py-1 text-xs text-slate-300">{{ file.path }}</code>
+                    </td>
+                    <td class="border-b border-white/6 py-3 text-right">
+                      <button class="inline-flex h-9 items-center gap-2 rounded-lg bg-[#ffe182] px-3 text-xs font-black text-[#11131d] hover:bg-[#ffd058]" type="button" @click="previewUploadFile(file)">
+                        <Eye :size="15" />
+                        Xem
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div v-if="!selectedUploadFiles.length" class="grid min-h-24 place-items-center text-sm font-bold text-slate-500">
+                Upload này chưa có file.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section v-if="isLicensesView" class="rounded-2xl border border-white/8 bg-[#171922] p-5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-lg font-black text-white">Duyệt bản quyền</h2>
+            <button class="inline-flex h-10 items-center gap-2 rounded-lg bg-white/8 px-3 text-sm font-bold hover:bg-white/14" type="button" @click="loadAdminData">
+              <RefreshCw :size="16" />
+              Tải lại
+            </button>
+          </div>
+          <div class="mt-5 overflow-x-auto">
+            <table class="w-full min-w-[820px] border-separate border-spacing-0 text-left text-sm">
+              <thead class="text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="border-b border-white/8 py-3 pr-4">Hợp đồng</th>
+                  <th class="border-b border-white/8 py-3 pr-4">Phim</th>
+                  <th class="border-b border-white/8 py-3 pr-4">Provider</th>
+                  <th class="border-b border-white/8 py-3 pr-4">Hiệu lực</th>
+                  <th class="border-b border-white/8 py-3 pr-4">Trạng thái</th>
+                  <th class="border-b border-white/8 py-3 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="license in contentLicenses" :key="license.id">
+                  <td class="border-b border-white/6 py-3 pr-4">
+                    <p class="font-black text-white">{{ license.contract_number || license.licensor_name }}</p>
+                    <p class="text-xs text-slate-400">{{ license.license_type }}</p>
+                  </td>
+                  <td class="border-b border-white/6 py-3 pr-4 text-slate-300">{{ license.movie?.title ?? '-' }}</td>
+                  <td class="border-b border-white/6 py-3 pr-4 text-slate-300">{{ license.content_provider?.name ?? '-' }}</td>
+                  <td class="border-b border-white/6 py-3 pr-4 text-slate-300">{{ license.valid_from }} → {{ license.valid_until ?? 'Không hạn' }}</td>
+                  <td class="border-b border-white/6 py-3 pr-4">
+                    <span class="rounded-full bg-white/8 px-2 py-1 text-xs font-bold text-slate-200">{{ licenseStatusLabel(license.status) }}</span>
+                  </td>
+                  <td class="border-b border-white/6 py-3 text-right">
+                    <div class="inline-flex justify-end gap-1">
+                      <button class="inline-flex h-9 items-center gap-2 rounded-lg bg-white/8 px-3 text-xs font-black text-slate-200 hover:bg-white/14" type="button" @click="openLicenseDetail(license)">
+                        <Eye :size="15" />
+                        Xem
+                      </button>
+                      <button v-if="canApproveLicenses" class="inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-400/12 px-3 text-xs font-black text-emerald-200 hover:bg-emerald-400/20" type="button" :disabled="license.status === 'approved'" @click="approveLicense(license)">
+                        <ShieldCheck :size="15" />
+                        Duyệt
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-if="!contentLicenses.length" class="grid min-h-40 place-items-center text-sm font-bold text-slate-500">Chưa có bản quyền.</div>
+          </div>
+          <div v-if="selectedLicense" class="mt-6 rounded-xl border border-white/8 bg-white/5 p-4">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p class="text-xs font-black uppercase tracking-[0.16em] text-[#ffe182]">Chi tiết bản quyền</p>
+                <h3 class="mt-1 text-xl font-black text-white">{{ selectedLicense.contract_number || selectedLicense.licensor_name }}</h3>
+                <p class="mt-1 text-sm text-slate-400">
+                  {{ selectedLicense.content_provider?.name ?? '-' }} · {{ selectedLicense.movie?.title ?? 'Chưa gắn phim' }}
+                </p>
+              </div>
+              <button class="rounded-lg bg-white/8 p-2 text-slate-300 hover:text-white" type="button" @click="selectedLicense = null">
+                <X :size="18" />
+              </button>
+            </div>
+            <div class="mt-4 grid gap-3 md:grid-cols-3">
+              <div class="rounded-lg bg-[#11131d] p-3">
+                <p class="text-xs font-bold text-slate-500">Trạng thái</p>
+                <p class="mt-1 font-bold text-white">{{ licenseStatusLabel(selectedLicense.status) }}</p>
+              </div>
+              <div class="rounded-lg bg-[#11131d] p-3">
+                <p class="text-xs font-bold text-slate-500">Loại license</p>
+                <p class="mt-1 font-bold text-white">{{ selectedLicense.license_type }}</p>
+              </div>
+              <div class="rounded-lg bg-[#11131d] p-3">
+                <p class="text-xs font-bold text-slate-500">Hiệu lực</p>
+                <p class="mt-1 font-bold text-white">{{ selectedLicense.valid_from }} → {{ selectedLicense.valid_until ?? 'Không hạn' }}</p>
+              </div>
+              <div class="rounded-lg bg-[#11131d] p-3">
+                <p class="text-xs font-bold text-slate-500">Streaming</p>
+                <p class="mt-1 font-bold text-white">{{ selectedLicense.allows_streaming ? 'Cho phép' : 'Không' }}</p>
+              </div>
+              <div class="rounded-lg bg-[#11131d] p-3">
+                <p class="text-xs font-bold text-slate-500">Quảng cáo</p>
+                <p class="mt-1 font-bold text-white">{{ selectedLicense.allows_ads ? 'Cho phép' : 'Không' }}</p>
+              </div>
+              <div class="rounded-lg bg-[#11131d] p-3">
+                <p class="text-xs font-bold text-slate-500">Gói thuê bao</p>
+                <p class="mt-1 font-bold text-white">{{ selectedLicense.allows_subscription ? 'Cho phép' : 'Không' }}</p>
+              </div>
+            </div>
+            <div v-if="selectedLicense.review_note" class="mt-4 rounded-lg bg-[#11131d] p-3">
+              <p class="text-xs font-bold text-slate-500">Ghi chú duyệt</p>
+              <p class="mt-1 text-sm text-slate-200">{{ selectedLicense.review_note }}</p>
+            </div>
+          </div>
+        </section>
+
+        <section v-if="isProvidersView" class="rounded-2xl border border-white/8 bg-[#171922] p-5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-lg font-black text-white">Nhà cung cấp nội dung</h2>
+            <button class="inline-flex h-10 items-center gap-2 rounded-lg bg-white/8 px-3 text-sm font-bold hover:bg-white/14" type="button" @click="loadAdminData">
+              <RefreshCw :size="16" />
+              Tải lại
+            </button>
+          </div>
+          <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <article v-for="provider in providers" :key="provider.id" class="rounded-xl border border-white/8 bg-white/5 p-4">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <h3 class="font-black text-white">{{ provider.name }}</h3>
+                  <p class="mt-1 text-xs font-semibold text-slate-400">{{ provider.legal_name || provider.slug }}</p>
+                </div>
+                <span class="rounded-full bg-white/8 px-2 py-1 text-xs font-bold text-slate-200">{{ providerStatusLabel(provider.verification_status) }}</span>
+              </div>
+              <div class="mt-4 grid grid-cols-3 gap-2 text-center text-xs text-slate-400">
+                <div class="rounded-lg bg-white/6 p-2"><b class="block text-lg text-white">{{ provider.movies_count ?? 0 }}</b>Phim</div>
+                <div class="rounded-lg bg-white/6 p-2"><b class="block text-lg text-white">{{ provider.uploads_count ?? 0 }}</b>Upload</div>
+                <div class="rounded-lg bg-white/6 p-2"><b class="block text-lg text-white">{{ provider.licenses_count ?? 0 }}</b>License</div>
+              </div>
+            </article>
+            <div v-if="!providers.length" class="grid min-h-40 place-items-center rounded-xl border border-white/8 text-sm font-bold text-slate-500 md:col-span-2 xl:col-span-3">Chưa có nhà cung cấp.</div>
+          </div>
+        </section>
+
+        <section v-if="isLegalView" class="rounded-2xl border border-white/8 bg-[#171922] p-5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-lg font-black text-white">Hồ sơ pháp lý</h2>
+            <button class="inline-flex h-10 items-center gap-2 rounded-lg bg-white/8 px-3 text-sm font-bold hover:bg-white/14" type="button" @click="loadAdminData">
+              <RefreshCw :size="16" />
+              Tải lại
+            </button>
+          </div>
+          <div class="mt-5 overflow-x-auto">
+            <table class="w-full min-w-[760px] border-separate border-spacing-0 text-left text-sm">
+              <thead class="text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="border-b border-white/8 py-3 pr-4">Hồ sơ</th>
+                  <th class="border-b border-white/8 py-3 pr-4">Provider</th>
+                  <th class="border-b border-white/8 py-3 pr-4">Phim</th>
+                  <th class="border-b border-white/8 py-3 pr-4">Trạng thái</th>
+                  <th class="border-b border-white/8 py-3 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="document in legalDocuments" :key="document.id">
+                  <td class="border-b border-white/6 py-3 pr-4">
+                    <p class="font-black text-white">{{ document.title }}</p>
+                    <p class="text-xs text-slate-400">{{ document.document_type }} · {{ document.path }}</p>
+                  </td>
+                  <td class="border-b border-white/6 py-3 pr-4 text-slate-300">{{ document.content_provider?.name ?? '-' }}</td>
+                  <td class="border-b border-white/6 py-3 pr-4 text-slate-300">{{ document.movie?.title ?? '-' }}</td>
+                  <td class="border-b border-white/6 py-3 pr-4">
+                    <span class="rounded-full bg-white/8 px-2 py-1 text-xs font-bold text-slate-200">{{ legalStatusLabel(document.status) }}</span>
+                  </td>
+                  <td class="border-b border-white/6 py-3 text-right">
+                    <div class="inline-flex justify-end gap-1">
+                      <button class="inline-flex h-9 items-center gap-2 rounded-lg bg-white/8 px-3 text-xs font-black text-slate-200 hover:bg-white/14" type="button" @click="previewLegalDocument(document)">
+                        <Eye :size="15" />
+                        Xem
+                      </button>
+                      <button v-if="canReviewLegalDocuments" class="inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-400/12 px-3 text-xs font-black text-emerald-200 hover:bg-emerald-400/20" type="button" :disabled="document.status === 'verified'" @click="verifyLegalDocument(document)">
+                        <FileCheck2 :size="15" />
+                        Xác minh
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-if="!legalDocuments.length" class="grid min-h-40 place-items-center text-sm font-bold text-slate-500">Chưa có hồ sơ pháp lý.</div>
+          </div>
+        </section>
+
+        <section v-if="isRbacView" class="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,.8fr)]">
+          <div class="rounded-2xl border border-white/8 bg-[#171922] p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h2 class="text-lg font-black text-white">Vai trò hệ thống</h2>
+              <button class="inline-flex h-10 items-center gap-2 rounded-lg bg-white/8 px-3 text-sm font-bold hover:bg-white/14" type="button" @click="loadAdminData">
+                <RefreshCw :size="16" />
+                Tải lại
+              </button>
+            </div>
+            <div class="mt-5 grid gap-3">
+              <article v-for="role in roles" :key="role.id" class="rounded-xl border border-white/8 bg-white/5 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 class="font-black text-white">{{ role.name }}</h3>
+                    <p class="text-xs font-semibold text-slate-400">{{ role.slug }}</p>
+                  </div>
+                  <span class="rounded-full bg-white/8 px-2 py-1 text-xs font-bold text-slate-200">
+                    {{ role.permissions?.length ?? 0 }} quyền
+                  </span>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <span v-for="permission in role.permissions ?? []" :key="permission.id" class="rounded-full bg-[#ffe182]/12 px-2 py-1 text-xs font-bold text-[#ffe182]">
+                    {{ permission.slug }}
+                  </span>
+                </div>
+              </article>
+              <div v-if="!roles.length" class="grid min-h-40 place-items-center text-sm font-bold text-slate-500">Chưa tải được danh sách role.</div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-white/8 bg-[#171922] p-5">
+            <h2 class="text-lg font-black text-white">Danh mục quyền</h2>
+            <div class="mt-5 grid gap-2">
+              <div v-for="permission in permissions" :key="permission.id" class="rounded-lg border border-white/8 bg-white/5 px-3 py-2">
+                <p class="font-bold text-white">{{ permission.name }}</p>
+                <p class="text-xs text-slate-400">{{ permission.group }} · {{ permission.slug }}</p>
+              </div>
+              <div v-if="!permissions.length" class="grid min-h-40 place-items-center text-sm font-bold text-slate-500">Chưa tải được danh sách quyền.</div>
+            </div>
+          </div>
+        </section>
+      </div>
       </div>
     </section>
   </main>

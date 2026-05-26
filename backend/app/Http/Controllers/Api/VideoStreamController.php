@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Movie;
 use App\Models\VideoSource;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -12,7 +14,9 @@ class VideoStreamController extends Controller
 {
     public function show(Request $request, VideoSource $videoSource): StreamedResponse
     {
+        abort_if($videoSource->source_type === 'hls', 422, 'HLS sources are served from public storage.');
         abort_unless($videoSource->is_active, 404);
+        abort_unless($this->canStream($videoSource), 404);
         abort_if(preg_match('/^https?:\/\//i', $videoSource->url), 422, 'External video sources are not streamed locally.');
 
         $relativePath = preg_replace('/^storage\//', '', ltrim($videoSource->url, '/'));
@@ -68,5 +72,21 @@ class VideoStreamController extends Controller
             'Content-Range' => "bytes {$start}-{$end}/{$size}",
             'Cache-Control' => 'public, max-age=31536000',
         ]);
+    }
+
+    private function canStream(VideoSource $videoSource): bool
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if ($user?->hasPermission('movies.manage')) {
+            return true;
+        }
+
+        $movie = $videoSource->movie
+            ?: $videoSource->episode?->season?->movie;
+
+        return $movie instanceof Movie
+            && $movie->status === 'published'
+            && $movie->rights_status === 'cleared';
     }
 }

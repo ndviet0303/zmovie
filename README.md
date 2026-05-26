@@ -92,8 +92,7 @@ Thông qua đồ án, sinh viên có cơ hội vận dụng kiến thức về l
 
 ### Cơ sở dữ liệu và hạ tầng
 
-- SQLite cho môi trường phát triển
-- Có thể mở rộng sang MySQL hoặc PostgreSQL
+- PostgreSQL cho môi trường phát triển, kiểm thử và triển khai
 - Docker/Docker Compose cho môi trường chạy backend
 - RESTful API
 
@@ -163,7 +162,7 @@ Chi tiết API được mô tả trong [backend/API.md](backend/API.md).
 - PHP >= 8.3
 - Composer
 - Node.js và npm
-- SQLite hoặc hệ quản trị CSDL tương thích Laravel
+- PostgreSQL
 - Meilisearch nếu muốn sử dụng tìm kiếm nâng cao
 
 ### Chạy backend
@@ -176,6 +175,19 @@ php artisan key:generate
 php artisan migrate --seed
 php artisan serve
 ```
+
+Mặc định backend dùng PostgreSQL:
+
+```env
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=zmovie
+DB_USERNAME=zmovie
+DB_PASSWORD=zmovie_secret
+```
+
+Nếu chạy bằng Docker Compose, PostgreSQL được khai báo sẵn trong `backend/docker-compose.yml`.
 
 Backend mặc định chạy tại:
 
@@ -212,10 +224,24 @@ Hệ thống có seed tài khoản demo phục vụ kiểm thử:
 | admin@zmovie.local | password | Super Admin |
 | provider@zmovie.local | password | Provider Owner |
 
-Khi gọi API ở môi trường phát triển, có thể sử dụng header:
+Seeder mặc định cũng tạo bộ dữ liệu demo nội bộ đủ để kiểm thử các luồng chính:
 
-```text
-X-User-Id: 1
+- 8 phim mẫu gồm phim lẻ, series, phim published, draft và archived.
+- Taxonomy phim: thể loại, quốc gia, ngôn ngữ, studio, diễn viên, tag và nhãn phân loại độ tuổi.
+- 4 content provider với trạng thái verified/pending.
+- License, legal document, takedown request và upload workflow cho kiểm thử bản quyền.
+- Gói thành viên, subscription, payment transaction và dữ liệu tương tác người dùng như rating, review, favorite, watchlist, history, playlist.
+
+Khi gọi API quản trị, đăng nhập để lấy `access_token`:
+
+```http
+POST /api/v1/auth/login
+```
+
+Sau đó gửi token trong các request quản trị:
+
+```http
+Authorization: Bearer <access_token>
 ```
 
 ## Kiểm thử
@@ -234,22 +260,30 @@ cd frontend
 npm run build
 ```
 
+Deploy frontend len Cloudflare Workers:
+
+```bash
+cd frontend
+npm run deploy
+```
+
+Lenh deploy frontend se build lai `dist`, upload Worker version, roi promote version moi len production traffic.
+
 ## Kết quả đạt được
 
 - Xây dựng được giao diện website xem phim với trang chủ, danh sách phim, tìm kiếm, chi tiết và phát video.
 - Xây dựng được trang quản trị hỗ trợ đăng nhập demo và quản lý phim.
 - Thiết kế backend RESTful API bằng Laravel.
 - Thiết kế cơ sở dữ liệu phục vụ nghiệp vụ phim, bản quyền, đối tác, upload và phân quyền.
+- Tích hợp Laravel Sanctum cho API token auth, endpoint đăng nhập, `/auth/me`, đăng xuất và bảo vệ route quản trị.
+- Triển khai pipeline transcode video bằng FFmpeg, tạo HLS nhiều chất lượng và cập nhật nguồn phát sau khi upload được duyệt.
 - Tích hợp phân quyền theo vai trò và quyền hạn.
 - Chuẩn bị tài liệu API, thiết kế CSDL và hướng dẫn triển khai.
 
 ## Hạn chế
 
 - Chưa tích hợp cổng thanh toán thật.
-- Chưa triển khai hệ thống transcode video thực tế.
-- Chưa tích hợp xác thực production như OAuth2, JWT hoặc Laravel Sanctum đầy đủ.
 - Chưa có hệ thống recommendation cá nhân hóa.
-- Dữ liệu demo còn giới hạn.
 
 ## Hướng phát triển
 

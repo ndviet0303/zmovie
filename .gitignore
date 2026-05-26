@@ -28,13 +28,19 @@ lerna-debug.log*
 .env
 .env.*
 !.env.example
+docker/env/*.env
+!docker/env/*.env.example
 *.local
 
+# GitLab production deploy config is local/GitLab-only; do not mirror it to GitHub.
+.gitlab/
+.gitlab-ci.yml
+
 # Node
-node_modules/
-dist/
-dist-ssr/
-coverage/
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/coverage/
 
 # PHP / Laravel
 vendor/
@@ -65,3 +71,31 @@ bootstrap/cache/*.php
 *.sqlite-*
 *.sqlite3
 *.db
+
+# Ignore nested project build/artifact directories and secrets
+backend/.env
+backend/vendor/
+backend/node_modules/
+backend/.phpunit.result.cache
+# ignore most of backend storage but allow specific public demo files (see negations below)
+backend/storage/*
+
+!backend/storage/
+!backend/storage/app/
+!backend/storage/app/public/
+backend/public/storage/
+
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Ignore macOS DS_Store anywhere
+**/.DS_Store
+
+# Ignore common media and cache files that sometimes get accidentally added
+# (narrow scope: backend storage/media)
+backend/storage/app/public/*
+
+# Allow committing demo videos used for offline/demo purposes
+!backend/storage/app/public/demo-videos/
+!backend/storage/app/public/demo-videos/*
