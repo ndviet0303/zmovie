@@ -24,6 +24,7 @@ const router = useRouter()
 
 const USER_SESSION_KEY = 'zmovie_user_session'
 const menuOpen = ref(false)
+const userMenuOpen = ref(false)
 const authOpen = ref(false)
 const authMode = ref('login')
 const authLoading = ref(false)
@@ -175,6 +176,19 @@ const hasActiveFilters = computed(() => {
   )
 })
 
+const canOpenAdmin = computed(() => {
+  const permissions = userSession.value?.permissions ?? []
+  const role = userSession.value?.user?.role ?? ''
+
+  return (
+    role === 'admin' ||
+    role === 'super-admin' ||
+    permissions.some((permission) =>
+      ['movies.manage', 'movies.review', 'movies.publish', 'uploads.manage', 'providers.manage'].includes(permission),
+    )
+  )
+})
+
 const filteredMovies = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   const topicTerms = selectedTopic.value
@@ -273,6 +287,7 @@ function openAuth(mode = 'login') {
   authError.value = ''
   authOpen.value = true
   menuOpen.value = false
+  userMenuOpen.value = false
 }
 
 function selectDemoAccount(email) {
@@ -347,6 +362,7 @@ async function logoutUser() {
   } finally {
     window.localStorage.removeItem(USER_SESSION_KEY)
     userSession.value = null
+    userMenuOpen.value = false
   }
 }
 
@@ -503,6 +519,8 @@ function showHome() {
   selectedCountry.value = ''
   selectedYear.value = ''
   searchQuery.value = ''
+  menuOpen.value = false
+  userMenuOpen.value = false
   router.push({ name: 'home' })
 }
 
@@ -521,6 +539,7 @@ async function selectCatalogFilter() {
   }
 
   menuOpen.value = false
+  userMenuOpen.value = false
   currentView.value = 'home'
   activeMovie.value = null
   selectedEpisodeId.value = null
@@ -533,7 +552,15 @@ function clearFilters() {
   selectedCountry.value = ''
   selectedYear.value = ''
   searchQuery.value = ''
+  menuOpen.value = false
+  userMenuOpen.value = false
   router.push({ name: 'home' })
+}
+
+function openAdminPanel() {
+  userMenuOpen.value = false
+  menuOpen.value = false
+  router.push({ name: 'admin' })
 }
 
 function selectHero(index) {
@@ -791,7 +818,7 @@ onBeforeUnmount(() => {
 
       <nav
         :class="[
-          'absolute left-5 right-5 top-32 hidden rounded-xl border border-white/8 bg-[#10121c]/98 p-4 text-sm font-bold text-[#f5f7fb] shadow-[0_22px_60px_rgba(0,0,0,0.45)] md:top-[74px] xl:static xl:flex xl:items-center xl:justify-end xl:gap-[clamp(14px,1.6vw,28px)] xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none',
+          'absolute left-5 right-5 top-32 hidden rounded-xl border border-white/8 bg-[#10121c]/98 p-4 text-sm font-bold text-[#f5f7fb] shadow-[0_22px_60px_rgba(0,0,0,0.45)] md:top-[74px] xl:static xl:flex xl:items-center xl:justify-end xl:gap-[clamp(8px,1vw,16px)] xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none',
           menuOpen ? 'grid gap-1 md:grid-cols-2 xl:flex' : 'xl:flex',
         ]"
       >
@@ -799,7 +826,7 @@ onBeforeUnmount(() => {
           v-for="item in navItems"
           :key="item"
           :class="[
-            'inline-flex min-h-10 items-center gap-1 px-2.5 text-left whitespace-nowrap transition-colors hover:text-[#ffe182] xl:px-0',
+            'inline-flex min-h-10 items-center gap-1 px-2 text-left whitespace-nowrap transition-colors hover:text-[#ffe182] xl:px-0',
             (item === 'ZMovie' && selectedCategory === 'Tất cả') || item === selectedCategory
               ? 'text-[#ffe182]'
               : '',
@@ -815,12 +842,12 @@ onBeforeUnmount(() => {
         >
           {{ item }}
         </button>
-        <label class="relative min-w-0 xl:min-w-[128px]">
+        <label class="relative w-full min-w-0 md:w-[150px] xl:w-[136px]">
           <span class="sr-only">Thể Loại Phim</span>
           <select
             v-model="selectedGenre"
             :class="[
-              'h-10 w-full cursor-pointer appearance-none rounded-lg border border-white/10 bg-[#10121c] py-0 pr-8 pl-2.5 text-sm font-bold text-white outline-none transition hover:border-[#ffe182]/50 focus:border-[#ffe182] xl:border-transparent xl:bg-transparent xl:pl-0',
+              'h-10 w-full cursor-pointer appearance-none truncate rounded-lg border border-white/10 bg-[#10121c] py-0 pr-7 pl-2.5 text-sm font-bold text-white outline-none transition hover:border-[#ffe182]/50 focus:border-[#ffe182] xl:border-transparent xl:bg-transparent xl:pl-0 xl:focus:border-transparent',
               selectedGenre ? 'text-[#ffe182]' : 'text-[#f5f7fb]',
             ]"
             @change="selectCatalogFilter"
@@ -832,12 +859,12 @@ onBeforeUnmount(() => {
           </select>
           <ChevronDown class="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-current" :size="14" />
         </label>
-        <label class="relative min-w-0 xl:min-w-[104px]">
+        <label class="relative w-full min-w-0 md:w-[118px] xl:w-[108px]">
           <span class="sr-only">Quốc Gia</span>
           <select
             v-model="selectedCountry"
             :class="[
-              'h-10 w-full cursor-pointer appearance-none rounded-lg border border-white/10 bg-[#10121c] py-0 pr-8 pl-2.5 text-sm font-bold text-white outline-none transition hover:border-[#ffe182]/50 focus:border-[#ffe182] xl:border-transparent xl:bg-transparent xl:pl-0',
+              'h-10 w-full cursor-pointer appearance-none truncate rounded-lg border border-white/10 bg-[#10121c] py-0 pr-7 pl-2.5 text-sm font-bold text-white outline-none transition hover:border-[#ffe182]/50 focus:border-[#ffe182] xl:border-transparent xl:bg-transparent xl:pl-0 xl:focus:border-transparent',
               selectedCountry ? 'text-[#ffe182]' : 'text-[#f5f7fb]',
             ]"
             @change="selectCatalogFilter"
@@ -849,12 +876,12 @@ onBeforeUnmount(() => {
           </select>
           <ChevronDown class="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-current" :size="14" />
         </label>
-        <label class="relative min-w-0 xl:min-w-[76px]">
+        <label class="relative w-full min-w-0 md:w-[82px] xl:w-[74px]">
           <span class="sr-only">Năm</span>
           <select
             v-model="selectedYear"
             :class="[
-              'h-10 w-full cursor-pointer appearance-none rounded-lg border border-white/10 bg-[#10121c] py-0 pr-8 pl-2.5 text-sm font-bold text-white outline-none transition hover:border-[#ffe182]/50 focus:border-[#ffe182] xl:border-transparent xl:bg-transparent xl:pl-0',
+              'h-10 w-full cursor-pointer appearance-none truncate rounded-lg border border-white/10 bg-[#10121c] py-0 pr-7 pl-2.5 text-sm font-bold text-white outline-none transition hover:border-[#ffe182]/50 focus:border-[#ffe182] xl:border-transparent xl:bg-transparent xl:pl-0 xl:focus:border-transparent',
               selectedYear ? 'text-[#ffe182]' : 'text-[#f5f7fb]',
             ]"
             @change="selectCatalogFilter"
@@ -868,18 +895,59 @@ onBeforeUnmount(() => {
         </label>
         <div class="mt-2 flex flex-wrap items-center gap-2 border-t border-white/8 pt-3 xl:mt-0 xl:border-t-0 xl:pt-0">
           <template v-if="userSession">
-            <span class="inline-flex min-h-10 max-w-44 items-center gap-2 overflow-hidden rounded-lg bg-white/8 px-3 text-sm font-bold text-white">
-              <User :size="16" />
-              <span class="truncate">{{ userSession.user?.name }}</span>
-            </span>
-            <button
-              class="grid h-10 w-10 cursor-pointer place-items-center rounded-lg border border-white/10 bg-white/7 text-slate-200 transition hover:border-[#ffe182] hover:text-[#ffe182]"
-              type="button"
-              aria-label="Đăng xuất"
-              @click="logoutUser"
-            >
-              <LogOut :size="16" />
-            </button>
+            <div class="relative w-full md:w-auto" @keydown.esc="userMenuOpen = false">
+              <button
+                class="inline-flex min-h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/7 px-3 text-sm font-bold text-white transition hover:border-[#ffe182] hover:text-[#ffe182] md:w-auto md:max-w-48"
+                type="button"
+                :aria-expanded="userMenuOpen"
+                aria-haspopup="menu"
+                @click="userMenuOpen = !userMenuOpen"
+              >
+                <span class="inline-flex min-w-0 items-center gap-2">
+                  <User :size="16" />
+                  <span class="truncate">{{ userSession.user?.name }}</span>
+                </span>
+                <ChevronDown :size="14" />
+              </button>
+              <div
+                v-if="userMenuOpen"
+                class="absolute right-0 top-12 z-30 w-full min-w-64 overflow-hidden rounded-xl border border-white/10 bg-[#171922] p-2 text-sm text-slate-200 shadow-[0_18px_48px_rgba(0,0,0,0.45)] md:w-64"
+                role="menu"
+              >
+                <div class="border-b border-white/8 px-3 py-2">
+                  <p class="truncate font-black text-white">{{ userSession.user?.name }}</p>
+                  <p class="mt-0.5 truncate text-xs font-semibold text-slate-400">{{ userSession.user?.email }}</p>
+                </div>
+                <button
+                  class="mt-1 flex h-10 w-full cursor-pointer items-center gap-2 rounded-lg px-3 text-left font-bold transition hover:bg-white/8 hover:text-[#ffe182]"
+                  type="button"
+                  role="menuitem"
+                  @click="showHome"
+                >
+                  <User :size="15" />
+                  Trang xem phim
+                </button>
+                <button
+                  v-if="canOpenAdmin"
+                  class="flex h-10 w-full cursor-pointer items-center gap-2 rounded-lg px-3 text-left font-bold transition hover:bg-white/8 hover:text-[#ffe182]"
+                  type="button"
+                  role="menuitem"
+                  @click="openAdminPanel"
+                >
+                  <Menu :size="15" />
+                  Admin console
+                </button>
+                <button
+                  class="flex h-10 w-full cursor-pointer items-center gap-2 rounded-lg px-3 text-left font-bold text-red-100 transition hover:bg-red-500/12 hover:text-red-50"
+                  type="button"
+                  role="menuitem"
+                  @click="logoutUser"
+                >
+                  <LogOut :size="15" />
+                  Đăng xuất
+                </button>
+              </div>
+            </div>
           </template>
           <template v-else>
             <button
