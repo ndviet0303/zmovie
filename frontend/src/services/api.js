@@ -321,6 +321,7 @@ export const adminApi = {
   listLegalDocuments: (params) => request('/legal-documents', params),
   createLegalDocument: (payload) => send('/legal-documents', 'POST', payload),
   updateLegalDocument: (id, payload) => send(`/legal-documents/${id}`, 'PUT', payload),
+  previewLegalDocument: (id) => previewBlobUrl(`/legal-documents/${id}/preview`),
 
   listMovieUploads: (params) => request('/movie-uploads', params),
   getMovieUpload: (id) => request(`/movie-uploads/${id}`),

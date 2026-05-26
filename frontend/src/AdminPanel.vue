@@ -84,6 +84,7 @@ const movieForm = reactive(blankMovie())
 const movies = ref([])
 const movieUploads = ref([])
 const selectedUpload = ref(null)
+const selectedLicense = ref(null)
 const contentLicenses = ref([])
 const legalDocuments = ref([])
 const roles = ref([])
@@ -387,10 +388,10 @@ async function loadAdminData() {
     const [moviePayload, lookupPayload, providerPayload, uploadPayload, licensePayload, legalPayload, rolePayload, permissionPayload] = await Promise.all([
       adminApi.listMovies({ status: statusFilter.value || undefined }),
       fetchLookups(),
-      adminApi.listContentProviders({ per_page: 100 }).catch(() => ({ data: [] })),
-      adminApi.listMovieUploads({ per_page: 100 }).catch(() => ({ data: [] })),
-      adminApi.listContentLicenses({ per_page: 100 }).catch(() => ({ data: [] })),
-      adminApi.listLegalDocuments({ per_page: 100 }).catch(() => ({ data: [] })),
+      canManageProviders.value ? adminApi.listContentProviders({ per_page: 100 }).catch(() => ({ data: [] })) : { data: [] },
+      canViewUploads.value ? adminApi.listMovieUploads({ per_page: 100 }).catch(() => ({ data: [] })) : { data: [] },
+      canViewLicenses.value ? adminApi.listContentLicenses({ per_page: 100 }).catch(() => ({ data: [] })) : { data: [] },
+      canViewLegalDocuments.value ? adminApi.listLegalDocuments({ per_page: 100 }).catch(() => ({ data: [] })) : { data: [] },
       canManageRoles.value ? adminApi.listRoles().catch(() => []) : [],
       canManageRoles.value ? adminApi.listPermissions().catch(() => []) : [],
     ])
@@ -520,6 +521,18 @@ async function previewUploadFile(file) {
   }
 }
 
+async function previewLegalDocument(document) {
+  errorMessage.value = ''
+
+  try {
+    const url = await adminApi.previewLegalDocument(document.id)
+    window.open(url, '_blank', 'noopener')
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch (error) {
+    errorMessage.value = error.message
+  }
+}
+
 async function approveLicense(license) {
   try {
     await adminApi.approveContentLicense(license.id)
@@ -528,6 +541,10 @@ async function approveLicense(license) {
   } catch (error) {
     errorMessage.value = error.message
   }
+}
+
+async function openLicenseDetail(license) {
+  selectedLicense.value = license
 }
 
 async function verifyLegalDocument(document) {
@@ -725,7 +742,7 @@ onMounted(async () => {
             <Plus :size="16" />
             Thêm phim
           </button>
-          <button v-else class="inline-flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-white/6 px-3 text-sm font-bold text-white hover:border-[#ffe182]" type="button" @click="openMovieList">
+          <button v-if="isCreateMovieView" class="inline-flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-white/6 px-3 text-sm font-bold text-white hover:border-[#ffe182]" type="button" @click="openMovieList">
             <ArrowLeft :size="16" />
             Danh sách phim
           </button>
@@ -755,7 +772,7 @@ onMounted(async () => {
         </div>
       </div>
 
-      <p v-if="!canManageMovies" class="mt-5 rounded-xl bg-amber-400/12 p-4 text-sm font-bold text-amber-100">
+      <p v-if="(isMovieListView || isCreateMovieView) && !canManageMovies" class="mt-5 rounded-xl bg-amber-400/12 p-4 text-sm font-bold text-amber-100">
         Tài khoản hiện tại thiếu quyền <code>movies.manage</code>.
       </p>
       <p v-if="errorMessage" class="mt-5 rounded-xl bg-red-500/12 p-4 text-sm font-bold text-red-100">{{ errorMessage }}</p>
@@ -1107,15 +1124,65 @@ onMounted(async () => {
                     <span class="rounded-full bg-white/8 px-2 py-1 text-xs font-bold text-slate-200">{{ licenseStatusLabel(license.status) }}</span>
                   </td>
                   <td class="border-b border-white/6 py-3 text-right">
-                    <button v-if="canApproveLicenses" class="inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-400/12 px-3 text-xs font-black text-emerald-200 hover:bg-emerald-400/20" type="button" :disabled="license.status === 'approved'" @click="approveLicense(license)">
-                      <ShieldCheck :size="15" />
-                      Duyệt
-                    </button>
+                    <div class="inline-flex justify-end gap-1">
+                      <button class="inline-flex h-9 items-center gap-2 rounded-lg bg-white/8 px-3 text-xs font-black text-slate-200 hover:bg-white/14" type="button" @click="openLicenseDetail(license)">
+                        <Eye :size="15" />
+                        Xem
+                      </button>
+                      <button v-if="canApproveLicenses" class="inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-400/12 px-3 text-xs font-black text-emerald-200 hover:bg-emerald-400/20" type="button" :disabled="license.status === 'approved'" @click="approveLicense(license)">
+                        <ShieldCheck :size="15" />
+                        Duyệt
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
             </table>
             <div v-if="!contentLicenses.length" class="grid min-h-40 place-items-center text-sm font-bold text-slate-500">Chưa có bản quyền.</div>
+          </div>
+          <div v-if="selectedLicense" class="mt-6 rounded-xl border border-white/8 bg-white/5 p-4">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p class="text-xs font-black uppercase tracking-[0.16em] text-[#ffe182]">Chi tiết bản quyền</p>
+                <h3 class="mt-1 text-xl font-black text-white">{{ selectedLicense.contract_number || selectedLicense.licensor_name }}</h3>
+                <p class="mt-1 text-sm text-slate-400">
+                  {{ selectedLicense.content_provider?.name ?? '-' }} · {{ selectedLicense.movie?.title ?? 'Chưa gắn phim' }}
+                </p>
+              </div>
+              <button class="rounded-lg bg-white/8 p-2 text-slate-300 hover:text-white" type="button" @click="selectedLicense = null">
+                <X :size="18" />
+              </button>
+            </div>
+            <div class="mt-4 grid gap-3 md:grid-cols-3">
+              <div class="rounded-lg bg-[#11131d] p-3">
+                <p class="text-xs font-bold text-slate-500">Trạng thái</p>
+                <p class="mt-1 font-bold text-white">{{ licenseStatusLabel(selectedLicense.status) }}</p>
+              </div>
+              <div class="rounded-lg bg-[#11131d] p-3">
+                <p class="text-xs font-bold text-slate-500">Loại license</p>
+                <p class="mt-1 font-bold text-white">{{ selectedLicense.license_type }}</p>
+              </div>
+              <div class="rounded-lg bg-[#11131d] p-3">
+                <p class="text-xs font-bold text-slate-500">Hiệu lực</p>
+                <p class="mt-1 font-bold text-white">{{ selectedLicense.valid_from }} → {{ selectedLicense.valid_until ?? 'Không hạn' }}</p>
+              </div>
+              <div class="rounded-lg bg-[#11131d] p-3">
+                <p class="text-xs font-bold text-slate-500">Streaming</p>
+                <p class="mt-1 font-bold text-white">{{ selectedLicense.allows_streaming ? 'Cho phép' : 'Không' }}</p>
+              </div>
+              <div class="rounded-lg bg-[#11131d] p-3">
+                <p class="text-xs font-bold text-slate-500">Quảng cáo</p>
+                <p class="mt-1 font-bold text-white">{{ selectedLicense.allows_ads ? 'Cho phép' : 'Không' }}</p>
+              </div>
+              <div class="rounded-lg bg-[#11131d] p-3">
+                <p class="text-xs font-bold text-slate-500">Gói thuê bao</p>
+                <p class="mt-1 font-bold text-white">{{ selectedLicense.allows_subscription ? 'Cho phép' : 'Không' }}</p>
+              </div>
+            </div>
+            <div v-if="selectedLicense.review_note" class="mt-4 rounded-lg bg-[#11131d] p-3">
+              <p class="text-xs font-bold text-slate-500">Ghi chú duyệt</p>
+              <p class="mt-1 text-sm text-slate-200">{{ selectedLicense.review_note }}</p>
+            </div>
           </div>
         </section>
 
@@ -1177,10 +1244,16 @@ onMounted(async () => {
                     <span class="rounded-full bg-white/8 px-2 py-1 text-xs font-bold text-slate-200">{{ legalStatusLabel(document.status) }}</span>
                   </td>
                   <td class="border-b border-white/6 py-3 text-right">
-                    <button v-if="canReviewLegalDocuments" class="inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-400/12 px-3 text-xs font-black text-emerald-200 hover:bg-emerald-400/20" type="button" :disabled="document.status === 'verified'" @click="verifyLegalDocument(document)">
-                      <FileCheck2 :size="15" />
-                      Xác minh
-                    </button>
+                    <div class="inline-flex justify-end gap-1">
+                      <button class="inline-flex h-9 items-center gap-2 rounded-lg bg-white/8 px-3 text-xs font-black text-slate-200 hover:bg-white/14" type="button" @click="previewLegalDocument(document)">
+                        <Eye :size="15" />
+                        Xem
+                      </button>
+                      <button v-if="canReviewLegalDocuments" class="inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-400/12 px-3 text-xs font-black text-emerald-200 hover:bg-emerald-400/20" type="button" :disabled="document.status === 'verified'" @click="verifyLegalDocument(document)">
+                        <FileCheck2 :size="15" />
+                        Xác minh
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>

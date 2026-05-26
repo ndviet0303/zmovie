@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ContentProviderController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DatabaseDebugController;
 use App\Http\Controllers\Api\LegalDocumentController;
+use App\Http\Controllers\Api\LegalDocumentPreviewController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\MovieController;
 use App\Http\Controllers\Api\MovieUploadController;
@@ -75,6 +76,9 @@ Route::apiResource('legal-documents', LegalDocumentController::class)
     ->middleware(['auth:sanctum', 'permission:legal.submit']);
 
 Route::put('/legal-documents/{legalDocument}', [LegalDocumentController::class, 'update'])
+    ->middleware(['auth:sanctum', 'permission:legal.submit|legal.review']);
+
+Route::get('/legal-documents/{legalDocument}/preview', [LegalDocumentPreviewController::class, 'show'])
     ->middleware(['auth:sanctum', 'permission:legal.submit|legal.review']);
 
 Route::apiResource('movie-uploads', MovieUploadController::class)
