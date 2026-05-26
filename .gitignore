@@ -32,6 +32,10 @@ docker/env/*.env
 !docker/env/*.env.example
 *.local
 
+# GitLab production deploy config is local/GitLab-only; do not mirror it to GitHub.
+.gitlab/
+.gitlab-ci.yml
+
 # Node
 **/node_modules/
 **/dist/
@@ -95,4 +99,3 @@ backend/storage/app/public/*
 # Allow committing demo videos used for offline/demo purposes
 !backend/storage/app/public/demo-videos/
 !backend/storage/app/public/demo-videos/*
-
