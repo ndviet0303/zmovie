@@ -11,7 +11,7 @@
 
 | STT | Họ và tên | MSSV | Vai trò |
 | --- | --- | --- | --- |
-| 1 | Nguyễn Đức Việt | Cập nhật | Backend, database, API, triển khai hệ thống |
+| 1 | Nghiêm đức Việt | Cập nhật | Backend, database, API, triển khai hệ thống |
 | 2 | Cập nhật | Cập nhật | Frontend, giao diện người dùng |
 | 3 | Cập nhật | Cập nhật | Phân tích nghiệp vụ, kiểm thử, tài liệu |
 
