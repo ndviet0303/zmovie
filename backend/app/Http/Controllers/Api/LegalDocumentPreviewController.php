@@ -18,8 +18,9 @@ class LegalDocumentPreviewController extends Controller
         $path = ltrim($legalDocument->path, '/');
 
         if (! Storage::disk($disk)->exists($path)) {
-            return response($this->missingDocumentPreview($legalDocument), 200, [
-                'Content-Type' => 'text/html; charset=UTF-8',
+            return response($this->fallbackPdf($legalDocument), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="'.($legalDocument->original_filename ?: 'demo-legal-document.pdf').'"',
                 'Cache-Control' => 'private, max-age=60',
             ]);
         }
@@ -34,38 +35,62 @@ class LegalDocumentPreviewController extends Controller
         ]);
     }
 
-    private function missingDocumentPreview(LegalDocument $document): string
+    private function fallbackPdf(LegalDocument $document): string
     {
-        $title = e($document->title);
-        $path = e($document->path);
-        $type = e($document->document_type);
-        $status = e($document->status);
+        return $this->demoPdf([
+            'ZMovie legal document fallback',
+            "Title: {$document->title}",
+            "Type: {$document->document_type}",
+            "Status: {$document->status}",
+            "Missing storage path: {$document->path}",
+        ]);
+    }
 
-        return <<<HTML
-<!doctype html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <title>{$title}</title>
-  <style>
-    body { margin: 0; background: #0d0f17; color: #f8fafc; font-family: Inter, Arial, sans-serif; }
-    main { max-width: 760px; margin: 48px auto; padding: 28px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: #171922; }
-    p { color: #cbd5e1; line-height: 1.7; }
-    code { display: block; padding: 12px; border-radius: 10px; background: rgba(0,0,0,.32); color: #ffe182; overflow-wrap: anywhere; }
-  </style>
-</head>
-<body>
-  <main>
-    <p>Preview hồ sơ pháp lý</p>
-    <h1>{$title}</h1>
-    <p>File vật lý chưa có trong storage của môi trường này, nên ZMovie hiển thị metadata để admin vẫn kiểm tra được record.</p>
-    <p><strong>Loại:</strong> {$type}</p>
-    <p><strong>Trạng thái:</strong> {$status}</p>
-    <p><strong>Đường dẫn:</strong></p>
-    <code>{$path}</code>
-  </main>
-</body>
-</html>
-HTML;
+    private function pdfText(string $value): string
+    {
+        return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], str()->ascii($value));
+    }
+
+    private function demoPdf(array $lines): string
+    {
+        $text = "BT /F1 16 Tf 72 720 Td ";
+
+        foreach ($lines as $index => $line) {
+            if ($index > 0) {
+                $text .= '0 -28 Td ';
+            }
+
+            $text .= "({$this->pdfText($line)}) Tj ";
+        }
+
+        $text .= "ET\n";
+
+        $objects = [
+            '<< /Type /Catalog /Pages 2 0 R >>',
+            '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+            '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /Contents 4 0 R >>',
+            "<< /Length ".strlen($text)." >>\nstream\n{$text}endstream",
+        ];
+
+        $pdf = "%PDF-1.4\n";
+        $offsets = [0];
+
+        foreach ($objects as $number => $object) {
+            $offsets[] = strlen($pdf);
+            $pdf .= ($number + 1)." 0 obj\n{$object}\nendobj\n";
+        }
+
+        $xrefOffset = strlen($pdf);
+        $pdf .= "xref\n0 ".(count($objects) + 1)."\n";
+        $pdf .= "0000000000 65535 f \n";
+
+        foreach (array_slice($offsets, 1) as $offset) {
+            $pdf .= str_pad((string) $offset, 10, '0', STR_PAD_LEFT)." 00000 n \n";
+        }
+
+        $pdf .= "trailer << /Size ".(count($objects) + 1)." /Root 1 0 R >>\n";
+        $pdf .= "startxref\n{$xrefOffset}\n%%EOF\n";
+
+        return $pdf;
     }
 }
