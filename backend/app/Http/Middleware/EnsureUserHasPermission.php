@@ -12,7 +12,9 @@ class EnsureUserHasPermission
     {
         $user = $request->user();
 
-        if (! $user || ! $user->hasPermission($permission)) {
+        $permissions = explode('|', $permission);
+
+        if (! $user || ! collect($permissions)->contains(fn (string $permission) => $user->hasPermission($permission))) {
             abort(403, 'Missing permission: '.$permission);
         }
 

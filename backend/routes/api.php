@@ -55,17 +55,34 @@ Route::post('/content-providers/{contentProvider}/members', [ContentProviderCont
     ->middleware(['auth:sanctum', 'permission:providers.members.manage']);
 
 Route::apiResource('content-licenses', ContentLicenseController::class)
+    ->only(['index', 'show'])
+    ->middleware(['auth:sanctum', 'permission:legal.submit|legal.review|licenses.approve']);
+
+Route::apiResource('content-licenses', ContentLicenseController::class)
+    ->only(['store', 'update', 'destroy'])
     ->middleware(['auth:sanctum', 'permission:legal.submit']);
 
 Route::post('/content-licenses/{contentLicense}/approve', [ContentLicenseController::class, 'approve'])
     ->middleware(['auth:sanctum', 'permission:licenses.approve']);
 
 Route::apiResource('legal-documents', LegalDocumentController::class)
-    ->only(['index', 'store', 'show', 'update'])
+    ->only(['index', 'show'])
+    ->middleware(['auth:sanctum', 'permission:legal.submit|legal.review']);
+
+Route::apiResource('legal-documents', LegalDocumentController::class)
+    ->only(['store'])
     ->middleware(['auth:sanctum', 'permission:legal.submit']);
 
+Route::put('/legal-documents/{legalDocument}', [LegalDocumentController::class, 'update'])
+    ->middleware(['auth:sanctum', 'permission:legal.submit|legal.review']);
+
 Route::apiResource('movie-uploads', MovieUploadController::class)
-    ->middleware(['auth:sanctum', 'permission:uploads.create']);
+    ->only(['index', 'show'])
+    ->middleware(['auth:sanctum', 'permission:uploads.create|uploads.manage|uploads.view|movies.review']);
+
+Route::apiResource('movie-uploads', MovieUploadController::class)
+    ->only(['store', 'update', 'destroy'])
+    ->middleware(['auth:sanctum', 'permission:uploads.create|uploads.manage']);
 
 Route::post('/movie-uploads/{movieUpload}/submit', [MovieUploadController::class, 'submit'])
     ->middleware(['auth:sanctum', 'permission:uploads.create']);
