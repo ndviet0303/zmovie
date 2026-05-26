@@ -272,6 +272,7 @@ export async function fetchLookups() {
 export const userApi = {
   login: (payload) => sendWithToken('/auth/login', 'POST', payload),
   register: (payload) => sendWithToken('/auth/register', 'POST', payload),
+  demoAccounts: () => request('/auth/demo-accounts'),
   me: (token) => requestWithToken('/auth/me', token),
   logout: (token) => sendWithToken('/auth/logout', 'POST', null, token),
 }

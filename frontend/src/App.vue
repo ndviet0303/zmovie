@@ -29,6 +29,8 @@ const authMode = ref('login')
 const authLoading = ref(false)
 const authError = ref('')
 const userSession = ref(readUserSession())
+const demoAccounts = ref([])
+const selectedDemoEmail = ref('')
 const searchQuery = ref('')
 const activeHeroIndex = ref(0)
 const currentView = ref('home')
@@ -139,6 +141,9 @@ const activeVideoUrl = computed(() => {
 })
 
 const isAdminRoute = computed(() => route.name === 'admin' || route.name === 'admin-login')
+const selectedDemoAccount = computed(() => {
+  return demoAccounts.value.find((account) => account.email === selectedDemoEmail.value) ?? null
+})
 
 const filteredMovies = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -229,6 +234,47 @@ function openAuth(mode = 'login') {
   authError.value = ''
   authOpen.value = true
   menuOpen.value = false
+}
+
+function selectDemoAccount(email) {
+  const account = demoAccounts.value.find((item) => item.email === email)
+  if (!account) return
+
+  loginForm.email = account.email
+  loginForm.password = account.password
+  selectedDemoEmail.value = account.email
+}
+
+async function loadDemoAccounts() {
+  try {
+    demoAccounts.value = await userApi.demoAccounts()
+    const defaultAccount = demoAccounts.value.find((account) => account.email === 'viewer@zmovie.local')
+      ?? demoAccounts.value[0]
+
+    if (defaultAccount && !loginForm.email) {
+      selectDemoAccount(defaultAccount.email)
+    } else if (defaultAccount) {
+      selectedDemoEmail.value = defaultAccount.email
+    }
+  } catch {
+    demoAccounts.value = [
+      {
+        label: 'Provider Viewer',
+        email: 'viewer@zmovie.local',
+        password: 'password',
+        role: 'provider-viewer',
+        description: 'Tài khoản mẫu để xem nhanh trải nghiệm người dùng.',
+      },
+      {
+        label: 'Super Admin',
+        email: 'admin@zmovie.local',
+        password: 'password',
+        role: 'super-admin',
+        description: 'Toàn quyền hệ thống.',
+      },
+    ]
+    selectDemoAccount(demoAccounts.value[0].email)
+  }
 }
 
 async function submitAuth() {
@@ -619,6 +665,7 @@ watch(featuredMovies, () => {
 })
 
 onMounted(async () => {
+  await loadDemoAccounts()
   await loadInitialData()
   startHeroAutoplay()
 })
@@ -783,6 +830,28 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="mt-5 grid gap-4">
+          <label v-if="authMode === 'login' && demoAccounts.length" class="block text-sm font-bold text-slate-200">
+            Tài khoản mẫu
+            <select
+              v-model="selectedDemoEmail"
+              class="mt-2 h-11 w-full cursor-pointer rounded-lg border border-white/10 bg-[#222631] px-3 text-white outline-none transition focus:border-[#ffe182]"
+              @change="selectDemoAccount(selectedDemoEmail)"
+            >
+              <option v-for="account in demoAccounts" :key="account.email" :value="account.email">
+                {{ account.label }} - {{ account.email }}
+              </option>
+            </select>
+          </label>
+
+          <div
+            v-if="authMode === 'login' && selectedDemoAccount"
+            class="rounded-lg border border-white/8 bg-white/6 p-3 text-sm leading-6 text-slate-300"
+          >
+            <p class="font-black text-white">{{ selectedDemoAccount.role }}</p>
+            <p>{{ selectedDemoAccount.description }}</p>
+            <p class="mt-1 text-xs font-bold text-[#ffe182]">Password: {{ selectedDemoAccount.password }}</p>
+          </div>
+
           <label v-if="authMode === 'register'" class="block text-sm font-bold text-slate-200">
             Tên hiển thị
             <input
