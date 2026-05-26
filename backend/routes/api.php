@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\MovieController;
 use App\Http\Controllers\Api\MovieUploadController;
 use App\Http\Controllers\Api\RbacController;
 use App\Http\Controllers\Api\SearchController;
+use App\Http\Controllers\Api\UploadFilePreviewController;
 use App\Http\Controllers\Api\VideoStreamController;
 use Illuminate\Support\Facades\Route;
 
@@ -92,6 +93,9 @@ Route::post('/movie-uploads/{movieUpload}/approve', [MovieUploadController::clas
 
 Route::post('/movie-uploads/{movieUpload}/transcode', [MovieUploadController::class, 'transcode'])
     ->middleware(['auth:sanctum', 'permission:movies.review']);
+
+Route::get('/upload-files/{uploadFile}/preview', [UploadFilePreviewController::class, 'show'])
+    ->middleware(['auth:sanctum', 'permission:uploads.create|uploads.manage|uploads.view|movies.review']);
 
 Route::get('/roles', [RbacController::class, 'roles'])->middleware(['auth:sanctum', 'permission:roles.manage']);
 Route::get('/permissions', [RbacController::class, 'permissions'])->middleware(['auth:sanctum', 'permission:roles.manage']);

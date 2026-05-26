@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Building2,
   CheckCircle2,
+  Eye,
   FileCheck2,
   FileText,
   Film,
@@ -502,6 +503,18 @@ async function deleteUpload(upload) {
     await adminApi.deleteMovieUpload(upload.id)
     successMessage.value = 'Đã xóa upload.'
     await loadAdminData()
+  } catch (error) {
+    errorMessage.value = error.message
+  }
+}
+
+async function previewUploadFile(file) {
+  errorMessage.value = ''
+
+  try {
+    const url = await adminApi.previewUploadFile(file.id)
+    window.open(url, '_blank', 'noopener')
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
   } catch (error) {
     errorMessage.value = error.message
   }
@@ -1028,6 +1041,7 @@ onMounted(async () => {
                     <th class="border-b border-white/8 py-3 pr-4">Dung lượng</th>
                     <th class="border-b border-white/8 py-3 pr-4">Trạng thái</th>
                     <th class="border-b border-white/8 py-3 pr-4">Đường dẫn</th>
+                    <th class="border-b border-white/8 py-3 text-right">Xem</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1043,6 +1057,12 @@ onMounted(async () => {
                     </td>
                     <td class="max-w-sm border-b border-white/6 py-3 pr-4">
                       <code class="block truncate rounded bg-black/30 px-2 py-1 text-xs text-slate-300">{{ file.path }}</code>
+                    </td>
+                    <td class="border-b border-white/6 py-3 text-right">
+                      <button class="inline-flex h-9 items-center gap-2 rounded-lg bg-[#ffe182] px-3 text-xs font-black text-[#11131d] hover:bg-[#ffd058]" type="button" @click="previewUploadFile(file)">
+                        <Eye :size="15" />
+                        Xem
+                      </button>
                     </td>
                   </tr>
                 </tbody>

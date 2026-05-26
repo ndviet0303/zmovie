@@ -79,6 +79,23 @@ async function requestWithToken(path, token = '', params = {}) {
   return response.json()
 }
 
+async function previewBlobUrl(path) {
+  const headers = { Accept: '*/*' }
+  const token = currentAccessToken()
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, { headers })
+
+  if (!response.ok) {
+    throw new Error(await errorMessage(response))
+  }
+
+  return URL.createObjectURL(await response.blob())
+}
+
 function currentAccessToken() {
   try {
     const session = JSON.parse(window.localStorage.getItem(ADMIN_SESSION_KEY) ?? 'null')
@@ -313,6 +330,7 @@ export const adminApi = {
   submitMovieUpload: (id) => send(`/movie-uploads/${id}/submit`, 'POST'),
   approveMovieUpload: (id) => send(`/movie-uploads/${id}/approve`, 'POST'),
   transcodeMovieUpload: (id) => send(`/movie-uploads/${id}/transcode`, 'POST'),
+  previewUploadFile: (id) => previewBlobUrl(`/upload-files/${id}/preview`),
 
   listRoles: () => request('/roles'),
   listPermissions: () => request('/permissions'),
