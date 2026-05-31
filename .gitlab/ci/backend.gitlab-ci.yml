@@ -4,7 +4,7 @@ variables:
   ZMOVIE_IMAGE_NAME: "$BASE_IMAGE_NAME/api"
   SERVER_IMAGE_NAME: "$BASE_IMAGE_NAME/server"
   DOCKER_TAG: "latest"
-  DOCKER_BUILDKIT: "1"  # Enable BuildKit for better caching
+  DOCKER_BUILDKIT: "0"
   BACKEND_PATH: "backend/"
 
 # Use GitLab's CI/CD cache more effectively
@@ -34,11 +34,9 @@ zmovie_build:
     - echo "Using CI Docker registry credentials from DOCKER_CONFIG..."
     - echo Building Docker image
 
-    # Improved Docker build with multiple cache options
     - |
       docker build \
         --cache-from=$ZMOVIE_IMAGE_NAME:$DOCKER_TAG \
-        --build-arg BUILDKIT_INLINE_CACHE=1 \
         -t $ZMOVIE_IMAGE_NAME:$DOCKER_TAG \
         -t $ZMOVIE_IMAGE_NAME:$CI_COMMIT_SHORT_SHA \
         -f docker/backend.Dockerfile \
