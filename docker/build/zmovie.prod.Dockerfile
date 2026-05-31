@@ -1,12 +1,11 @@
 FROM registry.gitlab.com/bantool/devops/frankenphp:latest AS runner
 
-RUN apt-get update && apt-get install -y \
+RUN apk add --no-cache \
     ffmpeg \
     git \
-    libpq-dev \
+    postgresql-dev \
     unzip \
-    && docker-php-ext-install pdo pdo_pgsql \
-    && rm -rf /var/lib/apt/lists/*
+    && docker-php-ext-install pdo pdo_pgsql
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
