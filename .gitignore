@@ -29,6 +29,7 @@ lerna-debug.log*
 .env.*
 !.env.example
 docker/env/*.env
+!docker/env/zmovie-api.prod.env
 !docker/env/*.env.example
 *.local
 

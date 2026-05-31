@@ -21,7 +21,7 @@ RUN composer install \
     --optimize-autoloader
 
 COPY backend/ ./
-COPY docker/env/zmovie-api.prod.env .env
+# COPY docker/env/zmovie-api.prod.env .env
 
 RUN composer dump-autoload --optimize \
     && php artisan package:discover --ansi \
