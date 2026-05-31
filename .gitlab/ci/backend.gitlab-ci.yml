@@ -1,11 +1,9 @@
 variables:
   DOCKER_REGISTRY: "$CI_REGISTRY"
   BASE_IMAGE_NAME: "$CI_REGISTRY/$CI_PROJECT_PATH"
-  ZMOVIE_IMAGE_NAME: "$BASE_IMAGE_NAME/api"
   SERVER_IMAGE_NAME: "$BASE_IMAGE_NAME/server"
   DOCKER_TAG: "latest"
   DOCKER_BUILDKIT: "0"
-  BACKEND_PATH: "backend/"
 
 # Use GitLab's CI/CD cache more effectively
 cache:
@@ -28,46 +26,22 @@ zmovie_build:
     - export DOCKER_CONFIG="$CI_PROJECT_DIR/.docker/config"
     - mkdir -p .docker/cache "$DOCKER_CONFIG"
     - |
-      AUTH="$(printf '%s:%s' "$CI_REGISTRY_USER" "$CI_REGISTRY_PASSWORD" | base64 | tr -d '\n')"
+      DOCKER_AUTH_USER="${DEPLOY_USERNAME:-$CI_REGISTRY_USER}"
+      DOCKER_AUTH_PASSWORD="${DEPLOY_PASSWORD:-$CI_REGISTRY_PASSWORD}"
+      AUTH="$(printf '%s:%s' "$DOCKER_AUTH_USER" "$DOCKER_AUTH_PASSWORD" | base64 | tr -d '\n')"
       printf '{"auths":{"%s":{"auth":"%s"}}}\n' "$DOCKER_REGISTRY" "$AUTH" > "$DOCKER_CONFIG/config.json"
   script:
-    - echo "Using CI Docker registry credentials from DOCKER_CONFIG..."
+    - echo "Using Docker registry credentials from DOCKER_CONFIG..."
     - echo Building Docker image
 
     - |
       docker build \
-        --cache-from=$ZMOVIE_IMAGE_NAME:$DOCKER_TAG \
-        -t $ZMOVIE_IMAGE_NAME:$DOCKER_TAG \
-        -t $ZMOVIE_IMAGE_NAME:$CI_COMMIT_SHORT_SHA \
-        -f docker/backend.Dockerfile \
-        $BACKEND_PATH
-
-    - echo "Pushing Docker image to registry..."
-    - docker push $ZMOVIE_IMAGE_NAME:$DOCKER_TAG
-    - docker push $ZMOVIE_IMAGE_NAME:$CI_COMMIT_SHORT_SHA
-
-server_build:
-  stage: server_build
-  rules:
-    - <<: *if-mr-to-dev-main
-  needs: [zmovie_build]
-  before_script:
-    - export DOCKER_CONFIG="$CI_PROJECT_DIR/.docker/config"
-    - mkdir -p "$DOCKER_CONFIG"
-    - |
-      AUTH="$(printf '%s:%s' "$DEPLOY_USERNAME" "$DEPLOY_PASSWORD" | base64 | tr -d '\n')"
-      printf '{"auths":{"%s":{"auth":"%s"}}}\n' "$DOCKER_REGISTRY" "$AUTH" > "$DOCKER_CONFIG/config.json"
-  script:
-    - echo "Using deploy Docker registry credentials from DOCKER_CONFIG..."
-    - |
-      docker build \
-        --pull \
-        --build-arg API_IMAGE=$ZMOVIE_IMAGE_NAME \
-        --build-arg API_TAG=$CI_COMMIT_SHORT_SHA \
+        --cache-from=$SERVER_IMAGE_NAME:$DOCKER_TAG \
         -t $SERVER_IMAGE_NAME:$DOCKER_TAG \
         -t $SERVER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA \
         -f docker/build/zmovie.prod.Dockerfile \
-        docker
+        .
+
     - echo "Pushing Docker image to registry..."
     - docker push $SERVER_IMAGE_NAME:$DOCKER_TAG
     - docker push $SERVER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA
@@ -76,7 +50,7 @@ deploy_to_portainer:
   stage: deploy
   rules:
     - <<: *if-mr-to-dev-main
-  needs: [server_build]
+  needs: [zmovie_build]
   script:
     - |
       set -euo pipefail

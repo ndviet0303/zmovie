@@ -5,7 +5,6 @@ default:
 stages:
   - fake
   - app_build
-  - server_build
   - deploy
 
 .if-mr-to-dev-main: &if-mr-to-dev-main
