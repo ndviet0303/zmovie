@@ -11,17 +11,17 @@ RUN composer install \
     --prefer-dist \
     --optimize-autoloader
 
+COPY backend/ ./
+RUN composer dump-autoload --optimize
+
 FROM registry.gitlab.com/bantool/devops/frankenphp:latest AS runner
 
 WORKDIR /app/zmovie-api
 
-COPY backend/ ./
-COPY --from=vendor /app/vendor ./vendor
-# COPY docker/env/zmovie-api.prod.env .env
+COPY --from=vendor /app ./
+COPY docker/env/zmovie-api.prod.env .env
 
-RUN composer dump-autoload --optimize \
-    && php artisan package:discover --ansi \
-    && chown -R www-data:www-data storage bootstrap/cache
+RUN chown -R www-data:www-data storage bootstrap/cache
 
 COPY docker/configs/zmovie.prod.Caddyfile /etc/frankenphp/Caddyfile
 COPY docker/configs/php.ini-production "$PHP_INI_DIR/php.ini"
