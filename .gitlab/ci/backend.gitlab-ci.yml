@@ -5,6 +5,7 @@ variables:
   SERVER_IMAGE_NAME: "$BASE_IMAGE_NAME/server"
   DOCKER_TAG: "latest"
   DOCKER_BUILDKIT: "1"  # Enable BuildKit for better caching
+  DOCKER_CONFIG: "$CI_PROJECT_DIR/.docker/config"
   BACKEND_PATH: "backend/"
 
 # Use GitLab's CI/CD cache more effectively
@@ -25,7 +26,8 @@ zmovie_build:
   allow_failure: false
   # Add before_script to set up cache directory
   before_script:
-    - mkdir -p .docker/cache
+    - mkdir -p .docker/cache "$DOCKER_CONFIG"
+    - printf '{}\n' > "$DOCKER_CONFIG/config.json"
   script:
     - echo "Logging into Docker Registry..."
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $DOCKER_REGISTRY
@@ -50,6 +52,9 @@ server_build:
   rules:
     - <<: *if-mr-to-dev-main
   needs: [zmovie_build]
+  before_script:
+    - mkdir -p "$DOCKER_CONFIG"
+    - printf '{}\n' > "$DOCKER_CONFIG/config.json"
   script:
     - echo "Logging into GitLab Registry..."
     - echo "$DEPLOY_PASSWORD" | docker login -u "$DEPLOY_USERNAME" --password-stdin $DOCKER_REGISTRY
