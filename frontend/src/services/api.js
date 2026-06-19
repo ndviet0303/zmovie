@@ -286,12 +286,20 @@ export async function fetchLookups() {
   return request('/lookups')
 }
 
+export async function fetchPlans() {
+  return request('/plans')
+}
+
 export const userApi = {
   login: (payload) => sendWithToken('/auth/login', 'POST', payload),
   register: (payload) => sendWithToken('/auth/register', 'POST', payload),
   demoAccounts: () => request('/auth/demo-accounts'),
   me: (token) => requestWithToken('/auth/me', token),
   logout: (token) => sendWithToken('/auth/logout', 'POST', null, token),
+  subscription: (token) => requestWithToken('/me/subscription', token),
+  subscribe: (planId, token) => sendWithToken('/subscriptions', 'POST', { plan_id: planId }, token),
+  confirmPayment: (reference, token) => sendWithToken(`/payments/${reference}/confirm`, 'POST', null, token),
+  cancelSubscription: (token) => sendWithToken('/subscriptions', 'DELETE', null, token),
 }
 
 export const adminApi = {

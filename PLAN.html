@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZMovie — Plan thêm chức năng</title>
+<style>
+:root{--bg:#0f1117;--card:#181b24;--bd:#262b38;--fg:#e6e8ee;--mut:#9aa3b2;--acc:#ff4d6d;--acc2:#4d9aff;--ok:#3ddc84;}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.6 system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--fg)}
+header{padding:32px 24px;background:linear-gradient(135deg,#1a1d29,#0f1117);border-bottom:1px solid var(--bd)}
+h1{margin:0;font-size:26px}
+header p{margin:6px 0 0;color:var(--mut)}
+.wrap{max-width:980px;margin:0 auto;padding:24px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:20px 22px;margin:18px 0}
+.card h2{margin:0 0 4px;font-size:19px;display:flex;align-items:center;gap:10px}
+.num{display:inline-flex;width:28px;height:28px;border-radius:8px;background:var(--acc);color:#fff;align-items:center;justify-content:center;font-size:14px;font-weight:700}
+.tag{font-size:12px;padding:2px 9px;border-radius:20px;border:1px solid var(--bd);color:var(--mut);margin-left:auto}
+.sub{color:var(--mut);margin:0 0 14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:720px){.grid{grid-template-columns:1fr}}
+.box{background:#11141c;border:1px solid var(--bd);border-radius:9px;padding:12px 14px}
+.box h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+.be h3{color:var(--acc2)} .fe h3{color:var(--ok)}
+ul{margin:0;padding-left:18px} li{margin:4px 0}
+code{background:#0b0d13;border:1px solid var(--bd);border-radius:5px;padding:1px 6px;font-size:13px;color:#ffd479}
+.status{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.pill{font-size:12px;padding:3px 11px;border-radius:20px;border:1px solid var(--bd)}
+.pill.has{color:var(--ok);border-color:#1f4d34} .pill.gap{color:var(--acc);border-color:#5a2330}
+.order{counter-reset:s} .order li{margin:8px 0}
+.note{background:#13202b;border-left:3px solid var(--acc2);padding:10px 14px;border-radius:0 8px 8px 0;color:var(--mut);font-size:14px}
+footer{color:var(--mut);text-align:center;padding:24px;font-size:13px}
+</style>
+</head>
+<body>
+<header>
+<h1>ZMovie — Plan thêm chức năng</h1>
+<p>Subscription · Multi-audio · Season/Tập · Bình luận phân cấp · Nạp VIP coi HD</p>
+</header>
+<div class="wrap">
+<div class="card">
+<h2>Hiện trạng (đã kiểm tra code)</h2>
+<p class="sub">Schema DB có sẵn rất nhiều — gap chủ yếu là API + UI.</p>
+<div class="status">
+<span class="pill has">✓ DB: plans / subscriptions / payment_transactions</span>
+<span class="pill has">✓ DB: seasons / episodes</span>
+<span class="pill has">✓ DB: comments (có parent_id → nested)</span>
+<span class="pill has">✓ DB: video_sources / subtitles</span>
+<span class="pill has">✓ FE player dùng hls.js</span>
+</div>
+<div class="status">
+<span class="pill gap">✗ Comments chưa có route/UI</span>
+<span class="pill gap">✗ Subscription/payment chưa có route</span>
+<span class="pill gap">✗ Audio track chưa có trong schema</span>
+<span class="pill gap">✗ Player chưa chọn audio/quality</span>
+<span class="pill gap">✗ Stream chưa gate theo VIP</span>
+</div>
+</div>
+
+<div class="card">
+<h2><span class="num">1</span> Subscription &amp; nạp tiền <span class="tag" style="color:var(--ok);border-color:#1f4d34">✓ XONG</span></h2>
+<p class="sub">Gói thành viên, đăng ký, giao dịch nạp tiền (sandbox).</p>
+<div class="grid">
+<div class="box be"><h3>Backend</h3><ul>
+<li>Chạy migration <code>reference_code</code> đang pending</li>
+<li><code>PlanController</code> (index public)</li>
+<li><code>SubscriptionController</code>: me / subscribe / cancel</li>
+<li><code>PaymentController</code>: tạo txn + confirm sandbox</li>
+<li><code>SubscriptionService</code>: tính <code>ends_at</code> theo <code>billing_cycle</code>, sinh mã chuyển khoản</li>
+<li>Routes auth: <code>GET /plans</code>, <code>/me/subscription</code>, <code>POST /subscriptions</code>, <code>/payments</code>, <code>/payments/{ref}/confirm</code></li>
+</ul></div>
+<div class="box fe"><h3>Frontend</h3><ul>
+<li>Trang <code>/goi-thanh-vien</code>: list plans</li>
+<li>Nút "Nạp VIP" → tạo txn → QR/mã chuyển khoản giả</li>
+<li>Nút "Tôi đã thanh toán" → confirm</li>
+<li>Badge VIP trên header, lưu trạng thái vào user store</li>
+</ul></div>
+</div>
+</div>
+
+<div class="card">
+<h2><span class="num">2</span> Nạp VIP → coi độ phân giải cao <span class="tag">gate quality</span></h2>
+<p class="sub">Lọc nguồn video theo <code>plan.max_quality</code> của user.</p>
+<div class="grid">
+<div class="box be"><h3>Backend</h3><ul>
+<li><code>VideoStreamController::canStream</code> + lọc source theo max_quality</li>
+<li>Free → cap 480/720 · VIP → 1080/4K</li>
+<li>Source vượt quyền → trả <code>403 requires_vip</code> thay vì 404</li>
+</ul></div>
+<div class="box fe"><h3>Frontend</h3><ul>
+<li>Dropdown chọn quality trong player</li>
+<li>Option vượt mức → hiện khóa + CTA "Nâng VIP"</li>
+</ul></div>
+</div>
+</div>
+
+<div class="card">
+<h2><span class="num">3</span> Thay đổi audio cho phim <span class="tag">multi-audio</span></h2>
+<p class="sub">Mỗi audio = 1 video_source song ngữ (đơn giản, hợp schema hiện tại).</p>
+<div class="grid">
+<div class="box be"><h3>Backend</h3><ul>
+<li>Migration: thêm <code>audio_language_id</code> + <code>audio_label</code> vào <code>video_sources</code></li>
+<li><code>MovieController::show</code> trả <code>audio_options</code> group theo language</li>
+<li>Transcode job: xuất thêm audio rendition (giai đoạn sau)</li>
+</ul></div>
+<div class="box fe"><h3>Frontend</h3><ul>
+<li>Dropdown "Âm thanh" trong player</li>
+<li>Đổi audio → reload hls source, giữ nguyên <code>currentTime</code></li>
+</ul></div>
+</div>
+</div>
+
+<div class="card">
+<h2><span class="num">4</span> Chia mùa chia tập <span class="tag">DB sẵn — thiếu UI</span></h2>
+<p class="sub"><code>Movie::show</code> đã eager-load seasons.episodes. Gap = CRUD admin + hiển thị.</p>
+<div class="grid">
+<div class="box be"><h3>Backend</h3><ul>
+<li><code>SeasonController</code> + <code>EpisodeController</code> CRUD</li>
+<li>Bảo vệ bằng <code>permission:movies.manage</code></li>
+</ul></div>
+<div class="box fe"><h3>Frontend</h3><ul>
+<li>Trang <code>/xem/:id</code>: tab chọn Mùa → grid Tập</li>
+<li>Admin: form thêm/sửa mùa &amp; tập, gán video_source cho tập</li>
+</ul></div>
+</div>
+</div>
+
+<div class="card">
+<h2><span class="num">5</span> Bình luận phân cấp <span class="tag">model sẵn</span></h2>
+<p class="sub"><code>comments</code> đã có <code>parent_id</code> + polymorphic <code>commentable</code>.</p>
+<div class="grid">
+<div class="box be"><h3>Backend</h3><ul>
+<li><code>CommentController</code>: index (tree 2 cấp), store (reply qua parent_id), destroy (soft delete), report</li>
+<li>Polymorphic trên Movie / Episode</li>
+<li>Routes: <code>GET /movies/{movie}/comments</code> (public), <code>POST /comments</code> + <code>DELETE /comments/{id}</code> (auth)</li>
+</ul></div>
+<div class="box fe"><h3>Frontend</h3><ul>
+<li>Khu bình luận dưới player: cha → con</li>
+<li>Ô reply inline, nút xóa của chủ comment</li>
+</ul></div>
+</div>
+</div>
+
+<div class="card">
+<h2>Thứ tự đề xuất &amp; Verify</h2>
+<ol class="order">
+<li>Bình luận (độc lập, nhanh)</li>
+<li>Season/Tập UI</li>
+<li>Subscription &amp; payment</li>
+<li>Gate quality VIP</li>
+<li>Multi-audio</li>
+</ol>
+<div class="note">Verify mỗi bước: <code>php artisan test</code> + <code>npm run build</code> + test luồng UI trên browser (đổi audio/quality, reply comment, mua VIP).</div>
+</div>
+</div>
+<footer>Cập nhật: 2026-06-18 · Branch dev_ziet_0516</footer>
+</body>
+</html>

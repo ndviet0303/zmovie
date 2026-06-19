@@ -9,8 +9,11 @@ use App\Http\Controllers\Api\LegalDocumentPreviewController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\MovieController;
 use App\Http\Controllers\Api\MovieUploadController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\PlanController;
 use App\Http\Controllers\Api\RbacController;
 use App\Http\Controllers\Api\SearchController;
+use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\UploadFilePreviewController;
 use App\Http\Controllers\Api\VideoStreamController;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +35,8 @@ Route::get('/auth/demo-accounts', [AuthController::class, 'demoAccounts']);
 Route::get('/lookups', [LookupController::class, 'index']);
 Route::get('/search/movies', [SearchController::class, 'movies']);
 
+Route::get('/plans', [PlanController::class, 'index']);
+
 Route::get('/movies', [MovieController::class, 'index']);
 Route::get('/movies/{movie}', [MovieController::class, 'show']);
 Route::get('/video-sources/{videoSource}/stream', [VideoStreamController::class, 'show']);
@@ -39,6 +44,11 @@ Route::get('/video-sources/{videoSource}/stream', [VideoStreamController::class,
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+
+    Route::get('/me/subscription', [SubscriptionController::class, 'me']);
+    Route::post('/subscriptions', [SubscriptionController::class, 'subscribe']);
+    Route::delete('/subscriptions', [SubscriptionController::class, 'cancel']);
+    Route::post('/payments/{reference}/confirm', [PaymentController::class, 'confirm']);
 });
 
 Route::middleware(['auth:sanctum', 'permission:movies.manage'])->group(function () {

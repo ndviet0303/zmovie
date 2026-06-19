@@ -17,7 +17,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AdminPanel from './AdminPanel.vue'
 import logoUrl from './assets/zmovie-logo.svg'
 import logoMarkUrl from './assets/zmovie-mark.svg'
-import { fetchLookups, fetchMovie, fetchMovies, searchMovies, userApi } from './services/api'
+import { fetchLookups, fetchMovie, fetchMovies, fetchPlans, searchMovies, userApi } from './services/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -32,6 +32,12 @@ const authLoading = ref(false)
 const authError = ref('')
 const userSession = ref(readUserSession())
 const demoAccounts = ref([])
+const plans = ref([])
+const subscriptionStatus = ref(null)
+const planLoading = ref(false)
+const planError = ref('')
+const paymentInstructions = ref(null)
+const paymentLoading = ref(false)
 const selectedDemoEmail = ref('')
 const searchQuery = ref('')
 const activeHeroIndex = ref(0)
@@ -371,6 +377,7 @@ async function submitAuth() {
 
     saveUserSession(payload)
     authOpen.value = false
+    refreshSubscription()
   } catch (error) {
     authError.value = error.message
   } finally {
@@ -390,9 +397,86 @@ async function logoutUser() {
   } finally {
     window.localStorage.removeItem(USER_SESSION_KEY)
     userSession.value = null
+    subscriptionStatus.value = null
     userMenuOpen.value = false
   }
 }
+
+function formatPrice(cents, currency = 'VND') {
+  const amount = (cents ?? 0) / 100
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency }).format(amount)
+}
+
+async function loadPlans() {
+  planLoading.value = true
+  planError.value = ''
+  try {
+    plans.value = await fetchPlans()
+  } catch (error) {
+    planError.value = error.message
+  } finally {
+    planLoading.value = false
+  }
+}
+
+async function refreshSubscription() {
+  const token = userSession.value?.accessToken
+  if (!token) {
+    subscriptionStatus.value = null
+    return
+  }
+  try {
+    subscriptionStatus.value = await userApi.subscription(token)
+  } catch {
+    subscriptionStatus.value = null
+  }
+}
+
+async function startSubscription(plan) {
+  if (!userSession.value?.accessToken) {
+    openAuth('login')
+    return
+  }
+  if ((plan.price_cents ?? 0) === 0) {
+    return
+  }
+  paymentLoading.value = true
+  planError.value = ''
+  paymentInstructions.value = null
+  try {
+    const result = await userApi.subscribe(plan.id, userSession.value.accessToken)
+    paymentInstructions.value = result.payment_instructions
+  } catch (error) {
+    planError.value = error.message
+  } finally {
+    paymentLoading.value = false
+  }
+}
+
+async function confirmPayment() {
+  const reference = paymentInstructions.value?.reference_code
+  if (!reference) return
+  paymentLoading.value = true
+  planError.value = ''
+  try {
+    await userApi.confirmPayment(reference, userSession.value.accessToken)
+    paymentInstructions.value = null
+    await refreshSubscription()
+  } catch (error) {
+    planError.value = error.message
+  } finally {
+    paymentLoading.value = false
+  }
+}
+
+function openPlans() {
+  userMenuOpen.value = false
+  menuOpen.value = false
+  router.push({ name: 'plans' })
+}
+
+const isVip = computed(() => subscriptionStatus.value?.is_vip === true)
+const currentPlanName = computed(() => subscriptionStatus.value?.subscription?.plan?.name ?? '')
 
 function ensureSelectedEpisode(movie = activeMovie.value) {
   const episodes = movie?.episodes ?? []
@@ -420,6 +504,20 @@ function topicBySlug(slug) {
 
 async function applyRouteState() {
   menuOpen.value = false
+
+  if (route.name === 'plans') {
+    currentView.value = 'plans'
+    activeMovie.value = null
+    selectedEpisodeId.value = null
+    selectedCategory.value = 'Tất cả'
+    selectedTopic.value = null
+    searchQuery.value = ''
+    paymentInstructions.value = null
+    planError.value = ''
+    loadPlans()
+    refreshSubscription()
+    return
+  }
 
   if (route.name === 'movie-detail' || route.name === 'watch') {
     currentView.value = route.name === 'watch' ? 'watch' : 'detail'
@@ -798,6 +896,8 @@ onMounted(async () => {
   await loadDemoAccounts()
   await loadInitialData()
   startHeroAutoplay()
+  loadPlans()
+  refreshSubscription()
 })
 
 onBeforeUnmount(() => {
@@ -965,6 +1065,16 @@ onBeforeUnmount(() => {
                 >
                   <User :size="15" />
                   Trang xem phim
+                </button>
+                <button
+                  class="flex h-10 w-full cursor-pointer items-center gap-2 rounded-lg px-3 text-left font-bold transition hover:bg-white/8 hover:text-[#ffe182]"
+                  type="button"
+                  role="menuitem"
+                  @click="openPlans"
+                >
+                  <Star :size="15" />
+                  Gói thành viên
+                  <span v-if="isVip" class="ml-auto rounded-full bg-[#ffe182] px-2 py-0.5 text-[10px] font-black text-[#0f111a]">VIP</span>
                 </button>
                 <button
                   v-if="canOpenAdmin"
@@ -1625,6 +1735,77 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
+    </main>
+
+    <main v-else-if="currentView === 'plans'" class="mx-auto max-w-[1200px] px-5 py-12 md:px-10">
+      <header class="mb-8">
+        <h1 class="text-3xl font-black text-white">Gói thành viên ZMovie</h1>
+        <p class="mt-2 text-sm text-slate-400">Nâng cấp VIP để xem phim chất lượng cao, không giới hạn.</p>
+        <div v-if="subscriptionStatus?.subscription" class="mt-4 inline-flex items-center gap-2 rounded-full border border-[#ffe182]/40 bg-[#ffe182]/10 px-4 py-2 text-sm font-bold text-[#ffe182]">
+          <Star :size="15" fill="currentColor" />
+          Gói hiện tại: {{ currentPlanName }}
+          <span v-if="subscriptionStatus.subscription.ends_at" class="text-xs font-semibold text-slate-300">
+            (đến {{ new Date(subscriptionStatus.subscription.ends_at).toLocaleDateString('vi-VN') }})
+          </span>
+        </div>
+      </header>
+
+      <p v-if="planError" class="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200">{{ planError }}</p>
+      <p v-if="planLoading" class="text-sm text-slate-400">Đang tải gói...</p>
+
+      <div class="grid gap-5 md:grid-cols-3">
+        <article
+          v-for="plan in plans"
+          :key="plan.id"
+          class="flex flex-col rounded-2xl border border-white/10 bg-[#171922] p-6"
+          :class="plan.max_quality >= 2160 ? 'ring-2 ring-[#ffe182]' : ''"
+        >
+          <h2 class="text-xl font-black text-white">{{ plan.name }}</h2>
+          <p class="mt-1 text-sm text-slate-400">{{ plan.description }}</p>
+          <p class="mt-4 text-3xl font-black text-[#ffe182]">
+            {{ plan.price_cents === 0 ? 'Miễn phí' : formatPrice(plan.price_cents, plan.currency) }}
+            <span v-if="plan.price_cents > 0" class="text-sm font-semibold text-slate-400">/ tháng</span>
+          </p>
+          <ul class="mt-5 flex-1 space-y-2 text-sm text-slate-300">
+            <li>Độ phân giải tối đa: <b class="text-white">{{ plan.max_quality }}p</b></li>
+            <li>Số thiết bị: <b class="text-white">{{ plan.max_devices }}</b></li>
+            <li>Tải xuống: <b class="text-white">{{ plan.allow_downloads ? 'Có' : 'Không' }}</b></li>
+          </ul>
+          <button
+            class="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-[#ffe182] px-4 font-black text-[#0f111a] transition hover:bg-[#ffd24a] disabled:opacity-50"
+            type="button"
+            :disabled="paymentLoading || plan.price_cents === 0 || currentPlanName === plan.name"
+            @click="startSubscription(plan)"
+          >
+            <template v-if="currentPlanName === plan.name">Đang dùng</template>
+            <template v-else-if="plan.price_cents === 0">Gói mặc định</template>
+            <template v-else>Nạp VIP</template>
+          </button>
+        </article>
+      </div>
+
+      <div
+        v-if="paymentInstructions"
+        class="mt-8 rounded-2xl border border-[#ffe182]/30 bg-[#171922] p-6"
+      >
+        <h3 class="text-lg font-black text-white">Hướng dẫn thanh toán</h3>
+        <p class="mt-1 text-sm text-slate-400">Chuyển khoản theo thông tin dưới đây, sau đó bấm xác nhận (demo sandbox).</p>
+        <dl class="mt-4 grid gap-2 text-sm text-slate-200 sm:grid-cols-2">
+          <div><dt class="text-slate-400">Ngân hàng</dt><dd class="font-bold text-white">{{ paymentInstructions.bank }}</dd></div>
+          <div><dt class="text-slate-400">Số tài khoản</dt><dd class="font-bold text-white">{{ paymentInstructions.account_number }}</dd></div>
+          <div><dt class="text-slate-400">Chủ tài khoản</dt><dd class="font-bold text-white">{{ paymentInstructions.account_name }}</dd></div>
+          <div><dt class="text-slate-400">Số tiền</dt><dd class="font-bold text-[#ffe182]">{{ formatPrice(paymentInstructions.amount, paymentInstructions.currency) }}</dd></div>
+          <div class="sm:col-span-2"><dt class="text-slate-400">Nội dung chuyển khoản</dt><dd class="font-black text-[#ffe182]">{{ paymentInstructions.reference_code }}</dd></div>
+        </dl>
+        <button
+          class="mt-5 inline-flex h-11 items-center justify-center rounded-lg bg-[#3ddc84] px-5 font-black text-[#0f111a] transition hover:bg-[#2fc873] disabled:opacity-50"
+          type="button"
+          :disabled="paymentLoading"
+          @click="confirmPayment"
+        >
+          {{ paymentLoading ? 'Đang xử lý...' : 'Tôi đã thanh toán' }}
+        </button>
+      </div>
     </main>
 
     <footer class="relative overflow-hidden border-t border-white/6 bg-[#090a13]">
