@@ -24,6 +24,10 @@ zmovie_build:
   # Add before_script to set up cache directory
   before_script:
     - export DOCKER_CONFIG="$CI_PROJECT_DIR/.docker/config"
+    - |
+      if [ ! -S /var/run/docker.sock ] && [ -S "$HOME/.orbstack/run/docker.sock" ]; then
+        export DOCKER_HOST="unix://$HOME/.orbstack/run/docker.sock"
+      fi
     - mkdir -p .docker/cache "$DOCKER_CONFIG"
     - |
       DOCKER_AUTH_USER="${DEPLOY_USERNAME:-$CI_REGISTRY_USER}"
