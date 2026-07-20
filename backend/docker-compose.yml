@@ -36,7 +36,7 @@ services:
       retries: 20
 
   meilisearch:
-    image: getmeili/meilisearch:v1.16
+    image: getmeili/meilisearch:v1.50
     container_name: zmovie_backend_meilisearch
     ports:
       - "${MEILISEARCH_FORWARD_PORT:-7700}:7700"
