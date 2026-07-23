@@ -28,6 +28,9 @@ const collection = computed(() =>
 );
 const isRecommended = computed(() => collection.value === "recommended");
 const { $api } = useNuxtApp();
+const data = ref<TitleListResponse>();
+const isLoading = ref(true);
+const loadError = ref(false);
 
 async function loadBrowseData(requestedLocale = locale.value) {
   const catalog = await $api<TitleListResponse>("/v1/catalog/titles", {
@@ -54,22 +57,42 @@ async function loadBrowseData(requestedLocale = locale.value) {
   return catalog;
 }
 
-const { data } = await useAsyncData("catalog-browse", loadBrowseData);
+async function refreshBrowseData(requestedLocale = locale.value) {
+  isLoading.value = true;
+  loadError.value = false;
+  try {
+    data.value = await loadBrowseData(requestedLocale);
+  } catch {
+    data.value = { items: [], total: 0 };
+    loadError.value = true;
+  } finally {
+    isLoading.value = false;
+  }
+}
+
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
-onMounted(async () => {
-  if (!isRecommended.value) return;
-  data.value = await loadBrowseData();
+onMounted(() => {
+  void refreshBrowseData();
 });
 
 watch(query, (value) => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(async () => {
-    data.value = value.trim()
-      ? await $api<TitleListResponse>("/v1/search", {
-          query: { q: value.trim(), locale: locale.value },
-        })
-      : await loadBrowseData();
+    isLoading.value = true;
+    loadError.value = false;
+    try {
+      data.value = value.trim()
+        ? await $api<TitleListResponse>("/v1/search", {
+            query: { q: value.trim(), locale: locale.value },
+          })
+        : await loadBrowseData();
+    } catch {
+      data.value = { items: [], total: 0 };
+      loadError.value = true;
+    } finally {
+      isLoading.value = false;
+    }
   }, 180);
 });
 
@@ -90,6 +113,8 @@ const copy = computed(() =>
         series: "Phim bộ",
         latest: "Mới nhất",
         showMore: "Tải thêm",
+        loading: "Đang tải phim...",
+        error: "Không thể tải catalog. Hãy thử tải lại trang.",
         empty: "Không tìm thấy phim phù hợp.",
       }
     : {
@@ -107,6 +132,8 @@ const copy = computed(() =>
         series: "Series",
         latest: "Latest",
         showMore: "Load more",
+        loading: "Loading titles...",
+        error: "Unable to load the catalog. Try refreshing the page.",
         empty: "No titles match your search.",
       },
 );
@@ -158,8 +185,8 @@ function clearFilters() {
 
 async function setLocale(nextLocale: "vi" | "en") {
   if (nextLocale === locale.value) return;
-  data.value = await loadBrowseData(nextLocale);
-  locale.value = nextLocale;
+  await refreshBrowseData(nextLocale);
+  if (!loadError.value) locale.value = nextLocale;
 }
 </script>
 
@@ -314,8 +341,20 @@ async function setLocale(nextLocale: "vi" | "en") {
         </section>
       </div>
 
+      <p
+        v-if="isLoading"
+        class="mt-10 rounded-3xl border border-white/10 bg-surface-container p-10 text-center text-muted-foreground"
+      >
+        {{ copy.loading }}
+      </p>
+      <p
+        v-else-if="loadError"
+        class="mt-10 rounded-3xl border border-white/10 bg-surface-container p-10 text-center text-muted-foreground"
+      >
+        {{ copy.error }}
+      </p>
       <div
-        v-if="visibleTitles.length"
+        v-else-if="visibleTitles.length"
         class="mt-10 grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
       >
         <NuxtLink
@@ -353,7 +392,7 @@ async function setLocale(nextLocale: "vi" | "en") {
         </NuxtLink>
       </div>
       <p
-        v-else
+        v-else-if="!isLoading && !loadError"
         class="mt-10 rounded-3xl border border-white/10 bg-surface-container p-10 text-center text-muted-foreground"
       >
         {{ copy.empty }}
