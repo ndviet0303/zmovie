@@ -14,7 +14,7 @@ COPY ["src/ZMovie.Api/ZMovie.Api.csproj", "src/ZMovie.Api/"]
 COPY ["src/ZMovie.Application/ZMovie.Application.csproj", "src/ZMovie.Application/"]
 COPY ["src/ZMovie.Domain/ZMovie.Domain.csproj", "src/ZMovie.Domain/"]
 COPY ["src/ZMovie.Infrastructure/ZMovie.Infrastructure.csproj", "src/ZMovie.Infrastructure/"]
-COPY ["src/ServiceDefaults/ZMovie.ServiceDefaults.csproj", "src/ServiceDefaults/"]
+COPY ["src/ZMovie.ServiceDefaults/ZMovie.ServiceDefaults.csproj", "src/ZMovie.ServiceDefaults/"]
 RUN dotnet restore "src/ZMovie.Api/ZMovie.Api.csproj"
 COPY . .
 WORKDIR "/src/src/ZMovie.Api"
