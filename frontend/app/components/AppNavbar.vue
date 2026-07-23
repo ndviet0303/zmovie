@@ -97,7 +97,7 @@ onMounted(() => {
       <div class="flex items-center gap-10">
         <NuxtLink
           to="/"
-          class="inline-flex h-10 items-center font-display text-2xl font-bold tracking-tight text-primary"
+          class="inline-flex h-10 items-center font-display text-2xl font-extrabold tracking-tight text-primary"
           >ZMovie</NuxtLink
         >
         <nav class="hidden h-10 items-center gap-6 md:flex">
@@ -105,7 +105,7 @@ onMounted(() => {
             v-for="(item, index) in navItems"
             :key="item.label"
             :to="item.to"
-            class="inline-flex h-10 items-center border-b-2 text-sm font-medium leading-none transition-colors"
+            class="inline-flex h-10 items-center border-b-2 text-sm font-semibold leading-none transition-colors"
             :class="
               isActive(index)
                 ? 'border-primary text-primary'

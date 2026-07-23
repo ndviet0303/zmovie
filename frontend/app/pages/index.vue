@@ -259,7 +259,7 @@ function progressPercent(item: ContinueWatching) {
             >
           </div>
           <h1
-            class="font-display max-w-xl text-5xl font-semibold leading-[.98] tracking-[-.035em] text-foreground drop-shadow-md sm:text-6xl lg:text-7xl"
+            class="font-display max-w-xl text-5xl font-bold leading-[.98] tracking-[-.035em] text-foreground drop-shadow-md sm:text-6xl lg:text-7xl"
           >
             {{ home.hero.title }}
           </h1>

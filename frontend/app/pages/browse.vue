@@ -196,9 +196,7 @@ async function setLocale(nextLocale: "vi" | "en") {
     <AppNavbar :locale="locale" @locale-change="setLocale" />
 
     <section class="mx-auto max-w-360 px-5 pb-24 pt-12 lg:px-12 lg:pt-16">
-      <h1
-        class="font-display text-4xl font-semibold tracking-tight sm:text-5xl"
-      >
+      <h1 class="font-display text-4xl font-bold tracking-tight sm:text-5xl">
         {{ copy.title }}
       </h1>
       <InputField
