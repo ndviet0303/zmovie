@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using Microsoft.AspNetCore.Diagnostics;
 using FluentValidation;
 using Microsoft.Extensions.Hosting;
 using ZMovie.Api.Configuration;
@@ -23,6 +25,7 @@ using ZMovie.Infrastructure.Recommendations;
 using ZMovie.Infrastructure.Assistant;
 
 var builder = WebApplication.CreateBuilder(args);
+var exposeDetailedErrors = builder.Configuration.GetValue<bool>("ExposeDetailedErrors");
 
 await builder.Configuration.AddInfisicalSecretsAsync(builder.Environment);
 builder.AddServiceDefaults();
@@ -111,7 +114,25 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
-app.UseExceptionHandler();
+app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
+{
+    var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+    var traceId = Activity.Current?.Id ?? context.TraceIdentifier;
+    var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+    logger.LogError(exception, "Unhandled API exception. TraceId: {TraceId}", traceId);
+
+    context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+    context.Response.ContentType = "application/problem+json";
+    var response = new Dictionary<string, object?>
+    {
+        ["type"] = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
+        ["title"] = "An error occurred while processing your request.",
+        ["status"] = 500,
+        ["traceId"] = traceId,
+    };
+    if (exposeDetailedErrors) response["detail"] = exception?.GetBaseException().Message;
+    await context.Response.WriteAsJsonAsync(response);
+}));
 // app.UseHttpsRedirection();
 app.UseCors();
 app.UseAuthentication();
