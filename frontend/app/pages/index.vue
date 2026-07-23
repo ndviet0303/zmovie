@@ -167,6 +167,14 @@ const text = computed(() =>
       },
 );
 
+useZMovieSeo({
+  title: computed(() =>
+    isVietnamese.value ? "Xem phim hay online" : "Watch great movies online",
+  ),
+  description: computed(() => text.value.description),
+  image: computed(() => home.value?.hero.posterUrl),
+});
+
 async function setLocale(nextLocale: "vi" | "en") {
   if (nextLocale === activeLocale.value) return;
 

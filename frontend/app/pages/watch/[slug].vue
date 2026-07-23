@@ -133,6 +133,21 @@ const copy = computed(() =>
       },
 );
 
+useZMovieSeo({
+  title: computed(() =>
+    title.value?.title
+      ? `Đang xem ${title.value.title}`
+      : "Xem phim trực tuyến",
+  ),
+  description: computed(
+    () =>
+      title.value?.synopsis ??
+      "Xem phim trực tuyến với phụ đề tiếng Việt trên ZMovie.",
+  ),
+  image: computed(() => title.value?.posterUrl),
+  type: "video.movie",
+});
+
 function showUnavailableDialog() {
   playerError.value = copy.value.unavailable;
   isLoading.value = false;

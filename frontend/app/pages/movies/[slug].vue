@@ -113,6 +113,17 @@ const copy = computed(() =>
         submitted: "Your review has been saved.",
       },
 );
+useZMovieSeo({
+  title: computed(() => title.value?.title ?? "Chi tiết phim"),
+  description: computed(
+    () =>
+      title.value?.synopsis ??
+      "Xem thông tin, trailer và đánh giá phim trên ZMovie.",
+  ),
+  image: computed(() => title.value?.posterUrl),
+  type: "video.movie",
+});
+
 const related = computed(() =>
   (catalog.value?.items ?? [])
     .filter((item) => item.slug !== title.value?.slug)

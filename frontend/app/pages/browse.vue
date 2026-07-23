@@ -139,6 +139,15 @@ const copy = computed(() =>
       },
 );
 
+useZMovieSeo({
+  title: computed(() => copy.value.title),
+  description: computed(() =>
+    locale.value === "vi"
+      ? "Tìm kiếm và khám phá những bộ phim phù hợp với bạn trên ZMovie."
+      : "Search and discover movies that fit your mood on ZMovie.",
+  ),
+});
+
 function splitGenres(genre: string) {
   return genre
     .split(",")
