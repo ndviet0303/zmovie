@@ -16,7 +16,7 @@ cd ..
 ```
 
 The script starts the Nuxt frontend on `http://localhost:3000` and the API on
-`http://localhost:5275`; Nuxt already proxies `/api/v1/**` to that API address.
+`http://localhost:5275`; Nuxt already proxies `/v1/**` to that API address.
 Use `Ctrl+C` to stop both processes.
 
 ## Build the API image
