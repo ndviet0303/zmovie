@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Check, ChevronDown, Search, SlidersHorizontal, X } from "@lucide/vue";
+import { InputField } from "~/components/ui/input";
 
 type Title = {
   slug: string;
@@ -200,24 +201,25 @@ async function setLocale(nextLocale: "vi" | "en") {
       >
         {{ copy.title }}
       </h1>
-      <label class="relative mt-7 block max-w-2xl">
-        <Search
-          class="pointer-events-none absolute left-5 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
-        />
-        <input
-          v-model="query"
-          :placeholder="copy.placeholder"
-          class="h-14 w-full rounded-2xl border border-white/10 bg-surface-container pl-13 pr-12 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary/60 focus:ring-2 focus:ring-primary/15"
-        />
-        <button
-          v-if="query"
-          class="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
-          aria-label="Clear search"
-          @click="query = ''"
-        >
-          <X class="size-5" />
-        </button>
-      </label>
+      <InputField
+        v-model="query"
+        :placeholder="copy.placeholder"
+        class="mt-7 max-w-2xl"
+      >
+        <template #leading>
+          <Search class="size-5 shrink-0 text-muted-foreground" />
+        </template>
+        <template #trailing>
+          <button
+            v-if="query"
+            class="shrink-0 text-muted-foreground transition-colors hover:text-primary"
+            aria-label="Clear search"
+            @click="query = ''"
+          >
+            <X class="size-5" />
+          </button>
+        </template>
+      </InputField>
 
       <div id="filters" class="mt-8 flex flex-wrap items-center gap-3">
         <button
