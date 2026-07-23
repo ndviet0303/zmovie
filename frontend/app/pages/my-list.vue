@@ -25,6 +25,7 @@ const library = ref<Library | null>(null);
 const loading = ref(true);
 const loadError = ref("");
 const activeTab = ref<Tab>("saved");
+const { $api } = useNuxtApp();
 const items = computed(() =>
   activeTab.value === "saved"
     ? (library.value?.saved ?? [])
@@ -46,7 +47,7 @@ function retryLoad() {
 
 onMounted(async () => {
   try {
-    library.value = await $fetch<Library>("/api/v1/me/library", {
+    library.value = await $api<Library>("/v1/me/library", {
       credentials: "include",
       query: { locale: locale.value },
     });

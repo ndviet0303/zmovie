@@ -17,6 +17,7 @@ export default defineNuxtConfig({
   vite: { plugins: [tailwindcss()] },
   runtimeConfig: {
     public: {
+      apiBaseUrl: '/api',
       googleClientId: process.env.NUXT_PUBLIC_GOOGLE_CLIENT_ID ?? '39010162417-34sjb806htrhds433p75b6s4k1l928nk.apps.googleusercontent.com',
     },
   },
