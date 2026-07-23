@@ -299,7 +299,7 @@ function progressPercent(item: ContinueWatching) {
                 {{ text.recommended }}
               </h2>
               <NuxtLink
-                to="/browse"
+                to="/browse?collection=recommended"
                 class="inline-flex items-center gap-1 text-sm font-medium text-primary transition hover:text-primary-container"
                 >{{ text.viewAll }} <ChevronRight class="size-4"
               /></NuxtLink>
@@ -315,7 +315,7 @@ function progressPercent(item: ContinueWatching) {
                 {{ text.newReleases }}
               </h2>
               <NuxtLink
-                to="/browse"
+                to="/browse?sort=latest"
                 class="inline-flex items-center gap-1 text-sm font-medium text-primary transition hover:text-primary-container"
                 >{{ text.viewAll }} <ChevronRight class="size-4"
               /></NuxtLink>

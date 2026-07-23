@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace ZMovie.Infrastructure.Persistence.Migrations;
 
-[DbContext(typeof(EngagementDbContext))]
+[DbContext(typeof(CatalogDbContext))]
 [Migration("202607230004_AddPlayableProgress")]
 public partial class AddPlayableProgress : Migration
 {

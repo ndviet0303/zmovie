@@ -47,9 +47,6 @@ builder.Services.AddAuthorization();
 builder.Services.AddDbContext<CatalogDbContext>(options => options.UseNpgsql(
     builder.Configuration.GetConnectionString("ZMovie")
     ?? throw new InvalidOperationException("ConnectionStrings:ZMovie must be configured.")).UseSnakeCaseNamingConvention());
-builder.Services.AddDbContext<EngagementDbContext>(options => options.UseNpgsql(
-    builder.Configuration.GetConnectionString("ZMovie")
-    ?? throw new InvalidOperationException("ConnectionStrings:ZMovie must be configured.")).UseSnakeCaseNamingConvention());
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(ListTitlesQuery).Assembly);
@@ -77,7 +74,7 @@ if (args.Contains("--import-ophim-genres", StringComparer.OrdinalIgnoreCase))
     var importDb = importScope.ServiceProvider.GetRequiredService<CatalogDbContext>();
     await importDb.Database.MigrateAsync();
     var imported = await OPhimGenreImporter.ImportAsync(importDb, new HttpClient(), CancellationToken.None);
-    Console.WriteLine($"Imported {imported} OPhim genres into catalog.genres.");
+    Console.WriteLine($"Imported {imported} OPhim genres into genres.");
     return;
 }
 
@@ -97,17 +94,21 @@ if (args.Contains("--import-ophim-catalog", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var catalogDb = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+    await catalogDb.Database.MigrateAsync();
+
+    if (app.Environment.IsDevelopment())
+    {
+        await CatalogSeed.SeedAsync(catalogDb);
+    }
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
-
-    await using var scope = app.Services.CreateAsyncScope();
-    var catalogDb = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-    await catalogDb.Database.MigrateAsync();
-    var engagementDb = scope.ServiceProvider.GetRequiredService<EngagementDbContext>();
-    await engagementDb.Database.MigrateAsync();
-    await CatalogSeed.SeedAsync(catalogDb);
 }
 
 app.UseExceptionHandler();

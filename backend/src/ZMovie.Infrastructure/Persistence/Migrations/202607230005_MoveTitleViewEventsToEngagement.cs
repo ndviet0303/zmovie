@@ -6,7 +6,7 @@ using ZMovie.Infrastructure.Persistence;
 
 namespace ZMovie.Infrastructure.Persistence.Migrations;
 
-[DbContext(typeof(EngagementDbContext))]
+[DbContext(typeof(CatalogDbContext))]
 [Migration("202607230005_MoveTitleViewEventsToEngagement")]
 public partial class MoveTitleViewEventsToEngagement : Migration
 {

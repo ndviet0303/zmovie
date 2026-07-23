@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, Search, SlidersHorizontal, X } from "@lucide/vue";
+import { Check, ChevronDown, Search, SlidersHorizontal, X } from "@lucide/vue";
 
 type Title = {
   slug: string;
@@ -10,6 +10,7 @@ type Title = {
   posterUrl: string;
 };
 type TitleListResponse = { items: Title[]; total: number };
+type PersonalizedDiscovery = { recommended: Title[] };
 
 const locale = useCookie<"vi" | "en">("zmovie-locale", { default: () => "vi" });
 const route = useRoute();
@@ -17,16 +18,50 @@ const query = ref("");
 const selectedGenre = ref(
   typeof route.query.genre === "string" ? route.query.genre : "all",
 );
+const filtersOpen = ref(false);
+const sortOrder = ref<"latest" | "oldest" | "title">("latest");
 const selectedType = computed(() =>
   route.query.type === "series" ? "series" : "all",
 );
-const { $api } = useNuxtApp();
-const { data } = await useAsyncData("catalog-browse", () =>
-  $api<TitleListResponse>("/v1/catalog/titles", {
-    query: { locale: locale.value },
-  }),
+const collection = computed(() =>
+  route.query.collection === "recommended" ? "recommended" : "catalog",
 );
+const isRecommended = computed(() => collection.value === "recommended");
+const { $api } = useNuxtApp();
+
+async function loadBrowseData(requestedLocale = locale.value) {
+  const catalog = await $api<TitleListResponse>("/v1/catalog/titles", {
+    query: { locale: requestedLocale },
+  });
+
+  if (isRecommended.value) {
+    try {
+      const personalized = await $api<PersonalizedDiscovery>(
+        "/v1/discovery/for-you",
+        { credentials: "include", query: { locale: requestedLocale } },
+      );
+      if (personalized.recommended.length) {
+        return {
+          items: personalized.recommended,
+          total: personalized.recommended.length,
+        };
+      }
+    } catch {
+      // Guests fall back to the catalog until they have a recommendation profile.
+    }
+  }
+
+  return catalog;
+}
+
+const { data } = await useAsyncData("catalog-browse", loadBrowseData);
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
+
+onMounted(async () => {
+  if (!isRecommended.value) return;
+  data.value = await loadBrowseData();
+});
+
 watch(query, (value) => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(async () => {
@@ -34,16 +69,20 @@ watch(query, (value) => {
       ? await $api<TitleListResponse>("/v1/search", {
           query: { q: value.trim(), locale: locale.value },
         })
-      : await $api<TitleListResponse>("/v1/catalog/titles", {
-          query: { locale: locale.value },
-        });
+      : await loadBrowseData();
   }, 180);
 });
 
 const copy = computed(() =>
   locale.value === "vi"
     ? {
-        title: selectedType.value === "series" ? "Phim bộ" : "Khám phá",
+        title: isRecommended.value
+          ? "Đề xuất cho bạn"
+          : selectedType.value === "series"
+            ? "Phim bộ"
+            : route.query.sort === "latest"
+              ? "Mới phát hành"
+              : "Khám phá",
         placeholder: "Tìm kiếm phim, diễn viên...",
         filters: "Lọc kết quả",
         all: "Tất cả",
@@ -54,7 +93,13 @@ const copy = computed(() =>
         empty: "Không tìm thấy phim phù hợp.",
       }
     : {
-        title: selectedType.value === "series" ? "Series" : "Discover",
+        title: isRecommended.value
+          ? "Recommended for you"
+          : selectedType.value === "series"
+            ? "Series"
+            : route.query.sort === "latest"
+              ? "New releases"
+              : "Discover",
         placeholder: "Search films, actors...",
         filters: "Filter results",
         all: "All",
@@ -66,30 +111,54 @@ const copy = computed(() =>
       },
 );
 
+function splitGenres(genre: string) {
+  return genre
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 const genres = computed(() => [
   "all",
-  ...new Set(data.value?.items.map((title) => title.genre) ?? []),
+  ...new Set(
+    data.value?.items.flatMap((title) => splitGenres(title.genre)) ?? [],
+  ),
 ]);
 const visibleTitles = computed(() =>
-  (data.value?.items ?? []).filter((title) => {
-    const matchesGenre =
-      selectedGenre.value === "all" || title.genre === selectedGenre.value;
-    const matchesType =
-      selectedType.value === "all" || title.type === selectedType.value;
-    return matchesGenre && matchesType;
-  }),
+  (() => {
+    const filtered = (data.value?.items ?? []).filter((title) => {
+      const matchesGenre =
+        selectedGenre.value === "all" ||
+        splitGenres(title.genre).includes(selectedGenre.value);
+      const matchesType =
+        selectedType.value === "all" || title.type === selectedType.value;
+      return matchesGenre && matchesType;
+    });
+
+    if (isRecommended.value) return filtered;
+    return filtered.sort((a, b) => {
+      if (sortOrder.value === "oldest") return a.year - b.year;
+      if (sortOrder.value === "title") return a.title.localeCompare(b.title);
+      return b.year - a.year;
+    });
+  })(),
 );
 
 function genreLabel(genre: string) {
   return genre === "all" ? copy.value.all : genre;
 }
 
+const activeFilterCount = computed(() =>
+  selectedGenre.value === "all" ? 0 : 1,
+);
+
+function clearFilters() {
+  selectedGenre.value = "all";
+}
+
 async function setLocale(nextLocale: "vi" | "en") {
   if (nextLocale === locale.value) return;
-  const nextCatalog = await $api<TitleListResponse>("/v1/catalog/titles", {
-    query: { locale: nextLocale },
-  });
-  data.value = nextCatalog;
+  data.value = await loadBrowseData(nextLocale);
   locale.value = nextLocale;
 }
 </script>
@@ -124,28 +193,125 @@ async function setLocale(nextLocale: "vi" | "en") {
       </label>
 
       <div id="filters" class="mt-8 flex flex-wrap items-center gap-3">
-        <span
-          class="mr-1 inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground"
-          ><SlidersHorizontal class="size-4" />{{ copy.filters }}</span
-        >
         <button
-          v-for="genre in genres"
-          :key="genre"
-          class="rounded-full border px-4 py-2 text-xs font-medium transition"
-          :class="
-            selectedGenre === genre
-              ? 'border-primary-container bg-primary-container text-primary-container-foreground'
-              : 'border-white/10 bg-surface-container text-muted-foreground hover:border-primary/50 hover:text-foreground'
-          "
-          @click="selectedGenre = genre"
+          class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-surface-container px-4 py-3 text-xs font-semibold text-foreground transition hover:border-primary/60"
+          @click="filtersOpen = true"
         >
-          {{ genreLabel(genre) }}
+          <SlidersHorizontal class="size-4 text-primary" />
+          {{ copy.filters }}
+          <span
+            v-if="activeFilterCount"
+            class="inline-flex size-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-container-foreground"
+          >
+            {{ activeFilterCount }}
+          </span>
         </button>
         <button
-          class="ml-auto hidden items-center gap-2 rounded-xl border border-white/10 bg-surface-container px-4 py-2 text-xs text-muted-foreground sm:flex"
+          v-if="selectedGenre !== 'all'"
+          class="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-xs text-primary"
+          @click="clearFilters"
         >
-          {{ copy.latest }} <ChevronDown class="size-4" />
+          {{ genreLabel(selectedGenre) }}
+          <X class="size-3.5" />
         </button>
+        <span class="text-xs text-muted-foreground">
+          {{ visibleTitles.length }} {{ locale === "vi" ? "phim" : "titles" }}
+        </span>
+        <label
+          v-if="!isRecommended"
+          class="ml-auto inline-flex items-center gap-2 rounded-xl border border-white/10 bg-surface-container px-3 text-xs text-muted-foreground"
+        >
+          <span class="sr-only">{{ copy.latest }}</span>
+          <select
+            v-model="sortOrder"
+            class="h-10 cursor-pointer appearance-none bg-transparent pr-5 text-xs text-foreground outline-none"
+          >
+            <option value="latest">{{ copy.latest }}</option>
+            <option value="oldest">
+              {{ locale === "vi" ? "Cũ nhất" : "Oldest" }}
+            </option>
+            <option value="title">
+              {{ locale === "vi" ? "Tên A-Z" : "Title A-Z" }}
+            </option>
+          </select>
+          <ChevronDown class="pointer-events-none -ml-5 size-4" />
+        </label>
+      </div>
+
+      <div
+        v-if="filtersOpen"
+        class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-5"
+        @click.self="filtersOpen = false"
+      >
+        <section
+          class="max-h-[85vh] w-full overflow-hidden rounded-t-3xl border border-white/10 bg-surface-container-lowest shadow-2xl sm:max-w-2xl sm:rounded-3xl"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="filter-title"
+        >
+          <div
+            class="flex items-center justify-between border-b border-white/10 px-5 py-4 sm:px-6"
+          >
+            <div>
+              <h2 id="filter-title" class="font-display text-xl font-semibold">
+                {{ copy.filters }}
+              </h2>
+              <p class="mt-1 text-xs text-muted-foreground">
+                {{
+                  locale === "vi"
+                    ? "Chọn một thể loại để khám phá"
+                    : "Choose a genre to explore"
+                }}
+              </p>
+            </div>
+            <button
+              class="rounded-full p-2 text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
+              aria-label="Close filters"
+              @click="filtersOpen = false"
+            >
+              <X class="size-5" />
+            </button>
+          </div>
+
+          <div class="max-h-[55vh] overflow-y-auto p-5 sm:p-6">
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <button
+                v-for="genre in genres"
+                :key="genre"
+                class="flex min-h-11 items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition"
+                :class="
+                  selectedGenre === genre
+                    ? 'border-primary/60 bg-primary/15 text-primary'
+                    : 'border-white/10 bg-surface-container text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                "
+                @click="selectedGenre = genre"
+              >
+                <span>{{ genreLabel(genre) }}</span>
+                <Check
+                  v-if="selectedGenre === genre"
+                  class="ml-2 size-4 shrink-0"
+                />
+              </button>
+            </div>
+          </div>
+
+          <div
+            class="flex items-center justify-between border-t border-white/10 px-5 py-4 sm:px-6"
+          >
+            <button
+              class="text-xs font-medium text-muted-foreground transition hover:text-foreground"
+              @click="clearFilters"
+            >
+              {{ locale === "vi" ? "Xóa bộ lọc" : "Clear filters" }}
+            </button>
+            <button
+              class="rounded-xl bg-primary px-5 py-3 text-xs font-semibold text-primary-container-foreground transition hover:opacity-90"
+              @click="filtersOpen = false"
+            >
+              {{ locale === "vi" ? "Xem kết quả" : "Show results" }}
+            </button>
+          </div>
+        </section>
       </div>
 
       <div
