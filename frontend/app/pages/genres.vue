@@ -1,10 +1,76 @@
 <script setup lang="ts">
-type Title = { slug: string, title: string, genre: string, year: number, posterUrl: string }
-type TitleListResponse = { items: Title[] }
-const locale = useCookie<'vi' | 'en'>('zmovie-locale', { default: () => 'vi' })
-const { data } = await useAsyncData('genre-catalog', () => $fetch<TitleListResponse>('/api/v1/catalog/titles', { query: { locale: locale.value } }))
-const genres = computed(() => [...new Set(data.value?.items.map(item => item.genre) ?? [])])
-const copy = computed(() => locale.value === 'vi' ? { title: 'Thể loại', subtitle: 'Khám phá những câu chuyện theo tâm trạng của bạn', view: 'Khám phá phim' } : { title: 'Genres', subtitle: 'Discover stories that fit your mood', view: 'Explore titles' })
-async function setLocale(next: 'vi' | 'en') { if (next !== locale.value) { locale.value = next; await refreshNuxtData('genre-catalog') } }
+type Title = {
+  slug: string;
+  title: string;
+  genre: string;
+  year: number;
+  posterUrl: string;
+};
+type TitleListResponse = { items: Title[] };
+const locale = useCookie<"vi" | "en">("zmovie-locale", { default: () => "vi" });
+const { data } = await useAsyncData("genre-catalog", () =>
+  $fetch<TitleListResponse>("/api/v1/catalog/titles", {
+    query: { locale: locale.value },
+  }),
+);
+const genres = computed(() => [
+  ...new Set(data.value?.items.map((item) => item.genre) ?? []),
+]);
+const copy = computed(() =>
+  locale.value === "vi"
+    ? {
+        title: "Thể loại",
+        subtitle: "Khám phá những câu chuyện theo tâm trạng của bạn",
+        view: "Khám phá phim",
+      }
+    : {
+        title: "Genres",
+        subtitle: "Discover stories that fit your mood",
+        view: "Explore titles",
+      },
+);
+async function setLocale(next: "vi" | "en") {
+  if (next !== locale.value) {
+    locale.value = next;
+    await refreshNuxtData("genre-catalog");
+  }
+}
 </script>
-<template><main class="min-h-screen bg-background text-foreground"><AppNavbar :locale="locale" @locale-change="setLocale" /><section class="mx-auto max-w-360 px-5 py-14 lg:px-12"><p class="text-sm font-semibold text-primary">ZMovie</p><h1 class="mt-2 font-display text-5xl font-semibold">{{ copy.title }}</h1><p class="mt-4 text-muted-foreground">{{ copy.subtitle }}</p><div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"><NuxtLink v-for="(genre, index) in genres" :key="genre" :to="`/browse?genre=${encodeURIComponent(genre)}`" class="group relative min-h-56 overflow-hidden rounded-3xl border border-white/10 bg-surface-container p-7 transition hover:-translate-y-1 hover:border-primary/50"><img :src="data?.items.find(item => item.genre === genre)?.posterUrl" :alt="genre" class="absolute inset-0 size-full object-cover opacity-25 transition group-hover:scale-105 group-hover:opacity-40" /><div class="absolute inset-0 bg-gradient-to-t from-background via-background/65 to-transparent" /><div class="relative flex h-full flex-col justify-end"><span class="text-xs text-primary">{{ data?.items.filter(item => item.genre === genre).length }} titles</span><h2 class="mt-2 font-display text-3xl font-semibold">{{ genre }}</h2><span class="mt-4 text-sm text-tertiary">{{ copy.view }} →</span></div></NuxtLink></div></section></main></template>
+<template>
+  <main class="min-h-screen bg-background text-foreground">
+    <AppNavbar :locale="locale" @locale-change="setLocale" />
+    <section class="mx-auto max-w-360 px-5 py-14 lg:px-12">
+      <p class="text-sm font-semibold text-primary">ZMovie</p>
+      <h1 class="mt-2 font-display text-5xl font-semibold">{{ copy.title }}</h1>
+      <p class="mt-4 text-muted-foreground">{{ copy.subtitle }}</p>
+      <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <NuxtLink
+          v-for="genre in genres"
+          :key="genre"
+          :to="`/browse?genre=${encodeURIComponent(genre)}`"
+          class="group relative min-h-56 overflow-hidden rounded-3xl border border-white/10 bg-surface-container p-7 transition hover:-translate-y-1 hover:border-primary/50"
+          ><img
+            :src="data?.items.find((item) => item.genre === genre)?.posterUrl"
+            :alt="genre"
+            class="absolute inset-0 size-full object-cover opacity-25 transition group-hover:scale-105 group-hover:opacity-40"
+          />
+          <div
+            class="absolute inset-0 bg-gradient-to-t from-background via-background/65 to-transparent"
+          />
+          <div class="relative flex h-full flex-col justify-end">
+            <span class="text-xs text-primary"
+              >{{
+                data?.items.filter((item) => item.genre === genre).length
+              }}
+              titles</span
+            >
+            <h2 class="mt-2 font-display text-3xl font-semibold">
+              {{ genre }}
+            </h2>
+            <span class="mt-4 text-sm text-tertiary">{{ copy.view }} →</span>
+          </div></NuxtLink
+        >
+      </div>
+    </section>
+  </main>
+</template>

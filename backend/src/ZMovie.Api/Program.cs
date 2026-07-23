@@ -1,4 +1,5 @@
 using FluentValidation;
+using Microsoft.Extensions.Hosting;
 using ZMovie.Api.Configuration;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -24,6 +25,7 @@ using ZMovie.Infrastructure.Assistant;
 var builder = WebApplication.CreateBuilder(args);
 
 await builder.Configuration.AddInfisicalSecretsAsync(builder.Environment);
+builder.AddServiceDefaults();
 
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
@@ -113,6 +115,7 @@ app.UseExceptionHandler();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapDefaultEndpoints();
 app.MapApiEndpoints();
 
 static int? ReadIntegerOption(string[] arguments, string name)

@@ -1,21 +1,29 @@
 {
-  "name": "frontend",
+  "name": "zmovie",
   "type": "module",
   "private": true,
   "scripts": {
     "build": "nuxt build",
+    "deploy": "npm run build && wrangler deploy",
     "dev": "nuxt dev",
+    "cf-typegen": "wrangler types",
     "gen:openapi": "npm run generate:api",
     "generate:api": "curl --fail --location --silent --show-error --insecure ${OPENAPI_URL:-http://localhost:5275/openapi/v1.json} -o /tmp/zmovie-openapi.json && openapi-typescript /tmp/zmovie-openapi.json -o app/types/api.d.ts",
     "generate": "nuxt generate",
+    "lint": "eslint .",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare && node scripts/patch-nitro.mjs"
+    "test": "bun test app/lib",
+    "test:e2e": "playwright test",
+    "typecheck": "nuxt prepare && vue-tsc --noEmit",
+    "postinstall": "nuxt prepare"
   },
   "dependencies": {
     "@lucide/vue": "^1.25.0",
+    "@nuxt/eslint": "^1.16.0",
     "@vueuse/core": "^14.3.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "eslint": "^10.7.0",
     "hls.js": "^1.6.16",
     "nuxt": "^4.5.0",
     "reka-ui": "^2.10.1",
@@ -27,6 +35,9 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
-    "openapi-typescript": "^7.13.0"
+    "@types/node": "^26.1.1",
+    "openapi-typescript": "^7.13.0",
+    "vue-tsc": "^3.0.0",
+    "wrangler": "^4.113.0"
   }
 }

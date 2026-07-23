@@ -1,0 +1,86 @@
+variables:
+  FRONTEND_PATH: "frontend"
+  NITRO_PRESET: "cloudflare_pages"
+  CF_PAGES_PROJECT_NAME: "zmovie"
+
+.frontend-rules: &frontend-rules
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+    changes:
+      - ".gitlab-ci.yml"
+      - ".gitlab/ci/frontend.gitlab-ci.yml"
+      - "frontend/**/*"
+  - when: never
+
+frontend:lint:
+  image: oven/bun:1
+  stage: verify
+  before_script:
+    - cd "$FRONTEND_PATH"
+    - bun install --frozen-lockfile
+    - bun nuxt prepare
+  rules: *frontend-rules
+  script:
+    - bun run lint
+    - bun run typecheck
+
+.frontend-deploy-base:
+  image:
+    name: jfxs/wrangler:latest
+    entrypoint: [""]
+  stage: deploy
+  needs: []
+  before_script:
+    - set -eu
+    - cd "$FRONTEND_PATH"
+    - npm install
+    - test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is empty!"; exit 1; }
+    - test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is empty!"; exit 1; }
+  script:
+    - echo "Building $CI_ENVIRONMENT_NAME with API_URL=$NUXT_PUBLIC_API_BASE_URL, NITRO_PRESET=$NITRO_PRESET, SSR=$NUXT_SSR"
+    - npm run generate
+    - wrangler whoami
+    - wrangler pages deploy ./dist --project-name="$CF_PAGES_PROJECT_NAME" --branch="$CF_PAGES_BRANCH"
+  variables:
+    NUXT_SSR: "false"
+    WRANGLER_LOG_PATH: "$CI_PROJECT_DIR/wrangler-logs"
+    WRANGLER_LOG_SANITIZE: "true"
+  artifacts:
+    when: always
+    paths:
+      - "$FRONTEND_PATH/.nuxt/"
+      - "$FRONTEND_PATH/.output/"
+      - "$FRONTEND_PATH/dist/"
+      - "wrangler-logs/"
+    expire_in: 30 minutes
+
+frontend:deploy:staging:
+  extends: .frontend-deploy-base
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
+      changes:
+        - ".gitlab-ci.yml"
+        - ".gitlab/ci/frontend.gitlab-ci.yml"
+        - "frontend/**/*"
+      when: manual
+    - when: never
+  variables:
+    CF_PAGES_BRANCH: "staging"
+    NUXT_PUBLIC_API_BASE_URL: "https://movie-api.ziet.dev"
+  environment:
+    name: staging
+    url: https://movie.ziet.dev
+  resource_group: "frontend-staging"
+
+# frontend:deploy:production:
+#   extends: .frontend-deploy-base
+#   rules:
+#     - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+#       when: manual
+#     - when: never
+#   variables:
+#     CF_PAGES_BRANCH: "production"
+#     NUXT_PUBLIC_API_BASE_URL: "https://api-domain"
+#   environment:
+#     name: production
+#     url: https://fe-domain
+#   resource_group: "frontend-production"
