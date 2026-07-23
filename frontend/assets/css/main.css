@@ -1,12 +1,12 @@
-@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;600;700;800;900&display=swap");
 
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn-vue/tailwind.css";
 
 @theme inline {
-  --font-sans: "Be Vietnam Pro", sans-serif;
-  --font-display: "Be Vietnam Pro", sans-serif;
+  --font-sans: "Nunito Sans", sans-serif;
+  --font-display: "Nunito Sans", sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);

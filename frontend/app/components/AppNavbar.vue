@@ -93,19 +93,19 @@ onMounted(() => {
   <header
     class="sticky top-0 z-50 border-b border-white/10 bg-background/90 px-5 py-4 backdrop-blur-xl lg:px-12"
   >
-    <div class="mx-auto flex max-w-360 items-center justify-between">
+    <div class="mx-auto flex h-10 max-w-360 items-center justify-between">
       <div class="flex items-center gap-10">
         <NuxtLink
           to="/"
-          class="font-display text-2xl font-semibold tracking-tight text-primary"
+          class="inline-flex h-10 items-center font-display text-2xl font-bold tracking-tight text-primary"
           >ZMovie</NuxtLink
         >
-        <nav class="hidden items-center gap-6 md:flex">
+        <nav class="hidden h-10 items-center gap-6 md:flex">
           <NuxtLink
             v-for="(item, index) in navItems"
             :key="item.label"
             :to="item.to"
-            class="border-b-2 pb-1 text-sm transition-colors"
+            class="inline-flex h-10 items-center border-b-2 text-sm font-medium leading-none transition-colors"
             :class="
               isActive(index)
                 ? 'border-primary text-primary'
@@ -115,7 +115,7 @@ onMounted(() => {
           >
         </nav>
       </div>
-      <div class="flex items-center gap-4 text-muted-foreground sm:gap-6">
+      <div class="flex h-10 items-center gap-4 text-muted-foreground sm:gap-6">
         <NuxtLink
           to="/browse"
           aria-label="Search"
@@ -133,7 +133,7 @@ onMounted(() => {
         <span class="hidden h-6 w-px bg-white/10 sm:block" />
         <div class="relative z-[60]">
           <button
-            class="flex items-center gap-2 rounded-full border border-white/10 bg-surface-container px-3 py-2 text-xs font-semibold text-foreground transition hover:border-primary/60"
+            class="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-surface-container px-3 text-xs font-semibold text-foreground transition hover:border-primary/60"
             type="button"
             :aria-expanded="isLanguageOpen"
             @click="isLanguageOpen = !isLanguageOpen"
@@ -175,7 +175,7 @@ onMounted(() => {
           v-if="!user"
           to="/login"
           aria-label="Đăng nhập"
-          class="grid size-9 place-items-center rounded-full border border-white/10 bg-surface-container transition hover:border-primary/60 hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          class="grid size-10 place-items-center rounded-full border border-white/10 bg-surface-container transition hover:border-primary/60 hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           ><CircleUserRound class="size-5 text-primary"
         /></NuxtLink>
         <div v-else class="relative">
