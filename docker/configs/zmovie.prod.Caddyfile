@@ -1,8 +1,0 @@
-{
-	auto_https off
-}
-
-:8000 {
-	root * /app/zmovie-api/public
-	php_server
-}
