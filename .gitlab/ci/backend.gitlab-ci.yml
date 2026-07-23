@@ -121,6 +121,7 @@ backend:image:build:
     # mode=max keeps intermediate BuildKit layers for the multi-stage Dockerfile.
     - >
       docker buildx build
+      --platform linux/amd64
       --push
       --cache-from type=registry,ref="$IMAGE_NAME:$DOCKER_CACHE_TAG"
       --cache-to type=registry,ref="$IMAGE_NAME:$DOCKER_CACHE_TAG",mode=max
