@@ -12,7 +12,7 @@ public sealed class EngagementDbContext(DbContextOptions<EngagementDbContext> op
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.HasDefaultSchema("engagement");
+        modelBuilder.HasDefaultSchema("public");
 
         var saved = modelBuilder.Entity<SavedTitle>();
         saved.ToTable("saved_titles");

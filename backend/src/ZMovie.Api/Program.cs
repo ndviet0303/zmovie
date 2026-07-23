@@ -77,7 +77,7 @@ if (args.Contains("--import-ophim-genres", StringComparer.OrdinalIgnoreCase))
     var importDb = importScope.ServiceProvider.GetRequiredService<CatalogDbContext>();
     await importDb.Database.MigrateAsync();
     var imported = await OPhimGenreImporter.ImportAsync(importDb, new HttpClient(), CancellationToken.None);
-    Console.WriteLine($"Imported {imported} OPhim genres into catalog.genres.");
+    Console.WriteLine($"Imported {imported} OPhim genres into genres.");
     return;
 }
 

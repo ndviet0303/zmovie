@@ -13,7 +13,7 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.HasDefaultSchema("catalog");
+        modelBuilder.HasDefaultSchema("public");
         var title = modelBuilder.Entity<CatalogTitle>();
         title.ToTable("titles");
         title.HasKey(x => x.Id);
@@ -42,7 +42,7 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
         genre.HasIndex(x => x.Slug).IsUnique();
 
         var user = modelBuilder.Entity<ZMovieUser>();
-        user.ToTable("users", "identity");
+        user.ToTable("users");
         user.HasKey(x => x.Id);
         user.Property(x => x.GoogleSubject).HasMaxLength(128).IsRequired();
         user.HasIndex(x => x.GoogleSubject).IsUnique();
