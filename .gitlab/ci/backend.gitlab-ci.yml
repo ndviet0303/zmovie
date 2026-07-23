@@ -1,0 +1,184 @@
+variables:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  NUGET_PACKAGES: "$CI_PROJECT_DIR/.nuget/packages"
+  BACKEND_SOLUTION: "ZMovie.slnx"
+  DOCKER_REGISTRY: "$CI_REGISTRY"
+  IMAGE_NAME: "$CI_REGISTRY_IMAGE/backend"
+  DOCKER_BUILD_TAG: "$CI_COMMIT_SHORT_SHA"
+  DOCKER_BETA_TAG: "beta"
+  DOCKER_LATEST_TAG: "latest"
+  DOCKER_CACHE_TAG: "buildcache"
+  DOCKER_STABLE_TAG: "stable"
+  DOCKER_RELEASE_TAG: "$CI_COMMIT_TAG"
+  DOCKERFILE_PATH: "src/ZMovie.Api/Dockerfile"
+
+# Common
+.backend-rules: &backend-rules
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+    changes:
+      - ".gitlab-ci.yml"
+      - ".gitlab/ci/backend.gitlab-ci.yml"
+      - "backend/**/*"
+  - when: never
+
+.backend-dotnet:
+  image: "mcr.microsoft.com/dotnet/sdk:10.0"
+  cache:
+    key: "nuget-$CI_COMMIT_REF_SLUG"
+    fallback_keys:
+      - "nuget-$CI_DEFAULT_BRANCH"
+    paths:
+      - ".nuget/packages/"
+    policy: pull-push
+  before_script:
+    - dotnet --info
+    - cd backend
+    - dotnet tool restore
+
+.backend-docker:
+  image: "docker:29"
+  variables:
+    DOCKER_BUILDKIT: "1"
+    BUILDX_CONFIG: "/cache/buildx"
+  before_script:
+    - docker --version
+    - docker buildx version
+    - test -S /var/run/docker.sock
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$DOCKER_REGISTRY" --username "$CI_REGISTRY_USER" --password-stdin
+    - docker buildx inspect backend-builder >/dev/null 2>&1 || docker buildx create --name backend-builder --driver docker-container --use
+    - docker buildx use backend-builder
+    - docker buildx inspect --bootstrap
+    - cd backend
+
+.backend-deploy:
+  image: "curlimages/curl:8.21.0"
+  stage: deploy
+  script:
+    - |
+      set -eu
+
+      echo "Deploying to Portainer webhooks..."
+
+      printf '%s\n' "$WEBHOOK_URLS" | while read -r url; do
+        [ -z "$url" ] && continue
+
+        echo "Triggering Portainer webhook..."
+        curl -fsS --retry 3 --retry-delay 2 -X POST "$url"
+      done
+
+# Verify stage (build, test)
+backend:build:
+  extends: ".backend-dotnet"
+  stage: verify
+  rules: *backend-rules
+  script:
+    - dotnet restore "$BACKEND_SOLUTION"
+    - dotnet build "$BACKEND_SOLUTION" --no-restore
+
+backend:test:
+  extends: ".backend-dotnet"
+  stage: verify
+  variables:
+    DOCKER_HOST: "unix:///var/run/docker.sock"
+  needs:
+    - job: "backend:build"
+      artifacts: false
+  rules: *backend-rules
+  coverage: '/Line coverage: \d+(?:\.\d+)?%/'
+  script:
+    - test -S /var/run/docker.sock
+    - mkdir -p "$CI_PROJECT_DIR/test-results"
+    - dotnet test "$BACKEND_SOLUTION" --logger "junit;LogFilePath=$CI_PROJECT_DIR/test-results/{assembly}.xml" --collect:"XPlat Code Coverage" --results-directory "$CI_PROJECT_DIR/coverage"
+    - |
+      awk 'match($0, /filename="[^"]+"/) { file = substr($0, RSTART + 10, RLENGTH - 11) } file && match($0, /<line number="[0-9]+"/) { line = substr($0, RSTART + 14, RLENGTH - 14); key = file ":" line; valid[key] = 1; if (match($0, /hits="[0-9]+"/) && substr($0, RSTART + 6, RLENGTH - 6) + 0 > 0) { covered[key] = 1 } } END { for (key in valid) { total++ } for (key in covered) { hit++ } printf "Line coverage: %.2f%%\n", total ? (hit / total * 100) : 0 }' "$CI_PROJECT_DIR"/coverage/*/coverage.cobertura.xml
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+      - "test-results/*.xml"
+      - "coverage/*/coverage.cobertura.xml"
+    reports:
+      junit:
+        - "test-results/*.xml"
+      coverage_report:
+        coverage_format: cobertura
+        path: "coverage/*/coverage.cobertura.xml"
+
+# Package & Release stage
+backend:image:build:
+  extends: ".backend-docker"
+  stage: package
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
+      changes:
+        - ".gitlab-ci.yml"
+        - ".gitlab/ci/backend.gitlab-ci.yml"
+        - "backend/**/*"
+      when: manual
+    - when: never
+  script:
+    # mode=max keeps intermediate BuildKit layers for the multi-stage Dockerfile.
+    - >
+      docker buildx build
+      --push
+      --cache-from type=registry,ref="$IMAGE_NAME:$DOCKER_CACHE_TAG"
+      --cache-to type=registry,ref="$IMAGE_NAME:$DOCKER_CACHE_TAG",mode=max
+      --build-arg BUILD_VERSION="$CI_COMMIT_SHORT_SHA"
+      --tag "$IMAGE_NAME:$DOCKER_BUILD_TAG"
+      --tag "$IMAGE_NAME:$DOCKER_BETA_TAG"
+      --tag "$IMAGE_NAME:$DOCKER_LATEST_TAG"
+      --file "$DOCKERFILE_PATH"
+      .
+
+backend:image:release:
+  extends: ".backend-docker"
+  stage: release
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+    - when: never
+  script:
+    - apk add --no-cache git
+    - git fetch origin main:refs/remotes/origin/main
+    - git merge-base --is-ancestor "$CI_COMMIT_SHA" origin/main
+    - docker pull "$IMAGE_NAME:$DOCKER_BUILD_TAG"
+    - docker tag "$IMAGE_NAME:$DOCKER_BUILD_TAG" "$IMAGE_NAME:$DOCKER_RELEASE_TAG"
+    - docker tag "$IMAGE_NAME:$DOCKER_BUILD_TAG" "$IMAGE_NAME:$DOCKER_STABLE_TAG"
+    - docker push "$IMAGE_NAME:$DOCKER_RELEASE_TAG"
+    - docker push "$IMAGE_NAME:$DOCKER_STABLE_TAG"
+
+# Deploy stage
+backend:deploy:staging:
+  extends: ".backend-deploy"
+  needs:
+    - job: "backend:image:build"
+      artifacts: false
+  environment:
+    name: "staging"
+    deployment_tier: "staging"
+  resource_group: "backend-staging"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main" && $PORTAINER_STAGING_WEBHOOK_URLS'
+      changes:
+        - ".gitlab-ci.yml"
+        - ".gitlab/ci/backend.gitlab-ci.yml"
+        - "backend/**/*"
+    - when: never
+  variables:
+    WEBHOOK_URLS: "$PORTAINER_STAGING_WEBHOOK_URLS"
+
+backend:deploy:production:
+  extends: ".backend-deploy"
+  needs:
+    - job: "backend:image:release"
+      artifacts: false
+  environment:
+    name: "production"
+    deployment_tier: "production"
+  resource_group: "backend-production"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/ && $PORTAINER_PRODUCTION_WEBHOOK_URLS'
+      when: manual
+    - when: never
+  variables:
+    WEBHOOK_URLS: "$PORTAINER_PRODUCTION_WEBHOOK_URLS"

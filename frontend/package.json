@@ -1,14 +1,17 @@
 {
-  "name": "frontend",
+  "name": "zmovie",
   "type": "module",
   "private": true,
   "scripts": {
     "build": "nuxt build",
+    "deploy": "npm run build && wrangler deploy",
     "dev": "nuxt dev",
+    "cf-typegen": "wrangler types",
     "gen:openapi": "npm run generate:api",
     "generate:api": "curl --fail --location --silent --show-error --insecure ${OPENAPI_URL:-http://localhost:5275/openapi/v1.json} -o /tmp/zmovie-openapi.json && openapi-typescript /tmp/zmovie-openapi.json -o app/types/api.d.ts",
     "generate": "nuxt generate",
-    "preview": "nuxt preview",
+    "preview": "npm run build && wrangler dev",
+    "preview:nuxt": "nuxt preview",
     "postinstall": "nuxt prepare && node scripts/patch-nitro.mjs"
   },
   "dependencies": {
@@ -27,6 +30,8 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
-    "openapi-typescript": "^7.13.0"
+    "@types/node": "^26.1.1",
+    "openapi-typescript": "^7.13.0",
+    "wrangler": "^4.113.0"
   }
 }

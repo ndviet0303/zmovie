@@ -5,10 +5,12 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="AWSSDK.S3" Version="4.0.101.3" />
+    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
     <PackageVersion Include="ErrorOr" Version="2.1.1" />
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageVersion Include="FluentAssertions" Version="8.10.0" />
     <PackageVersion Include="Google.Apis.Auth" Version="1.75.0" />
     <PackageVersion Include="Infisical.Sdk" Version="3.0.4" />
     <PackageVersion Include="Gridify.EntityFramework" Version="2.19.1" />
@@ -25,7 +27,15 @@
     <PackageVersion Include="Riok.Mapperly" Version="4.3.1" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.16.16" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.6.0" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.6.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
+    <PackageVersion Include="JunitXml.TestLogger" Version="8.0.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
   </ItemGroup>

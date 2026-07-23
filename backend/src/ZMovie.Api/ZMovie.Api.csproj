@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="../ZMovie.Application/ZMovie.Application.csproj" />
     <ProjectReference Include="../ZMovie.Infrastructure/ZMovie.Infrastructure.csproj" />
+    <ProjectReference Include="../../ZMovie.ServiceDefaults/ZMovie.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,36 @@
+pre-commit:
+  parallel: true
+  commands:
+    backend-format:
+      stage_fixed: true
+      files: git diff --cached --name-only --diff-filter=ACM
+      glob: '**/*.cs'
+      run: dotnet format backend/ZMovie.slnx --include {files}
+    frontend-format:
+      stage_fixed: true
+      files: git diff --cached --name-only --diff-filter=ACM
+      glob: 'frontend/**/*.{js,jsx,ts,tsx,vue,json,jsonc,css,scss,md}'
+      run: bunx prettier --write {files}
+
+commit-msg:
+  commands:
+    conventional-commit:
+      run: >-
+        message="$(cat {1})";
+        printf '%s\n' "$message" | grep -Eq '^(feature|feat|fix|hotfix|refactor|chore|docs|test|style|perf|ci|build|revert)(\(.+\))?: .+'
+
+pre-push:
+  parallel: false
+  commands:
+    require-main:
+      run: >-
+        branch="$(git branch --show-current)";
+        case "$branch" in dev/*) ;; *) exit 0 ;; esac;
+        if ! git fetch --quiet origin main; then
+          printf '%s\n' 'Unable to refresh origin/main; push blocked.' >&2;
+          exit 1;
+        fi;
+        if ! git merge-base --is-ancestor origin/main HEAD; then
+          printf '%s\n' 'Your dev branch is behind origin/main. Rebase onto origin/main before pushing.' >&2;
+          exit 1;
+        fi
