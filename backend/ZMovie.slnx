@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ZMovie.Api/ZMovie.Api.csproj" />
+    <Project Path="src/ZMovie.Application/ZMovie.Application.csproj" />
+    <Project Path="src/ZMovie.Domain/ZMovie.Domain.csproj" />
+    <Project Path="src/ZMovie.Infrastructure/ZMovie.Infrastructure.csproj" />
+    <Project Path="src/ZMovie.AppHost/ZMovie.AppHost.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ZMovie.Api.Tests/ZMovie.Api.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,20 @@
+# ZMovie
+
+MVP movie platform, separated into independently runnable applications:
+
+- `backend/` — .NET 10 API. The current first vertical slice exposes the public Catalog and Discovery APIs.
+- `frontend/` — Nuxt 4 storefront using shadcn-vue, Tailwind CSS, and generated local UI components.
+
+## Run locally
+
+Install frontend dependencies once, then start both apps from the repository root:
+
+```bash
+cd frontend && npm install
+cd ..
+./scripts/dev.sh
+```
+
+The script starts the Nuxt frontend on `http://localhost:3000` and the API on
+`http://localhost:5275`; Nuxt already proxies `/api/v1/**` to that API address.
+Use `Ctrl+C` to stop both processes.

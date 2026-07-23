@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600;700&display=swap');
+
+@import 'tailwindcss';
+@import "tw-animate-css";
+@import "shadcn-vue/tailwind.css";
+
+@theme inline {
+  --font-sans: Inter, sans-serif;
+  --font-display: "Playfair Display", serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-container: var(--primary-container);
+  --color-primary-container-foreground: var(--primary-container-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-tertiary: var(--tertiary);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-destructive: var(--destructive);
+  --spacing-175: 43.75rem;
+  --spacing-217\.5: 54.375rem;
+  --spacing-360: 90rem;
+}
+
+:root {
+  --background: #131313;
+  --foreground: #e5e2e1;
+  --primary: #ffb59d;
+  --primary-container: #d98367;
+  --primary-container-foreground: #591f0a;
+  --muted-foreground: #d9c1ba;
+  --tertiary: #cec5ba;
+  --surface-container: #201f1f;
+  --surface-container-lowest: #0e0e0e;
+  --destructive: #ffb4ab;
+}
+
+@layer base {
+  * { @apply border-white/10; }
+  html { scroll-behavior: smooth; background: var(--background); }
+  body { @apply bg-background font-sans text-foreground antialiased; }
+  button, a { -webkit-tap-highlight-color: transparent; }
+  button:not(:disabled), a[href] { cursor: pointer; }
+}
