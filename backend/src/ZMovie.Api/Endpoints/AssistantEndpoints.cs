@@ -8,7 +8,7 @@ public static class AssistantEndpoints
 {
     public static IEndpointRouteBuilder MapAssistantEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/v1/assistant/chat", async (ISender sender, AssistantChatRequest request, CancellationToken ct) =>
+        endpoints.MapPost("/v1/assistant/chat", async (ISender sender, AssistantChatRequest request, CancellationToken ct) =>
                 (await sender.Send(new AskCatalogAssistantQuery(request.Message, request.Locale), ct)).ToApiResult())
             .WithTags("Assistant")
             .Produces<AssistantReply>(StatusCodes.Status200OK)

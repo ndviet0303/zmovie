@@ -10,7 +10,7 @@ public static class CatalogEndpoints
 {
     public static IEndpointRouteBuilder MapCatalogEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var catalog = endpoints.MapGroup("/api/v1/catalog").WithTags("Catalog");
+        var catalog = endpoints.MapGroup("/v1/catalog").WithTags("Catalog");
 
         catalog.MapGet("/titles", async (ISender sender, string? q, string? genre, string? locale, CancellationToken ct) =>
                 (await sender.Send(new ListTitlesQuery(q, genre, locale), ct)).ToApiResult())

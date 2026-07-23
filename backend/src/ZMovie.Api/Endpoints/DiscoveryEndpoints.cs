@@ -10,11 +10,11 @@ public static class DiscoveryEndpoints
 {
     public static IEndpointRouteBuilder MapDiscoveryEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/v1/discovery/home", async (ISender sender, string? locale, CancellationToken ct) =>
+        endpoints.MapGet("/v1/discovery/home", async (ISender sender, string? locale, CancellationToken ct) =>
                 (await sender.Send(new GetHomeQuery(locale), ct)).ToApiResult())
             .Produces<HomeResponse>(StatusCodes.Status200OK)
             .ProducesApiErrors();
-        endpoints.MapGet("/api/v1/discovery/top/{period}", async (ISender sender, string period, string? locale, int? limit, CancellationToken ct) =>
+        endpoints.MapGet("/v1/discovery/top/{period}", async (ISender sender, string period, string? locale, int? limit, CancellationToken ct) =>
         {
             if (!Enum.TryParse<TopPeriod>(period, true, out var topPeriod))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["period"] = ["Use day, week, or month."] });
@@ -22,7 +22,7 @@ public static class DiscoveryEndpoints
         })
             .Produces<IReadOnlyList<TopTitleResponse>>(StatusCodes.Status200OK)
             .ProducesApiErrors();
-        endpoints.MapGet("/api/v1/discovery/for-you", async (ISender sender, HttpContext context, string? locale, CancellationToken ct) =>
+        endpoints.MapGet("/v1/discovery/for-you", async (ISender sender, HttpContext context, string? locale, CancellationToken ct) =>
                 (await sender.Send(new GetPersonalizedDiscoveryQuery(Guid.Parse(context.User.FindFirstValue(ClaimTypes.NameIdentifier)!), locale?.StartsWith("en", StringComparison.OrdinalIgnoreCase) is true ? "en" : "vi"), ct)).ToApiResult())
             .RequireAuthorization()
             .Produces<PersonalizedDiscoveryResponse>(StatusCodes.Status200OK)

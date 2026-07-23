@@ -17,12 +17,12 @@ export default defineNuxtConfig({
   vite: { plugins: [tailwindcss()] },
   runtimeConfig: {
     public: {
-      apiBaseUrl: '/api',
+      apiBaseUrl: '/',
       googleClientId: process.env.NUXT_PUBLIC_GOOGLE_CLIENT_ID ?? '39010162417-34sjb806htrhds433p75b6s4k1l928nk.apps.googleusercontent.com',
     },
   },
   routeRules: {
-    '/api/v1/**': { proxy: 'http://localhost:5275/api/v1/**' },
+    '/v1/**': { proxy: 'http://localhost:5275/v1/**' },
   },
   components: [{ path: '~/components', pathPrefix: false, ignore: ['**/index.ts'] }],
 })

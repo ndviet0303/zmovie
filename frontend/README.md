@@ -27,10 +27,10 @@ Start the development server on `http://localhost:3000`:
 Configure the API base URL in `.env.local` before starting Nuxt:
 
 ```bash
-NUXT_PUBLIC_API_BASE_URL=http://localhost:5275/api
+NUXT_PUBLIC_API_BASE_URL=http://localhost:5275
 ```
 
-The value is exposed through Nuxt runtime config and defaults to `/api` when it is omitted. Restart Nuxt after changing it.
+The value is exposed through Nuxt runtime config and defaults to `/` when it is omitted. Restart Nuxt after changing it.
 
 ```bash
 # npm

@@ -11,12 +11,12 @@ ZMovie is a .NET 10 modular-monolith foundation with four layers:
 
 The implemented module is Catalog. It uses the `catalog` PostgreSQL schema and exposes:
 
-- `GET /api/v1/catalog/titles`
-- `GET /api/v1/catalog/titles/{slug}`
-- `GET /api/v1/catalog/genres`
-- `GET /api/v1/catalog/titles/{slug}/playback`
-- `GET /api/v1/discovery/home`
-- `GET /api/v1/search`
+- `GET /v1/catalog/titles`
+- `GET /v1/catalog/titles/{slug}`
+- `GET /v1/catalog/genres`
+- `GET /v1/catalog/titles/{slug}/playback`
+- `GET /v1/discovery/home`
+- `GET /v1/search`
 - `GET /health/live` and `GET /health/ready`
 
 Catalog data supports Vietnamese and English title/synopsis fields. Search queries Meilisearch when configured and fall back to PostgreSQL when that dependency is unavailable. The API uses snake_case database naming, UUIDv7 entity identifiers, and `UpdatedAt` optimistic concurrency metadata.
