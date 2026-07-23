@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Check, ChevronDown, Search, SlidersHorizontal, X } from "@lucide/vue";
+import { InputField } from "~/components/ui/input";
 
 type Title = {
   slug: string;
@@ -28,6 +29,9 @@ const collection = computed(() =>
 );
 const isRecommended = computed(() => collection.value === "recommended");
 const { $api } = useNuxtApp();
+const data = ref<TitleListResponse>();
+const isLoading = ref(true);
+const loadError = ref(false);
 
 async function loadBrowseData(requestedLocale = locale.value) {
   const catalog = await $api<TitleListResponse>("/v1/catalog/titles", {
@@ -54,22 +58,42 @@ async function loadBrowseData(requestedLocale = locale.value) {
   return catalog;
 }
 
-const { data } = await useAsyncData("catalog-browse", loadBrowseData);
+async function refreshBrowseData(requestedLocale = locale.value) {
+  isLoading.value = true;
+  loadError.value = false;
+  try {
+    data.value = await loadBrowseData(requestedLocale);
+  } catch {
+    data.value = { items: [], total: 0 };
+    loadError.value = true;
+  } finally {
+    isLoading.value = false;
+  }
+}
+
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
-onMounted(async () => {
-  if (!isRecommended.value) return;
-  data.value = await loadBrowseData();
+onMounted(() => {
+  void refreshBrowseData();
 });
 
 watch(query, (value) => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(async () => {
-    data.value = value.trim()
-      ? await $api<TitleListResponse>("/v1/search", {
-          query: { q: value.trim(), locale: locale.value },
-        })
-      : await loadBrowseData();
+    isLoading.value = true;
+    loadError.value = false;
+    try {
+      data.value = value.trim()
+        ? await $api<TitleListResponse>("/v1/search", {
+            query: { q: value.trim(), locale: locale.value },
+          })
+        : await loadBrowseData();
+    } catch {
+      data.value = { items: [], total: 0 };
+      loadError.value = true;
+    } finally {
+      isLoading.value = false;
+    }
   }, 180);
 });
 
@@ -90,6 +114,8 @@ const copy = computed(() =>
         series: "Phim bộ",
         latest: "Mới nhất",
         showMore: "Tải thêm",
+        loading: "Đang tải phim...",
+        error: "Không thể tải catalog. Hãy thử tải lại trang.",
         empty: "Không tìm thấy phim phù hợp.",
       }
     : {
@@ -107,9 +133,20 @@ const copy = computed(() =>
         series: "Series",
         latest: "Latest",
         showMore: "Load more",
+        loading: "Loading titles...",
+        error: "Unable to load the catalog. Try refreshing the page.",
         empty: "No titles match your search.",
       },
 );
+
+useZMovieSeo({
+  title: computed(() => copy.value.title),
+  description: computed(() =>
+    locale.value === "vi"
+      ? "Tìm kiếm và khám phá những bộ phim phù hợp với bạn trên ZMovie."
+      : "Search and discover movies that fit your mood on ZMovie.",
+  ),
+});
 
 function splitGenres(genre: string) {
   return genre
@@ -158,8 +195,8 @@ function clearFilters() {
 
 async function setLocale(nextLocale: "vi" | "en") {
   if (nextLocale === locale.value) return;
-  data.value = await loadBrowseData(nextLocale);
-  locale.value = nextLocale;
+  await refreshBrowseData(nextLocale);
+  if (!loadError.value) locale.value = nextLocale;
 }
 </script>
 
@@ -168,29 +205,28 @@ async function setLocale(nextLocale: "vi" | "en") {
     <AppNavbar :locale="locale" @locale-change="setLocale" />
 
     <section class="mx-auto max-w-360 px-5 pb-24 pt-12 lg:px-12 lg:pt-16">
-      <h1
-        class="font-display text-4xl font-semibold tracking-tight sm:text-5xl"
-      >
+      <h1 class="font-display text-4xl font-bold tracking-tight sm:text-5xl">
         {{ copy.title }}
       </h1>
-      <label class="relative mt-7 block max-w-2xl">
-        <Search
-          class="pointer-events-none absolute left-5 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
-        />
-        <input
-          v-model="query"
-          :placeholder="copy.placeholder"
-          class="h-14 w-full rounded-2xl border border-white/10 bg-surface-container pl-13 pr-12 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary/60 focus:ring-2 focus:ring-primary/15"
-        />
-        <button
-          v-if="query"
-          class="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
-          aria-label="Clear search"
-          @click="query = ''"
-        >
-          <X class="size-5" />
-        </button>
-      </label>
+      <InputField
+        v-model="query"
+        :placeholder="copy.placeholder"
+        class="mt-7 max-w-2xl"
+      >
+        <template #leading>
+          <Search class="size-5 shrink-0 text-muted-foreground" />
+        </template>
+        <template #trailing>
+          <button
+            v-if="query"
+            class="shrink-0 text-muted-foreground transition-colors hover:text-primary"
+            aria-label="Clear search"
+            @click="query = ''"
+          >
+            <X class="size-5" />
+          </button>
+        </template>
+      </InputField>
 
       <div id="filters" class="mt-8 flex flex-wrap items-center gap-3">
         <button
@@ -314,8 +350,20 @@ async function setLocale(nextLocale: "vi" | "en") {
         </section>
       </div>
 
+      <p
+        v-if="isLoading"
+        class="mt-10 rounded-3xl border border-white/10 bg-surface-container p-10 text-center text-muted-foreground"
+      >
+        {{ copy.loading }}
+      </p>
+      <p
+        v-else-if="loadError"
+        class="mt-10 rounded-3xl border border-white/10 bg-surface-container p-10 text-center text-muted-foreground"
+      >
+        {{ copy.error }}
+      </p>
       <div
-        v-if="visibleTitles.length"
+        v-else-if="visibleTitles.length"
         class="mt-10 grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
       >
         <NuxtLink
@@ -353,7 +401,7 @@ async function setLocale(nextLocale: "vi" | "en") {
         </NuxtLink>
       </div>
       <p
-        v-else
+        v-else-if="!isLoading && !loadError"
         class="mt-10 rounded-3xl border border-white/10 bg-surface-container p-10 text-center text-muted-foreground"
       >
         {{ copy.empty }}

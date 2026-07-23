@@ -24,6 +24,20 @@ type PersonalizedDiscovery = {
   recommended: Title[];
 };
 
+function takeUniqueTitles(
+  titles: Title[],
+  excludedSlugs: ReadonlySet<string>,
+  limit = 5,
+) {
+  const seen = new Set(excludedSlugs);
+  return titles.filter((title) => {
+    if (seen.has(title.slug) || seen.size >= excludedSlugs.size + limit)
+      return false;
+    seen.add(title.slug);
+    return true;
+  });
+}
+
 const savedLocale = useCookie<"vi" | "en">("zmovie-locale", {
   default: () => "vi",
 });
@@ -44,10 +58,52 @@ const continueWatching = computed(
 const recommendedTitles = computed(() =>
   personalized.value?.recommended.length
     ? personalized.value.recommended
-    : catalogTitles.value.slice(0, 5),
+    : takeUniqueTitles(catalogTitles.value, new Set()),
+);
+const recommendedSlugs = computed(
+  () => new Set(recommendedTitles.value.map((title) => title.slug)),
 );
 const newReleaseTitles = computed(() =>
-  [...catalogTitles.value].sort((a, b) => b.year - a.year).slice(0, 5),
+  takeUniqueTitles(
+    [...catalogTitles.value].sort((a, b) => b.year - a.year),
+    recommendedSlugs.value,
+  ),
+);
+const newReleaseSlugs = computed(
+  () => new Set(newReleaseTitles.value.map((title) => title.slug)),
+);
+const titles2026 = computed(() =>
+  takeUniqueTitles(
+    catalogTitles.value.filter((title) => title.year === 2026),
+    new Set([...recommendedSlugs.value, ...newReleaseSlugs.value]),
+  ),
+);
+const titles2026Slugs = computed(
+  () => new Set(titles2026.value.map((title) => title.slug)),
+);
+const moviePicks = computed(() =>
+  takeUniqueTitles(
+    catalogTitles.value.filter((title) => title.type === "movie"),
+    new Set([
+      ...recommendedSlugs.value,
+      ...newReleaseSlugs.value,
+      ...titles2026Slugs.value,
+    ]),
+  ),
+);
+const moviePickSlugs = computed(
+  () => new Set(moviePicks.value.map((title) => title.slug)),
+);
+const seriesPicks = computed(() =>
+  takeUniqueTitles(
+    catalogTitles.value.filter((title) => title.type === "series"),
+    new Set([
+      ...recommendedSlugs.value,
+      ...newReleaseSlugs.value,
+      ...titles2026Slugs.value,
+      ...moviePickSlugs.value,
+    ]),
+  ),
 );
 const topPeriod = ref<TopPeriod>("week");
 const topPeriods: TopPeriod[] = ["day", "week", "month"];
@@ -80,6 +136,9 @@ const text = computed(() =>
         trending: "Top thịnh hành",
         recommended: "Đề xuất cho bạn",
         newReleases: "Mới phát hành",
+        year2026: "Phim 2026",
+        moviePicks: "Phim lẻ chọn lọc",
+        seriesPicks: "Phim bộ nổi bật",
         viewAll: "Xem tất cả",
         empty: "Chưa có phim thịnh hành để hiển thị.",
         unavailable: "Không thể tải catalog.",
@@ -97,6 +156,9 @@ const text = computed(() =>
         trending: "Top trending",
         recommended: "Recommended for you",
         newReleases: "New releases",
+        year2026: "2026 movies",
+        moviePicks: "Curated movies",
+        seriesPicks: "Featured series",
         viewAll: "View all",
         empty: "There are no trending titles to show yet.",
         unavailable: "Unable to load the catalog.",
@@ -104,6 +166,14 @@ const text = computed(() =>
         views: "views",
       },
 );
+
+useZMovieSeo({
+  title: computed(() =>
+    isVietnamese.value ? "Xem phim hay online" : "Watch great movies online",
+  ),
+  description: computed(() => text.value.description),
+  image: computed(() => home.value?.hero.posterUrl),
+});
 
 async function setLocale(nextLocale: "vi" | "en") {
   if (nextLocale === activeLocale.value) return;
@@ -197,7 +267,7 @@ function progressPercent(item: ContinueWatching) {
             >
           </div>
           <h1
-            class="font-display max-w-xl text-5xl font-semibold leading-[.98] tracking-[-.035em] text-foreground drop-shadow-md sm:text-6xl lg:text-7xl"
+            class="font-display max-w-xl text-5xl font-bold leading-[.98] tracking-[-.035em] text-foreground drop-shadow-md sm:text-6xl lg:text-7xl"
           >
             {{ home.hero.title }}
           </h1>
@@ -321,6 +391,54 @@ function progressPercent(item: ContinueWatching) {
               /></NuxtLink>
             </div>
             <TitlePosterRow :titles="newReleaseTitles" />
+          </section>
+
+          <section v-if="titles2026.length" class="mt-20">
+            <div class="mb-8 flex items-end justify-between">
+              <h2
+                class="font-display text-3xl font-semibold tracking-tight lg:text-4xl"
+              >
+                {{ text.year2026 }}
+              </h2>
+              <NuxtLink
+                to="/browse?sort=latest"
+                class="inline-flex items-center gap-1 text-sm font-medium text-primary transition hover:text-primary-container"
+                >{{ text.viewAll }} <ChevronRight class="size-4"
+              /></NuxtLink>
+            </div>
+            <TitlePosterRow :titles="titles2026" />
+          </section>
+
+          <section v-if="moviePicks.length" class="mt-20">
+            <div class="mb-8 flex items-end justify-between">
+              <h2
+                class="font-display text-3xl font-semibold tracking-tight lg:text-4xl"
+              >
+                {{ text.moviePicks }}
+              </h2>
+              <NuxtLink
+                to="/browse?sort=latest"
+                class="inline-flex items-center gap-1 text-sm font-medium text-primary transition hover:text-primary-container"
+                >{{ text.viewAll }} <ChevronRight class="size-4"
+              /></NuxtLink>
+            </div>
+            <TitlePosterRow :titles="moviePicks" />
+          </section>
+
+          <section v-if="seriesPicks.length" class="mt-20">
+            <div class="mb-8 flex items-end justify-between">
+              <h2
+                class="font-display text-3xl font-semibold tracking-tight lg:text-4xl"
+              >
+                {{ text.seriesPicks }}
+              </h2>
+              <NuxtLink
+                to="/browse?type=series"
+                class="inline-flex items-center gap-1 text-sm font-medium text-primary transition hover:text-primary-container"
+                >{{ text.viewAll }} <ChevronRight class="size-4"
+              /></NuxtLink>
+            </div>
+            <TitlePosterRow :titles="seriesPicks" />
           </section>
         </div>
 

@@ -30,6 +30,12 @@ const copy = computed(() =>
         view: "Explore titles",
       },
 );
+
+useZMovieSeo({
+  title: computed(() => copy.value.title),
+  description: computed(() => copy.value.subtitle),
+});
+
 async function setLocale(next: "vi" | "en") {
   if (next !== locale.value) {
     locale.value = next;

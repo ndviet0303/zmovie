@@ -1,44 +1,106 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;600;700;800;900&display=swap");
 
-@import 'tailwindcss';
+@import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn-vue/tailwind.css";
 
 @theme inline {
-  --font-sans: Inter, sans-serif;
-  --font-display: "Playfair Display", serif;
+  --font-sans: "Nunito Sans", sans-serif;
+  --font-display: "Nunito Sans", sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-primary-container: var(--primary-container);
   --color-primary-container-foreground: var(--primary-container-foreground);
   --color-muted-foreground: var(--muted-foreground);
   --color-tertiary: var(--tertiary);
   --color-surface-container: var(--surface-container);
   --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-destructive: var(--destructive);
+  --color-disabled: var(--disabled);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-gray-900: var(--gray-900);
+  --color-gray-800: var(--gray-800);
+  --color-gray-700: var(--gray-700);
+  --color-gray-600: var(--gray-600);
+  --color-gray-500: var(--gray-500);
+  --color-gray-400: var(--gray-400);
+  --color-gray-300: var(--gray-300);
+  --color-gray-200: var(--gray-200);
+  --color-gray-100: var(--gray-100);
+  --color-gray-50: var(--gray-50);
   --spacing-175: 43.75rem;
   --spacing-217\.5: 54.375rem;
   --spacing-360: 90rem;
 }
 
 :root {
-  --background: #131313;
-  --foreground: #e5e2e1;
-  --primary: #ffb59d;
-  --primary-container: #d98367;
-  --primary-container-foreground: #591f0a;
-  --muted-foreground: #d9c1ba;
-  --tertiary: #cec5ba;
-  --surface-container: #201f1f;
-  --surface-container-lowest: #0e0e0e;
-  --destructive: #ffb4ab;
+  /* Design system: Main */
+  --primary: #f89300;
+  --primary-foreground: #ffffff;
+  --secondary: #ffc107;
+  --secondary-foreground: #212121;
+  --primary-container: #f89300;
+  --primary-container-foreground: #ffffff;
+
+  /* Design system: Dark + grayscale */
+  --background: #181a20;
+  --foreground: #fafafa;
+  --surface-container: #1f222a;
+  --surface-container-lowest: #121419;
+  --muted-foreground: #bdbdbd;
+  --tertiary: #9e9e9e;
+  --border: #35383f;
+  --input: #1f222a;
+  --ring: #f89300;
+
+  --gray-900: #212121;
+  --gray-800: #424242;
+  --gray-700: #616161;
+  --gray-600: #757575;
+  --gray-500: #9e9e9e;
+  --gray-400: #bdbdbd;
+  --gray-300: #e0e0e0;
+  --gray-200: #eeeeee;
+  --gray-100: #f5f5f5;
+  --gray-50: #fafafa;
+
+  /* Design system: Alert & Status */
+  --success: #12d18e;
+  --warning: #facc15;
+  --destructive: #f75555;
+  --disabled: #d8d8d8;
 }
 
 @layer base {
-  * { @apply border-white/10; }
-  html { scroll-behavior: smooth; background: var(--background); }
-  body { @apply bg-background font-sans text-foreground antialiased; }
-  button, a { -webkit-tap-highlight-color: transparent; }
-  button:not(:disabled), a[href] { cursor: pointer; }
+  * {
+    @apply border-white/10;
+  }
+  html {
+    scroll-behavior: smooth;
+    background: var(--background);
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    font-weight: 500;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 35%, transparent);
+    color: var(--foreground);
+  }
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:not(:disabled),
+  a[href] {
+    cursor: pointer;
+  }
 }

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#181A20"/>
+      <stop offset="1" stop-color="#121419"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(1030 90) rotate(135) scale(520)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F89300" stop-opacity=".38"/>
+      <stop offset="1" stop-color="#F89300" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" rx="32" fill="url(#bg)"/>
+  <rect width="1200" height="630" rx="32" fill="url(#glow)"/>
+  <circle cx="1040" cy="110" r="220" stroke="#F89300" stroke-opacity=".12" stroke-width="2"/>
+  <circle cx="1040" cy="110" r="150" stroke="#F89300" stroke-opacity=".12" stroke-width="2"/>
+  <path d="M0 560C210 440 380 470 580 590C760 698 930 610 1200 470V630H0V560Z" fill="#1F222A" fill-opacity=".82"/>
+  <rect x="88" y="88" width="76" height="76" rx="22" fill="#F89300"/>
+  <path d="M108 108H144V120L125 139H144V148H108V136L127 117H108V108Z" fill="#fff"/>
+  <path d="M137 121L151 128L137 135V121Z" fill="#fff"/>
+  <text x="88" y="280" fill="#FAFAFA" font-family="Nunito Sans, Arial, sans-serif" font-size="92" font-weight="800" letter-spacing="-3">ZMovie</text>
+  <text x="94" y="342" fill="#BDBDBD" font-family="Nunito Sans, Arial, sans-serif" font-size="30" font-weight="600">Xem phim hay · Khám phá câu chuyện mới</text>
+  <rect x="94" y="410" width="184" height="58" rx="29" fill="#F89300"/>
+  <text x="186" y="448" text-anchor="middle" fill="#fff" font-family="Nunito Sans, Arial, sans-serif" font-size="22" font-weight="800">XEM NGAY</text>
+</svg>

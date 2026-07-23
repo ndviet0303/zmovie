@@ -133,6 +133,21 @@ const copy = computed(() =>
       },
 );
 
+useZMovieSeo({
+  title: computed(() =>
+    title.value?.title
+      ? `Đang xem ${title.value.title}`
+      : "Xem phim trực tuyến",
+  ),
+  description: computed(
+    () =>
+      title.value?.synopsis ??
+      "Xem phim trực tuyến với phụ đề tiếng Việt trên ZMovie.",
+  ),
+  image: computed(() => title.value?.posterUrl),
+  type: "video.movie",
+});
+
 function showUnavailableDialog() {
   playerError.value = copy.value.unavailable;
   isLoading.value = false;
@@ -376,7 +391,7 @@ function formatTime(seconds: number) {
 function rangeStyle(value: number, max: number) {
   const percent = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
   return {
-    background: `linear-gradient(to right, #d98367 0%, #d98367 ${percent}%, rgba(255,255,255,.28) ${percent}%, rgba(255,255,255,.28) 100%)`,
+    background: `linear-gradient(to right, var(--primary) 0%, var(--primary) ${percent}%, rgba(255,255,255,.28) ${percent}%, rgba(255,255,255,.28) 100%)`,
   };
 }
 
@@ -499,7 +514,7 @@ onBeforeUnmount(() => {
             </p>
             <button
               v-if="!isPlaying && !isLoading"
-              class="absolute left-1/2 top-1/2 grid size-18 -translate-x-1/2 -translate-y-1/2 cursor-pointer place-items-center rounded-full bg-primary-container text-primary-container-foreground shadow-[0_0_50px_rgba(217,131,103,.5)] transition hover:scale-105"
+              class="absolute left-1/2 top-1/2 grid size-18 -translate-x-1/2 -translate-y-1/2 cursor-pointer place-items-center rounded-full bg-primary-container text-primary-container-foreground shadow-[0_0_50px_rgba(248,147,0,.5)] transition hover:scale-105"
               aria-label="Play"
               @click="togglePlayback"
             >
@@ -699,7 +714,7 @@ onBeforeUnmount(() => {
             </div>
             <div class="flex items-center gap-2">
               <button
-                class="inline-flex h-10 items-center gap-2 rounded-full border border-[#d98367]/45 bg-[#d98367]/10 px-5 text-xs font-semibold text-primary transition hover:bg-primary-container hover:text-primary-container-foreground"
+                class="inline-flex h-10 items-center gap-2 rounded-full border border-primary/45 bg-primary/10 px-5 text-xs font-semibold text-primary transition hover:bg-primary-container hover:text-primary-container-foreground"
                 @click="toggleMyList"
               >
                 <Check v-if="isInMyList" class="size-4" /><BookmarkPlus
@@ -823,7 +838,7 @@ onBeforeUnmount(() => {
   height: 5px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.28);
-  accent-color: #d98367;
+  accent-color: var(--primary);
   cursor: pointer;
 }
 .player-range::-webkit-slider-thumb {
@@ -831,15 +846,15 @@ onBeforeUnmount(() => {
   width: 13px;
   height: 13px;
   border-radius: 999px;
-  background: #d98367;
-  box-shadow: 0 0 0 3px rgba(217, 131, 103, 0.2);
+  background: var(--primary);
+  box-shadow: 0 0 0 3px rgba(248, 147, 0, 0.2);
 }
 .player-range::-moz-range-thumb {
   width: 13px;
   height: 13px;
   border: 0;
   border-radius: 999px;
-  background: #d98367;
+  background: var(--primary);
 }
 .player-control {
   cursor: pointer;
