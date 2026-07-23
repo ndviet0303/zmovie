@@ -10,9 +10,12 @@
     "gen:openapi": "npm run generate:api",
     "generate:api": "curl --fail --location --silent --show-error --insecure ${OPENAPI_URL:-http://localhost:5275/openapi/v1.json} -o /tmp/zmovie-openapi.json && openapi-typescript /tmp/zmovie-openapi.json -o app/types/api.d.ts",
     "generate": "nuxt generate",
-    "preview": "npm run build && wrangler dev",
-    "preview:nuxt": "nuxt preview",
-    "postinstall": "nuxt prepare && node scripts/patch-nitro.mjs"
+    "lint": "eslint .",
+    "preview": "nuxt preview",
+    "test": "bun test app/lib",
+    "test:e2e": "playwright test",
+    "typecheck": "nuxt typecheck", 
+    "postinstall": "nuxt prepare"
   },
   "dependencies": {
     "@lucide/vue": "^1.25.0",
