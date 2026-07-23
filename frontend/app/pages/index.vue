@@ -24,6 +24,20 @@ type PersonalizedDiscovery = {
   recommended: Title[];
 };
 
+function takeUniqueTitles(
+  titles: Title[],
+  excludedSlugs: ReadonlySet<string>,
+  limit = 5,
+) {
+  const seen = new Set(excludedSlugs);
+  return titles.filter((title) => {
+    if (seen.has(title.slug) || seen.size >= excludedSlugs.size + limit)
+      return false;
+    seen.add(title.slug);
+    return true;
+  });
+}
+
 const savedLocale = useCookie<"vi" | "en">("zmovie-locale", {
   default: () => "vi",
 });
@@ -44,19 +58,52 @@ const continueWatching = computed(
 const recommendedTitles = computed(() =>
   personalized.value?.recommended.length
     ? personalized.value.recommended
-    : catalogTitles.value.slice(0, 5),
+    : takeUniqueTitles(catalogTitles.value, new Set()),
+);
+const recommendedSlugs = computed(
+  () => new Set(recommendedTitles.value.map((title) => title.slug)),
 );
 const newReleaseTitles = computed(() =>
-  [...catalogTitles.value].sort((a, b) => b.year - a.year).slice(0, 5),
+  takeUniqueTitles(
+    [...catalogTitles.value].sort((a, b) => b.year - a.year),
+    recommendedSlugs.value,
+  ),
+);
+const newReleaseSlugs = computed(
+  () => new Set(newReleaseTitles.value.map((title) => title.slug)),
 );
 const titles2026 = computed(() =>
-  catalogTitles.value.filter((title) => title.year === 2026).slice(0, 5),
+  takeUniqueTitles(
+    catalogTitles.value.filter((title) => title.year === 2026),
+    new Set([...recommendedSlugs.value, ...newReleaseSlugs.value]),
+  ),
+);
+const titles2026Slugs = computed(
+  () => new Set(titles2026.value.map((title) => title.slug)),
 );
 const moviePicks = computed(() =>
-  catalogTitles.value.filter((title) => title.type === "movie").slice(0, 5),
+  takeUniqueTitles(
+    catalogTitles.value.filter((title) => title.type === "movie"),
+    new Set([
+      ...recommendedSlugs.value,
+      ...newReleaseSlugs.value,
+      ...titles2026Slugs.value,
+    ]),
+  ),
+);
+const moviePickSlugs = computed(
+  () => new Set(moviePicks.value.map((title) => title.slug)),
 );
 const seriesPicks = computed(() =>
-  catalogTitles.value.filter((title) => title.type === "series").slice(0, 5),
+  takeUniqueTitles(
+    catalogTitles.value.filter((title) => title.type === "series"),
+    new Set([
+      ...recommendedSlugs.value,
+      ...newReleaseSlugs.value,
+      ...titles2026Slugs.value,
+      ...moviePickSlugs.value,
+    ]),
+  ),
 );
 const topPeriod = ref<TopPeriod>("week");
 const topPeriods: TopPeriod[] = ["day", "week", "month"];
