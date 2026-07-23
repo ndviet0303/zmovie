@@ -119,14 +119,16 @@ onMounted(() => {
         <NuxtLink
           to="/browse"
           aria-label="Search"
-          class="transition-colors hover:text-primary"
-          ><Search class="size-4"
+          title="Tìm kiếm"
+          class="grid size-10 place-items-center rounded-xl border border-white/10 bg-surface-container text-foreground/80 shadow-sm transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          ><Search class="size-[18px]"
         /></NuxtLink>
         <NuxtLink
           to="/assistant"
           aria-label="ZMovie Bot"
-          class="hidden transition-colors hover:text-primary xl:block"
-          ><Bot class="size-4"
+          title="ZMovie Bot"
+          class="hidden size-10 place-items-center rounded-xl border border-white/10 bg-surface-container text-foreground/80 shadow-sm transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary xl:grid"
+          ><Bot class="size-[18px]"
         /></NuxtLink>
         <span class="hidden h-6 w-px bg-white/10 sm:block" />
         <div class="relative z-[60]">
