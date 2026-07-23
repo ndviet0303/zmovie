@@ -14,7 +14,7 @@
     "preview": "nuxt preview",
     "test": "bun test app/lib",
     "test:e2e": "playwright test",
-    "typecheck": "nuxt prepare && vue-tsc --noEmit -p .nuxt/tsconfig.app.json",
+    "typecheck": "nuxt prepare && vue-tsc --noEmit",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
