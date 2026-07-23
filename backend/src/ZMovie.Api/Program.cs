@@ -47,9 +47,6 @@ builder.Services.AddAuthorization();
 builder.Services.AddDbContext<CatalogDbContext>(options => options.UseNpgsql(
     builder.Configuration.GetConnectionString("ZMovie")
     ?? throw new InvalidOperationException("ConnectionStrings:ZMovie must be configured.")).UseSnakeCaseNamingConvention());
-builder.Services.AddDbContext<EngagementDbContext>(options => options.UseNpgsql(
-    builder.Configuration.GetConnectionString("ZMovie")
-    ?? throw new InvalidOperationException("ConnectionStrings:ZMovie must be configured.")).UseSnakeCaseNamingConvention());
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(ListTitlesQuery).Assembly);
@@ -101,8 +98,6 @@ await using (var scope = app.Services.CreateAsyncScope())
 {
     var catalogDb = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
     await catalogDb.Database.MigrateAsync();
-    var engagementDb = scope.ServiceProvider.GetRequiredService<EngagementDbContext>();
-    await engagementDb.Database.MigrateAsync();
 
     if (app.Environment.IsDevelopment())
     {

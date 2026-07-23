@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace ZMovie.Infrastructure.Persistence.Migrations;
 
-[DbContext(typeof(EngagementDbContext))]
+[DbContext(typeof(CatalogDbContext))]
 [Migration("202607240003_DropLegacySchemas")]
 public partial class DropLegacySchemas : Migration
 {

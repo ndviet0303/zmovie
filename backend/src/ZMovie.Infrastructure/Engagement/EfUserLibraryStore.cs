@@ -5,7 +5,7 @@ using ZMovie.Infrastructure.Persistence;
 
 namespace ZMovie.Infrastructure.Engagement;
 
-public sealed class EfUserLibraryStore(EngagementDbContext db) : IUserLibraryStore, IViewAnalyticsStore, ITitleReviewStore
+public sealed class EfUserLibraryStore(CatalogDbContext db) : IUserLibraryStore, IViewAnalyticsStore, ITitleReviewStore
 {
     public async Task<IReadOnlyList<SavedTitleEntry>> GetSavedAsync(Guid userId, CancellationToken ct) =>
         await db.SavedTitles.AsNoTracking().Where(x => x.UserId == userId).OrderByDescending(x => x.SavedAt)
