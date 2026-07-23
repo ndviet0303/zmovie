@@ -4,8 +4,8 @@
     <Project Path="src/ZMovie.Application/ZMovie.Application.csproj" />
     <Project Path="src/ZMovie.Domain/ZMovie.Domain.csproj" />
     <Project Path="src/ZMovie.Infrastructure/ZMovie.Infrastructure.csproj" />
-    <Project Path="ZMovie.AppHost/ZMovie.AppHost.csproj" />
-    <Project Path="ZMovie.ServiceDefaults/ZMovie.ServiceDefaults.csproj" />
+    <Project Path="src/ZMovie.AppHost/ZMovie.AppHost.csproj" />
+    <Project Path="src/ZMovie.ServiceDefaults/ZMovie.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ZMovie.Api.Tests/ZMovie.Api.Tests.csproj" />

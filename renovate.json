@@ -1,0 +1,79 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":separateMajorReleases",
+    "group:allNonMajor"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "commitMessageAction": "update",
+  "commitMessageTopic": "deps",
+  "packageRules": [
+    {
+      "description": "Automerge non-major updates",
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest"
+      ],
+      "automerge": true
+    },
+    {
+      "description": "Group GitHub Actions updates",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "GitHub Actions",
+      "automerge": true
+    },
+    {
+      "description": "Group .NET updates",
+      "matchManagers": [
+        "nuget"
+      ],
+      "groupName": ".NET dependencies"
+    },
+    {
+      "description": "Group Nuxt ecosystem updates",
+      "groupName": "Nuxt",
+      "matchPackageNames": [
+        "/^nuxt$/",
+        "/^@nuxt\\//",
+        "/^vue$/",
+        "/^@vue\\//",
+        "/^pinia$/",
+        "/^vue-router$/",
+        "/^vite$/",
+        "/^@vitejs\\//"
+      ]
+    },
+    {
+      "description": "Group React updates",
+      "groupName": "React",
+      "matchPackageNames": [
+        "/^react/",
+        "/^@types/react/"
+      ]
+    },
+    {
+      "description": "Group testing packages",
+      "groupName": "Testing",
+      "matchPackageNames": [
+        "/jest/",
+        "/karma/",
+        "/jasmine/",
+        "/playwright/",
+        "/nunit/",
+        "/moq/",
+        "/shouldly/"
+      ]
+    }
+  ],
+  "platformAutomerge": true,
+  "automergeType": "pr",
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps"
+}
