@@ -14,7 +14,7 @@
     "preview": "nuxt preview",
     "test": "bun test app/lib",
     "test:e2e": "playwright test",
-    "typecheck": "nuxt typecheck",
+    "typecheck": "nuxt prepare && vue-tsc --noEmit -p .nuxt/tsconfig.app.json",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
@@ -34,11 +34,10 @@
     "vue-router": "^5.2.0"
   },
   "devDependencies": {
-    "@golar/vue": "^0.1.10",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.1.1",
-    "golar": "^0.1.10",
     "openapi-typescript": "^7.13.0",
+    "vue-tsc": "^3.0.0",
     "wrangler": "^4.113.0"
   }
 }
