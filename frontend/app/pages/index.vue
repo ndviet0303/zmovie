@@ -49,6 +49,15 @@ const recommendedTitles = computed(() =>
 const newReleaseTitles = computed(() =>
   [...catalogTitles.value].sort((a, b) => b.year - a.year).slice(0, 5),
 );
+const titles2026 = computed(() =>
+  catalogTitles.value.filter((title) => title.year === 2026).slice(0, 5),
+);
+const moviePicks = computed(() =>
+  catalogTitles.value.filter((title) => title.type === "movie").slice(0, 5),
+);
+const seriesPicks = computed(() =>
+  catalogTitles.value.filter((title) => title.type === "series").slice(0, 5),
+);
 const topPeriod = ref<TopPeriod>("week");
 const topPeriods: TopPeriod[] = ["day", "week", "month"];
 const {
@@ -80,6 +89,9 @@ const text = computed(() =>
         trending: "Top thịnh hành",
         recommended: "Đề xuất cho bạn",
         newReleases: "Mới phát hành",
+        year2026: "Phim 2026",
+        moviePicks: "Phim lẻ chọn lọc",
+        seriesPicks: "Phim bộ nổi bật",
         viewAll: "Xem tất cả",
         empty: "Chưa có phim thịnh hành để hiển thị.",
         unavailable: "Không thể tải catalog.",
@@ -97,6 +109,9 @@ const text = computed(() =>
         trending: "Top trending",
         recommended: "Recommended for you",
         newReleases: "New releases",
+        year2026: "2026 movies",
+        moviePicks: "Curated movies",
+        seriesPicks: "Featured series",
         viewAll: "View all",
         empty: "There are no trending titles to show yet.",
         unavailable: "Unable to load the catalog.",
@@ -321,6 +336,54 @@ function progressPercent(item: ContinueWatching) {
               /></NuxtLink>
             </div>
             <TitlePosterRow :titles="newReleaseTitles" />
+          </section>
+
+          <section v-if="titles2026.length" class="mt-20">
+            <div class="mb-8 flex items-end justify-between">
+              <h2
+                class="font-display text-3xl font-semibold tracking-tight lg:text-4xl"
+              >
+                {{ text.year2026 }}
+              </h2>
+              <NuxtLink
+                to="/browse?sort=latest"
+                class="inline-flex items-center gap-1 text-sm font-medium text-primary transition hover:text-primary-container"
+                >{{ text.viewAll }} <ChevronRight class="size-4"
+              /></NuxtLink>
+            </div>
+            <TitlePosterRow :titles="titles2026" />
+          </section>
+
+          <section v-if="moviePicks.length" class="mt-20">
+            <div class="mb-8 flex items-end justify-between">
+              <h2
+                class="font-display text-3xl font-semibold tracking-tight lg:text-4xl"
+              >
+                {{ text.moviePicks }}
+              </h2>
+              <NuxtLink
+                to="/browse?sort=latest"
+                class="inline-flex items-center gap-1 text-sm font-medium text-primary transition hover:text-primary-container"
+                >{{ text.viewAll }} <ChevronRight class="size-4"
+              /></NuxtLink>
+            </div>
+            <TitlePosterRow :titles="moviePicks" />
+          </section>
+
+          <section v-if="seriesPicks.length" class="mt-20">
+            <div class="mb-8 flex items-end justify-between">
+              <h2
+                class="font-display text-3xl font-semibold tracking-tight lg:text-4xl"
+              >
+                {{ text.seriesPicks }}
+              </h2>
+              <NuxtLink
+                to="/browse?type=series"
+                class="inline-flex items-center gap-1 text-sm font-medium text-primary transition hover:text-primary-container"
+                >{{ text.viewAll }} <ChevronRight class="size-4"
+              /></NuxtLink>
+            </div>
+            <TitlePosterRow :titles="seriesPicks" />
           </section>
         </div>
 
