@@ -8,8 +8,9 @@ type Title = {
 };
 type TitleListResponse = { items: Title[] };
 const locale = useCookie<"vi" | "en">("zmovie-locale", { default: () => "vi" });
+const { $api } = useNuxtApp();
 const { data } = await useAsyncData("genre-catalog", () =>
-  $fetch<TitleListResponse>("/api/v1/catalog/titles", {
+  $api<TitleListResponse>("/v1/catalog/titles", {
     query: { locale: locale.value },
   }),
 );

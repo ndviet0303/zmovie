@@ -52,6 +52,7 @@ type LibraryResponse = { saved: { slug: string }[]; history: LibraryHistory[] };
 
 const route = useRoute();
 const locale = useCookie<"vi" | "en">("zmovie-locale", { default: () => "vi" });
+const { $api } = useNuxtApp();
 const video = ref<HTMLVideoElement | null>(null);
 const playerFrame = ref<HTMLElement | null>(null);
 const selectedEpisode = ref(0);
@@ -84,14 +85,14 @@ let resumeSeconds = 0;
 const { data: title, error: titleError } = await useAsyncData(
   `watch-title-${route.params.slug}`,
   () =>
-    $fetch<Title>(`/api/v1/catalog/titles/${route.params.slug}`, {
+    $api<Title>(`/v1/catalog/titles/${route.params.slug}`, {
       query: { locale: locale.value },
     }),
 );
 const { data: playback, error: playbackError } = await useAsyncData(
   `watch-playback-${route.params.slug}`,
   () =>
-    $fetch<Playback>(`/api/v1/catalog/titles/${route.params.slug}/playback`, {
+    $api<Playback>(`/v1/catalog/titles/${route.params.slug}/playback`, {
       query: { locale: locale.value },
     }),
 );
@@ -208,7 +209,7 @@ function applyResumePosition() {
 async function loadResumePosition() {
   if (!title.value) return;
   try {
-    const library = await $fetch<LibraryResponse>("/api/v1/me/library", {
+    const library = await $api<LibraryResponse>("/v1/me/library", {
       credentials: "include",
       query: { locale: locale.value },
     });
@@ -237,7 +238,7 @@ function selectEpisode(index: number) {
 async function toggleMyList() {
   if (!title.value) return;
   try {
-    await $fetch(`/api/v1/me/saved/${title.value.slug}`, {
+    await $api(`/v1/me/saved/${title.value.slug}`, {
       method: isInMyList.value ? "DELETE" : "PUT",
       credentials: "include",
     });
@@ -258,7 +259,7 @@ async function recordWatchProgress() {
   isSavingProgress = true;
   const progressSeconds = currentTime.value;
   try {
-    await $fetch(`/api/v1/me/history/${title.value.slug}`, {
+    await $api(`/v1/me/history/${title.value.slug}`, {
       method: "POST",
       credentials: "include",
       body: {
@@ -292,8 +293,8 @@ async function recordView() {
   if (hasRecordedView.value || !title.value) return;
   hasRecordedView.value = true;
   try {
-    const result = await $fetch<ViewRecordedResponse>(
-      `/api/v1/catalog/titles/${title.value.slug}/views`,
+    const result = await $api<ViewRecordedResponse>(
+      `/v1/catalog/titles/${title.value.slug}/views`,
       {
         method: "POST",
         credentials: "include",

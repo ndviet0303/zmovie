@@ -18,3 +18,11 @@ cd ..
 The script starts the Nuxt frontend on `http://localhost:3000` and the API on
 `http://localhost:5275`; Nuxt already proxies `/api/v1/**` to that API address.
 Use `Ctrl+C` to stop both processes.
+
+## Build the API image
+
+Build the backend image for Linux AMD64, including when running Docker on Apple Silicon:
+
+```bash
+docker build --platform linux/amd64 -f src/ZMovie.Api/Dockerfile -t zmovie-api:latest .
+```

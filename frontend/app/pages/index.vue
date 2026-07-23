@@ -28,8 +28,9 @@ const savedLocale = useCookie<"vi" | "en">("zmovie-locale", {
   default: () => "vi",
 });
 const activeLocale = ref<"vi" | "en">(savedLocale.value);
+const { $api } = useNuxtApp();
 const { data, error } = await useAsyncData("discovery-home", () =>
-  $fetch<HomeResponse>("/api/v1/discovery/home", {
+  $api<HomeResponse>("/v1/discovery/home", {
     query: { locale: activeLocale.value },
   }),
 );
@@ -55,7 +56,7 @@ const {
   pending: topPending,
   refresh: refreshTop,
 } = await useAsyncData("discovery-top", () =>
-  $fetch<TopTitle[]>(`/api/v1/discovery/top/${topPeriod.value}`, {
+  $api<TopTitle[]>(`/v1/discovery/top/${topPeriod.value}`, {
     query: { locale: activeLocale.value, limit: 10 },
   }),
 );
@@ -108,7 +109,7 @@ async function setLocale(nextLocale: "vi" | "en") {
   if (nextLocale === activeLocale.value) return;
 
   try {
-    const nextHome = await $fetch<HomeResponse>("/api/v1/discovery/home", {
+    const nextHome = await $api<HomeResponse>("/v1/discovery/home", {
       query: { locale: nextLocale },
     });
     data.value = nextHome;
@@ -123,8 +124,8 @@ async function setLocale(nextLocale: "vi" | "en") {
 
 async function loadPersonalized(locale: "vi" | "en") {
   try {
-    personalized.value = await $fetch<PersonalizedDiscovery>(
-      "/api/v1/discovery/for-you",
+    personalized.value = await $api<PersonalizedDiscovery>(
+      "/v1/discovery/for-you",
       { credentials: "include", query: { locale } },
     );
   } catch {

@@ -31,24 +31,25 @@ type ReviewsResponse = {
 
 const route = useRoute();
 const locale = useCookie<"vi" | "en">("zmovie-locale", { default: () => "vi" });
+const { $api } = useNuxtApp();
 const slug = computed(() => String(route.params.slug));
 const { data: title, error } = await useAsyncData(
   () => `movie-${slug.value}-${locale.value}`,
   () =>
-    $fetch<TitleDetail>(`/api/v1/catalog/titles/${slug.value}`, {
+    $api<TitleDetail>(`/v1/catalog/titles/${slug.value}`, {
       query: { locale: locale.value },
     }),
 );
 const { data: catalog } = await useAsyncData(
   () => `movie-recommendations-${locale.value}`,
   () =>
-    $fetch<TitleListResponse>("/api/v1/catalog/titles", {
+    $api<TitleListResponse>("/v1/catalog/titles", {
       query: { locale: locale.value },
     }),
 );
 const { data: reviews, refresh: refreshReviews } = await useAsyncData(
   () => `movie-reviews-${slug.value}`,
-  () => $fetch<ReviewsResponse>(`/api/v1/catalog/titles/${slug.value}/reviews`),
+  () => $api<ReviewsResponse>(`/v1/catalog/titles/${slug.value}/reviews`),
 );
 const isSaved = ref(false);
 const actionNotice = ref("");
@@ -129,8 +130,8 @@ async function setLocale(nextLocale: "vi" | "en") {
 
 async function loadSavedState() {
   try {
-    const library = await $fetch<{ saved: { slug: string }[] }>(
-      "/api/v1/me/library",
+    const library = await $api<{ saved: { slug: string }[] }>(
+      "/v1/me/library",
       { credentials: "include", query: { locale: locale.value } },
     );
     isSaved.value = library.saved.some(
@@ -144,7 +145,7 @@ async function loadSavedState() {
 async function toggleSaved() {
   if (!title.value) return;
   try {
-    await $fetch(`/api/v1/me/saved/${title.value.slug}`, {
+    await $api(`/v1/me/saved/${title.value.slug}`, {
       method: isSaved.value ? "DELETE" : "PUT",
       credentials: "include",
     });
@@ -188,7 +189,7 @@ async function submitReview() {
     return;
   isSubmittingReview.value = true;
   try {
-    await $fetch(`/api/v1/me/titles/${title.value.slug}/review`, {
+    await $api(`/v1/me/titles/${title.value.slug}/review`, {
       method: "PUT",
       credentials: "include",
       body: {
