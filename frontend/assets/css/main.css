@@ -44,11 +44,11 @@
 :root {
   /* Design system: Main */
   --primary: #f89300;
-  --primary-foreground: #212121;
+  --primary-foreground: #ffffff;
   --secondary: #ffc107;
   --secondary-foreground: #212121;
   --primary-container: #f89300;
-  --primary-container-foreground: #212121;
+  --primary-container-foreground: #ffffff;
 
   /* Design system: Dark + grayscale */
   --background: #181a20;
