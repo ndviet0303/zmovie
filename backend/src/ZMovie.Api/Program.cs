@@ -23,6 +23,7 @@ using ZMovie.Infrastructure.Search;
 using ZMovie.Infrastructure.Seed;
 using ZMovie.Infrastructure.Recommendations;
 using ZMovie.Infrastructure.Assistant;
+using ZMovie.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 var exposeDetailedErrors = builder.Configuration.GetValue<bool>("ExposeDetailedErrors");
@@ -68,6 +69,7 @@ builder.Services.AddSingleton<ITopTitlesResponseCache, TopTitlesResponseCache>()
 builder.Services.AddSingleton<IRecommendationEngine, TinyContentRecommendationEngine>();
 builder.Services.AddScoped<ICatalogAssistantStore, CatalogAssistantStore>();
 builder.Services.AddScoped<ILibraryCatalogReader, CatalogLibraryReader>();
+builder.Services.AddSingleton<OPhimCrawlerService>();
 
 var app = builder.Build();
 
@@ -84,14 +86,20 @@ if (args.Contains("--import-ophim-genres", StringComparer.OrdinalIgnoreCase))
 if (args.Contains("--import-ophim-catalog", StringComparer.OrdinalIgnoreCase))
 {
     var maxPages = ReadIntegerOption(args, "--max-pages");
+    var startPage = ReadIntegerOption(args, "--start-page") ?? 1;
     var importAll = args.Contains("--all", StringComparer.OrdinalIgnoreCase);
     var includeEpisodes = args.Contains("--with-episodes", StringComparer.OrdinalIgnoreCase);
+    var detailConcurrency = ReadIntegerOption(args, "--concurrency") ?? 3;
+    if (detailConcurrency is < 1 or > 8) throw new ArgumentOutOfRangeException("--concurrency", "Use a value from 1 to 8.");
     if (!importAll && maxPages is null) maxPages = 1;
 
     await using var importScope = app.Services.CreateAsyncScope();
     var importDb = importScope.ServiceProvider.GetRequiredService<CatalogDbContext>();
     await importDb.Database.MigrateAsync();
-    var options = new OPhimCatalogImportOptions(maxPages, includeEpisodes, TimeSpan.FromMilliseconds(300));
+    var options = new OPhimCatalogImportOptions(maxPages, startPage, includeEpisodes, TimeSpan.FromMilliseconds(300))
+    {
+        DetailConcurrency = detailConcurrency,
+    };
     var imported = await OPhimCatalogImporter.ImportAsync(importDb, new HttpClient(), options, Console.WriteLine, CancellationToken.None);
     Console.WriteLine($"Imported {imported.TitlesImported} OPhim titles from {imported.PagesImported} pages (source total: {imported.TotalItems}; episodes: {imported.EpisodesImported}).");
     return;
@@ -112,6 +120,7 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
+    app.MapCrawlerEndpoints();
 }
 
 app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
