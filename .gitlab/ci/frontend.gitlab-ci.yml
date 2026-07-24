@@ -1,6 +1,6 @@
 variables:
   FRONTEND_PATH: "frontend"
-  NITRO_PRESET: "cloudflare_pages"
+  NITRO_PRESET: "static"
   CF_PAGES_PROJECT_NAME: "zmovie"
 
 .frontend-rules: &frontend-rules
@@ -39,10 +39,10 @@ frontend:lint:
     - echo "Building $CI_ENVIRONMENT_NAME with API_URL=$NUXT_PUBLIC_API_BASE_URL, NITRO_PRESET=$NITRO_PRESET, SSR=$NUXT_SSR"
     - npm run generate
     - |
-      if [ -f dist/200.html ] && [ -d dist/_nuxt ]; then
-        PAGES_OUTPUT_DIR="dist"
-      elif [ -f .output/public/index.html ] && [ -d .output/public/_nuxt ]; then
+      if [ -f .output/public/index.html ] && [ -d .output/public/_nuxt ]; then
         PAGES_OUTPUT_DIR=".output/public"
+      elif [ -f dist/200.html ] && [ -d dist/_nuxt ]; then
+        PAGES_OUTPUT_DIR="dist"
       else
         echo "Nuxt generated no deployable output (expected dist/ or .output/public/)"
         exit 1
