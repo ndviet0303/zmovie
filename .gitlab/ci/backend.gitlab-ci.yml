@@ -52,7 +52,9 @@ variables:
     - cd backend
 
 .backend-deploy:
-  image: "curlimages/curl:8.21.0"
+  # Reuse the .NET SDK image already used by backend verify jobs. It includes
+  # curl and avoids making deploy depend on Docker Hub availability.
+  image: "mcr.microsoft.com/dotnet/sdk:10.0"
   stage: deploy
   script:
     - |
