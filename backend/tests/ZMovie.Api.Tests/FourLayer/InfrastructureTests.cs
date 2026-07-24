@@ -4,6 +4,9 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using ZMovie.Application.Assistant;
 using ZMovie.Api.Tests.Infrastructure;
 using ZMovie.Application.Catalog;
 using ZMovie.Application.Engagement;
@@ -166,8 +169,49 @@ public sealed class InfrastructureTests
         database.Db.Titles.Add(Title("dragon", "Dragon Quest", "Nhiệm vụ rồng", "movie", genre: "Adventure", synopsis: "A brave dragon adventure"));
         await database.Db.SaveChangesAsync();
         var store = new CatalogAssistantStore(database.Db);
-        (await store.SearchAsync("!!!", "vi", 3, default)).Should().BeEmpty();
-        (await store.SearchAsync("dragon adventure", "en", 3, default)).Should().ContainSingle().Which.Title.Title.Should().Be("Dragon Quest");
+        (await store.SearchAsync(Guid.NewGuid(), "!!!", "vi", 3, default)).Should().BeEmpty();
+        (await store.SearchAsync(Guid.NewGuid(), "dragon adventure", "en", 3, default)).Should().ContainSingle().Which.Title.Title.Should().Be("Dragon Quest");
+    }
+
+    [Fact]
+    public async Task Personalized_assistant_retriever_uses_history_and_saved_titles()
+    {
+        using var database = new TestDatabase();
+        var user = Guid.NewGuid();
+        var watched = Title("watched", "Space Journey", "Hành trình không gian", "movie", genre: "Sci Fi", synopsis: "A space adventure");
+        var recommended = Title("recommended", "Deep Space", "Không gian sâu", "movie", genre: "Sci Fi", synopsis: "Another space adventure");
+        var unrelated = Title("unrelated", "Quiet Garden", "Khu vườn yên tĩnh", "movie", genre: "Drama", synopsis: "A quiet garden");
+        database.Db.Titles.AddRange(watched, recommended, unrelated);
+        database.Db.SavedTitles.Add(new ZMovie.Domain.Engagement.SavedTitle { UserId = user, TitleId = watched.Id });
+        await database.Db.SaveChangesAsync();
+
+        using var cache = new MemoryCache(new MemoryCacheOptions { SizeLimit = 100 });
+        var store = new CatalogAssistantStore(database.Db, new EfUserLibraryStore(database.Db), new CatalogLibraryReader(database.Db), new TinyContentRecommendationEngine(cache));
+        var results = await store.SearchAsync(user, "weekend", "en", 1, default);
+
+        results.Should().ContainSingle().Which.Title.Slug.Should().Be("recommended");
+    }
+
+    [Fact]
+    public async Task Local_ai_generator_returns_reply_and_falls_back_for_http_errors()
+    {
+        var handler = new FakeHttpMessageHandler().Enqueue(HttpStatusCode.OK, "{\"reply\":\"Try Deep Space.\"}");
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("http://ollama.test/") };
+        var generator = new LocalAiAssistantTextGenerator(http, Options.Create(new LocalAiOptions { Enabled = true }), NullLogger<LocalAiAssistantTextGenerator>.Instance);
+        var request = new AssistantGenerationRequest("space", "en", [new(new("deep-space", "Deep Space", "Sci Fi", 2026, "movie", "poster"), "A space adventure")]);
+        (await generator.GenerateAsync(request, default)).Should().Be("Try Deep Space.");
+        handler.Requests.Should().ContainSingle().Which.AbsolutePath.Should().Be("/v1/chat");
+
+        using var unavailableHttp = new HttpClient(new FakeHttpMessageHandler().Enqueue(_ => throw new HttpRequestException())) { BaseAddress = new Uri("http://ollama.test/") };
+        var unavailable = new LocalAiAssistantTextGenerator(unavailableHttp, Options.Create(new LocalAiOptions { Enabled = true }), NullLogger<LocalAiAssistantTextGenerator>.Instance);
+        (await unavailable.GenerateAsync(request, default)).Should().BeNull();
+        using var timeoutHttp = new HttpClient(new FakeHttpMessageHandler().Enqueue(_ => throw new OperationCanceledException())) { BaseAddress = new Uri("http://ollama.test/") };
+        var timeout = new LocalAiAssistantTextGenerator(timeoutHttp, Options.Create(new LocalAiOptions { Enabled = true }), NullLogger<LocalAiAssistantTextGenerator>.Instance);
+        (await timeout.GenerateAsync(request, default)).Should().BeNull();
+        var invalidConfig = new LocalAiAssistantTextGenerator(new HttpClient(), Options.Create(new LocalAiOptions { Enabled = true }), NullLogger<LocalAiAssistantTextGenerator>.Instance);
+        (await invalidConfig.GenerateAsync(request, default)).Should().BeNull();
+        var disabled = new LocalAiAssistantTextGenerator(new HttpClient(), Options.Create(new LocalAiOptions()), NullLogger<LocalAiAssistantTextGenerator>.Instance);
+        (await disabled.GenerateAsync(request, default)).Should().BeNull();
     }
 
     [Fact]

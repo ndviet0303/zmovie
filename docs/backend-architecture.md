@@ -61,6 +61,27 @@ string, or any application secret in `appsettings*.json`, container images, sour
 control, or CI logs. Scope the machine identity to the exact project, environment,
 and secret path; rotate its client secret through Infisical when required.
 
+## Personalized movie RAG
+
+`POST /v1/assistant/chat` and `GET /v1/discovery/for-you` require an authenticated
+session. The assistant retriever combines the request with the user's saved titles
+and watch history, then ranks catalog candidates with the local TF-IDF content model.
+Only retrieved catalog metadata is passed to the optional local AI service; the
+service forwards the prompt to local Ollama. The generator cannot create suggestion
+IDs, so its text never controls which titles appear in the response.
+
+For local development, install Ollama and pull the small Qwen model:
+
+```bash
+ollama pull qwen3:0.6b
+```
+
+Development settings enable the local AI service at `http://127.0.0.1:8788`.
+Production keeps it disabled by default; configure `LocalAi__Enabled` and
+`LocalAi__BaseUrl` through the secret/configuration system when a private model
+service is available. The deterministic reply remains the fallback when the model
+service is disabled or unavailable.
+
 ## Authentication direction
 
 Google OAuth 2.0 / OpenID Connect is the selected identity provider. Authentication has not yet been wired into the API or Nuxt BFF. The future implementation will validate Google ID tokens using Google's issuer, JWKS, and the configured `GOOGLE_CLIENT_ID`; it will provision local users by the stable `sub` claim. ZMovie roles will be stored and managed locally, never inferred from a Google email address.

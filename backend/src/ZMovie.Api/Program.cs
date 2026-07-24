@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics;
 using FluentValidation;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using ZMovie.Api.Configuration;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -67,8 +68,15 @@ builder.Services.AddScoped<IViewAnalyticsStore, CachedViewAnalyticsStore>();
 builder.Services.AddScoped<ITitleReviewStore>(provider => provider.GetRequiredService<EfUserLibraryStore>());
 builder.Services.AddSingleton<ITopTitlesResponseCache, TopTitlesResponseCache>();
 builder.Services.AddSingleton<IRecommendationEngine, TinyContentRecommendationEngine>();
-builder.Services.AddScoped<ICatalogAssistantStore, CatalogAssistantStore>();
 builder.Services.AddScoped<ILibraryCatalogReader, CatalogLibraryReader>();
+builder.Services.AddScoped<ICatalogAssistantStore, CatalogAssistantStore>();
+builder.Services.Configure<LocalAiOptions>(builder.Configuration.GetSection("LocalAi"));
+builder.Services.AddHttpClient<IAssistantTextGenerator, LocalAiAssistantTextGenerator>((serviceProvider, http) =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<LocalAiOptions>>().Value;
+    http.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
+    http.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.TimeoutSeconds, 1, 60));
+});
 builder.Services.AddSingleton<OPhimCrawlerService>();
 
 var app = builder.Build();
