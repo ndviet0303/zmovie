@@ -1,7 +1,9 @@
 # ZMovie local AI
 
-This is a local-only adapter between the ZMovie API and Ollama. It keeps the
-model runtime out of the backend deployment.
+This is a local-only adapter between the deployed ZMovie frontend and Ollama. The
+backend returns an authenticated, personalized catalog context; the browser sends
+that context to this service on the user's own machine. The model runtime never
+needs to be deployed with the backend.
 
 ## Run
 
@@ -20,5 +22,6 @@ npm start
 ```
 
 The service binds to `127.0.0.1:8788` and proxies generation to Ollama at
-`127.0.0.1:11434`. Override `LOCAL_AI_PORT`, `OLLAMA_URL`, or `OLLAMA_MODEL`
-only for local development.
+`127.0.0.1:11434`. It allows the deployed demo origin `https://movie.ziet.dev` by
+default. Override `LOCAL_AI_ALLOWED_ORIGINS`, `LOCAL_AI_PORT`, `OLLAMA_URL`, or
+`OLLAMA_MODEL` only for local development.

@@ -103,6 +103,8 @@ public sealed class ApplicationTests
         var searchStore = new FakeSearchStore { Result = new([], 0) };
         (await new SearchCatalogHandler(searchStore).Handle(new("  hello  ", null, null, null), default)).Value.Total.Should().Be(0);
         var assistantStore = new FakeAssistantStore { Results = [new(new("first", "First", "Drama", 2026, "movie", "poster"), "Synopsis")] };
+        var assistantContext = await new GetAssistantContextHandler(assistantStore).Handle(new(UserId, "  drama ", "en"), default);
+        assistantContext.Value.Matches.Should().ContainSingle();
         var assistant = await new AskCatalogAssistantHandler(assistantStore, new FakeAssistantGenerator()).Handle(new(UserId, "  drama ", "en"), default);
         assistant.Value.Message.Should().Contain("I found 1");
         assistantStore.Results = [];
@@ -153,6 +155,7 @@ public sealed class ApplicationTests
         _ = new AuthenticatedUser(UserId, "e", "n", null);
         _ = new UserLibraryResponse([], []);
         _ = new PersonalizedDiscoveryResponse([], []);
+        _ = new AssistantContextResponse([]);
         Locale.Normalize("en-GB").Should().Be("en");
         Locale.Normalize(null).Should().Be("vi");
     }

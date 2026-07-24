@@ -63,12 +63,13 @@ and secret path; rotate its client secret through Infisical when required.
 
 ## Personalized movie RAG
 
-`POST /v1/assistant/chat` and `GET /v1/discovery/for-you` require an authenticated
-session. The assistant retriever combines the request with the user's saved titles
-and watch history, then ranks catalog candidates with the local TF-IDF content model.
-Only retrieved catalog metadata is passed to the optional local AI service; the
-service forwards the prompt to local Ollama. The generator cannot create suggestion
-IDs, so its text never controls which titles appear in the response.
+`POST /v1/assistant/context`, `POST /v1/assistant/chat`, and `GET /v1/discovery/for-you`
+require an authenticated session. The assistant retriever combines the request with
+the user's saved titles and watch history, then ranks catalog candidates with the
+local TF-IDF content model. For the demo, the deployed frontend sends that context
+to the user's local AI service at `127.0.0.1:8788`; the user's browser, not the
+deployed backend, owns the localhost connection. The generator cannot create
+suggestion IDs, so its text never controls which titles appear in the response.
 
 For local development, install Ollama and pull the small Qwen model:
 

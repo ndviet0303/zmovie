@@ -8,6 +8,7 @@ namespace ZMovie.Application.Assistant;
 
 public sealed record AssistantCatalogTitle(TitleSummary Title, string Synopsis);
 public sealed record AssistantReply(string Message, IReadOnlyList<TitleSummary> Suggestions);
+public sealed record AssistantContextResponse(IReadOnlyList<AssistantCatalogTitle> Matches);
 public sealed record AssistantGenerationRequest(string Message, string Locale, IReadOnlyList<AssistantCatalogTitle> Matches);
 
 public interface ICatalogAssistantStore
@@ -21,6 +22,16 @@ public interface IAssistantTextGenerator
 }
 
 public sealed record AskCatalogAssistantQuery(Guid UserId, string Message, string? Locale) : IQuery<AssistantReply>;
+public sealed record GetAssistantContextQuery(Guid UserId, string Message, string? Locale) : IQuery<AssistantContextResponse>;
+public sealed class GetAssistantContextHandler(ICatalogAssistantStore store) : IRequestHandler<GetAssistantContextQuery, ErrorOr<AssistantContextResponse>>
+{
+    public async Task<ErrorOr<AssistantContextResponse>> Handle(GetAssistantContextQuery request, CancellationToken ct)
+    {
+        var matches = await store.SearchAsync(request.UserId, request.Message, Locale.Normalize(request.Locale), 8, ct);
+        return new AssistantContextResponse(matches);
+    }
+}
+
 public sealed class AskCatalogAssistantValidator : AbstractValidator<AskCatalogAssistantQuery>
 {
     public AskCatalogAssistantValidator() => RuleFor(x => x.Message).NotEmpty().MaximumLength(500);
