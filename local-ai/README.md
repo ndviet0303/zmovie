@@ -21,7 +21,9 @@ cd local-ai
 npm start
 ```
 
-The service binds to `127.0.0.1:8788` and proxies generation to Ollama at
-`127.0.0.1:11434`. It allows the deployed demo origin `https://movie.ziet.dev` by
-default. Override `LOCAL_AI_ALLOWED_ORIGINS`, `LOCAL_AI_PORT`, `OLLAMA_URL`, or
-`OLLAMA_MODEL` only for local development.
+The service binds to `0.0.0.0:8788` and proxies generation to Ollama at
+`127.0.0.1:11434`. From another device on the same LAN, use the Mac's LAN IP,
+for example `http://192.168.1.162:8788`. It allows the deployed demo origin
+`https://movie.ziet.dev` by default. Override `LOCAL_AI_HOST`,
+`LOCAL_AI_ALLOWED_ORIGINS`, `LOCAL_AI_PORT`, `OLLAMA_URL`, or `OLLAMA_MODEL` only
+for local development.
