@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nuxt build",
-    "deploy": "npm run build && wrangler deploy",
+    "deploy": "npm run generate && wrangler pages deploy .output/public --project-name=${CF_PAGES_PROJECT_NAME:-zmovie}",
     "dev": "nuxt dev",
     "cf-typegen": "wrangler types",
     "gen:openapi": "npm run generate:api",
