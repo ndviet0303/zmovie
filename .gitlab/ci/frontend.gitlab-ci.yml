@@ -38,10 +38,18 @@ frontend:lint:
   script:
     - echo "Building $CI_ENVIRONMENT_NAME with API_URL=$NUXT_PUBLIC_API_BASE_URL, NITRO_PRESET=$NITRO_PRESET, SSR=$NUXT_SSR"
     - npm run generate
-    - test -f .output/public/index.html
-    - test -d .output/public/_nuxt
+    - |
+      if [ -f dist/200.html ] && [ -d dist/_nuxt ]; then
+        PAGES_OUTPUT_DIR="dist"
+      elif [ -f .output/public/index.html ] && [ -d .output/public/_nuxt ]; then
+        PAGES_OUTPUT_DIR=".output/public"
+      else
+        echo "Nuxt generated no deployable output (expected dist/ or .output/public/)"
+        exit 1
+      fi
+      echo "Deploying $PAGES_OUTPUT_DIR"
     - wrangler whoami
-    - wrangler pages deploy .output/public --project-name="$CF_PAGES_PROJECT_NAME" --branch="$CF_PAGES_BRANCH"
+    - wrangler pages deploy "$PAGES_OUTPUT_DIR" --project-name="$CF_PAGES_PROJECT_NAME" --branch="$CF_PAGES_BRANCH"
   variables:
     NUXT_SSR: "false"
     WRANGLER_LOG_PATH: "$CI_PROJECT_DIR/wrangler-logs"
@@ -50,6 +58,7 @@ frontend:lint:
     when: always
     paths:
       - "$FRONTEND_PATH/.nuxt/"
+      - "$FRONTEND_PATH/dist/"
       - "$FRONTEND_PATH/.output/"
       - "$FRONTEND_PATH/.output/public/"
       - "wrangler-logs/"

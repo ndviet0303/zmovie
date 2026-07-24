@@ -49,6 +49,15 @@ type LibraryHistory = {
   progressSeconds: number;
 };
 type LibraryResponse = { saved: { slug: string }[]; history: LibraryHistory[] };
+type LocalWatchProgress = {
+  episodeNumber: number | null;
+  progressSeconds: number;
+  updatedAt: number;
+};
+
+const LOCAL_PROGRESS_KEY = "zmovie.watch-progress.v1";
+const LOCAL_PROGRESS_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+const LOCAL_PROGRESS_LIMIT = 100;
 
 const route = useRoute();
 const locale = useCookie<"vi" | "en">("zmovie-locale", { default: () => "vi" });
@@ -73,6 +82,7 @@ const isSynopsisExpanded = ref(false);
 const actionNotice = ref("");
 const viewCount = ref(0);
 const hasRecordedView = ref(false);
+const authState = ref<"unknown" | "authenticated" | "anonymous">("unknown");
 let hls: {
   destroy: () => void;
   currentLevel: number;
@@ -81,6 +91,7 @@ let hls: {
 let lastProgressSaved = 0;
 let isSavingProgress = false;
 let resumeSeconds = 0;
+let libraryRequest: Promise<LibraryResponse> | null = null;
 
 const { data: title, error: titleError } = await useAsyncData(
   `watch-title-${route.params.slug}`,
@@ -221,13 +232,84 @@ function applyResumePosition() {
   resumeSeconds = 0;
 }
 
+function localProgressId(slug: string, episodeNumber: number | null) {
+  return `${slug}:${episodeNumber ?? "movie"}`;
+}
+
+function readLocalProgress(): Record<string, LocalWatchProgress> {
+  if (!import.meta.client) return {};
+  try {
+    const parsed = JSON.parse(
+      localStorage.getItem(LOCAL_PROGRESS_KEY) ?? "{}",
+    ) as Record<string, LocalWatchProgress>;
+    const cutoff = Date.now() - LOCAL_PROGRESS_TTL_MS;
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        ([, item]) =>
+          item &&
+          Number.isFinite(item.progressSeconds) &&
+          item.progressSeconds >= 0 &&
+          Number.isFinite(item.updatedAt) &&
+          item.updatedAt >= cutoff,
+      ),
+    );
+  } catch {
+    return {};
+  }
+}
+
+function writeLocalProgress(progressSeconds: number) {
+  if (!import.meta.client || !title.value) return;
+  const episodeNumber = playback.value?.isSeries
+    ? (episode.value?.number ?? null)
+    : null;
+  const progress = readLocalProgress();
+  progress[localProgressId(title.value.slug, episodeNumber)] = {
+    episodeNumber,
+    progressSeconds,
+    updatedAt: Date.now(),
+  };
+  const entries = Object.entries(progress)
+    .sort(([, first], [, second]) => second.updatedAt - first.updatedAt)
+    .slice(0, LOCAL_PROGRESS_LIMIT);
+  try {
+    localStorage.setItem(
+      LOCAL_PROGRESS_KEY,
+      JSON.stringify(Object.fromEntries(entries)),
+    );
+  } catch {
+    // Browsers may disable or fill localStorage; playback must continue normally.
+  }
+}
+
+function loadLocalResumePosition() {
+  if (!title.value) return;
+  const episodeNumber = playback.value?.isSeries
+    ? (episode.value?.number ?? null)
+    : null;
+  const saved =
+    readLocalProgress()[localProgressId(title.value.slug, episodeNumber)];
+  resumeSeconds = saved?.progressSeconds ?? 0;
+  applyResumePosition();
+}
+
 async function loadResumePosition() {
   if (!title.value) return;
+  if (authState.value === "anonymous") {
+    loadLocalResumePosition();
+    return;
+  }
+  if (libraryRequest) return libraryRequest;
+
+  const request = $api<LibraryResponse>("/v1/me/library", {
+    credentials: "include",
+    query: { locale: locale.value },
+  });
+  libraryRequest = request;
+
   try {
-    const library = await $api<LibraryResponse>("/v1/me/library", {
-      credentials: "include",
-      query: { locale: locale.value },
-    });
+    const library = await request;
+    authState.value = "authenticated";
     isInMyList.value = library.saved.some(
       (item) => item.slug === title.value?.slug,
     );
@@ -242,7 +324,11 @@ async function loadResumePosition() {
       )?.progressSeconds ?? 0;
     applyResumePosition();
   } catch {
-    // Resume state is optional and may be unavailable for anonymous viewers.
+    authState.value = "anonymous";
+    loadLocalResumePosition();
+    // An anonymous viewer must not keep retrying an authenticated endpoint.
+  } finally {
+    libraryRequest = null;
   }
 }
 
@@ -271,6 +357,12 @@ async function recordWatchProgress() {
     !Number.isFinite(currentTime.value)
   )
     return;
+  if (authState.value === "anonymous") {
+    writeLocalProgress(currentTime.value);
+    lastProgressSaved = currentTime.value;
+    return;
+  }
+  if (authState.value !== "authenticated") return;
   isSavingProgress = true;
   const progressSeconds = currentTime.value;
   try {
