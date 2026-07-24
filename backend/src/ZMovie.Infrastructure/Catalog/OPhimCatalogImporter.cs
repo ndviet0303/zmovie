@@ -113,7 +113,7 @@ public static partial class OPhimCatalogImporter
         existingTitles.TryGetValue(source.Slug, out var title);
         var vietnameseTitle = Limit(source.Name, 300, source.Slug);
         var englishTitle = Limit(source.OriginName, 300, vietnameseTitle);
-        var genre = Limit(string.Join(", ", source.Category.Select(x => x.Name).Where(x => !string.IsNullOrWhiteSpace(x))), 100, "Khác");
+        var genre = Limit(string.Join(", ", (source.Category ?? []).Select(x => x.Name).Where(x => !string.IsNullOrWhiteSpace(x))), 100, "Khác");
         var poster = BuildImageUrl(imageCdn, source.PosterUrl, source.ThumbUrl);
         if (title is null)
         {
@@ -125,7 +125,7 @@ public static partial class OPhimCatalogImporter
                 EnglishSynopsis = string.Empty,
                 VietnameseSynopsis = string.Empty,
                 Genre = genre,
-                Year = source.Year,
+                Year = source.Year ?? 0,
                 Type = ToZMovieType(source.Type),
                 PosterUrl = poster,
                 RuntimeMinutes = ParseMinutes(source.Time),
@@ -138,7 +138,7 @@ public static partial class OPhimCatalogImporter
         title.EnglishTitle = englishTitle;
         title.VietnameseTitle = vietnameseTitle;
         title.Genre = genre;
-        title.Year = source.Year;
+        title.Year = source.Year ?? 0;
         title.Type = ToZMovieType(source.Type);
         title.PosterUrl = poster;
         title.RuntimeMinutes = ParseMinutes(source.Time);
@@ -271,7 +271,7 @@ public static partial class OPhimCatalogImporter
     private sealed record OPhimDetailResponse(string Status, string? Message, OPhimDetailData Data);
     private sealed record OPhimDetailData(OPhimDetailItem Item);
     private sealed record OPhimDetailItem(string? Content, IReadOnlyList<OPhimServer> Episodes);
-    private sealed record OPhimMovie(string Slug, string? Name, [property: JsonPropertyName("origin_name")] string? OriginName, string? Type, int Year, string? Time, [property: JsonPropertyName("poster_url")] string? PosterUrl, [property: JsonPropertyName("thumb_url")] string? ThumbUrl, IReadOnlyList<OPhimCategory> Category);
+    private sealed record OPhimMovie(string Slug, string? Name, [property: JsonPropertyName("origin_name")] string? OriginName, string? Type, int? Year, string? Time, [property: JsonPropertyName("poster_url")] string? PosterUrl, [property: JsonPropertyName("thumb_url")] string? ThumbUrl, IReadOnlyList<OPhimCategory>? Category);
     private sealed record OPhimCategory(string Name);
     private sealed record OPhimServer([property: JsonPropertyName("server_data")] IReadOnlyList<OPhimEpisode> ServerData);
     private sealed record OPhimEpisode(string? Name, [property: JsonPropertyName("link_m3u8")] string? LinkM3u8);
