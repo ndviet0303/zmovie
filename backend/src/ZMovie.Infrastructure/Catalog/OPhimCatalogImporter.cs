@@ -8,9 +8,9 @@ using ZMovie.Infrastructure.Persistence;
 
 namespace ZMovie.Infrastructure.Catalog;
 
-public sealed record OPhimCatalogImportOptions(int? MaxPages, bool IncludeEpisodes, TimeSpan RequestDelay)
+public sealed record OPhimCatalogImportOptions(int? MaxPages, int StartPage, bool IncludeEpisodes, TimeSpan RequestDelay)
 {
-    public static readonly OPhimCatalogImportOptions FullMetadata = new(null, false, TimeSpan.FromMilliseconds(300));
+    public static readonly OPhimCatalogImportOptions FullMetadata = new(null, 1, false, TimeSpan.FromMilliseconds(300));
 }
 
 public sealed record OPhimCatalogImportResult(int TotalItems, int PagesImported, int TitlesImported, int EpisodesImported);
@@ -34,11 +34,14 @@ public static partial class OPhimCatalogImporter
         EnsureSuccess(first.Status, first.Message);
         var totalItems = first.Data.Params.Pagination.TotalItems;
         var totalPages = (int)Math.Ceiling(totalItems / (double)Math.Max(1, first.Data.Params.Pagination.TotalItemsPerPage));
-        var pageLimit = Math.Min(options.MaxPages ?? totalPages, totalPages);
+        var startPage = Math.Clamp(options.StartPage, 1, totalPages);
+        var pagesAvailable = totalPages - startPage + 1;
+        var pagesToImport = Math.Min(options.MaxPages ?? pagesAvailable, pagesAvailable);
+        var endPage = startPage + pagesToImport - 1;
         var titlesImported = 0;
         var episodesImported = 0;
 
-        for (var page = 1; page <= pageLimit; page++)
+        for (var page = startPage; page <= endPage; page++)
         {
             var source = page == 1 ? first : await GetListPageAsync(http, page, ct);
             EnsureSuccess(source.Status, source.Message);
@@ -62,11 +65,11 @@ public static partial class OPhimCatalogImporter
 
             await db.SaveChangesAsync(ct);
             db.ChangeTracker.Clear();
-            report?.Invoke($"OPhim catalog: page {page}/{pageLimit} ({titlesImported} titles, {episodesImported} episodes)");
-            if (page < pageLimit) await DelayAsync(options.RequestDelay, ct);
+            report?.Invoke($"OPhim catalog: page {page}/{totalPages} ({titlesImported} titles, {episodesImported} episodes)");
+            if (page < endPage) await DelayAsync(options.RequestDelay, ct);
         }
 
-        return new(totalItems, pageLimit, titlesImported, episodesImported);
+        return new(totalItems, pagesToImport, titlesImported, episodesImported);
     }
 
     private static CatalogTitle UpsertTitle(CatalogDbContext db, IReadOnlyDictionary<string, CatalogTitle> existingTitles, OPhimMovie source, string? imageCdn)
@@ -75,7 +78,7 @@ public static partial class OPhimCatalogImporter
         var vietnameseTitle = Limit(source.Name, 300, source.Slug);
         var englishTitle = Limit(source.OriginName, 300, vietnameseTitle);
         var genre = Limit(string.Join(", ", source.Category.Select(x => x.Name).Where(x => !string.IsNullOrWhiteSpace(x))), 100, "Khác");
-        var poster = BuildImageUrl(imageCdn, source.PosterUrl ?? source.ThumbUrl);
+        var poster = BuildImageUrl(imageCdn, source.PosterUrl, source.ThumbUrl);
         if (title is null)
         {
             title = new CatalogTitle
@@ -161,7 +164,21 @@ public static partial class OPhimCatalogImporter
 
     private static string ToZMovieType(string? sourceType) => string.Equals(sourceType, "single", StringComparison.OrdinalIgnoreCase) ? "movie" : "series";
     private static int ParseMinutes(string? value) => int.TryParse(Minutes.Match(value ?? string.Empty).Value, out var minutes) ? minutes : 0;
-    private static string BuildImageUrl(string? cdn, string? path) => string.IsNullOrWhiteSpace(path) ? string.Empty : path.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? path : $"{cdn?.TrimEnd('/') ?? "https://img.ophim.live"}/uploads/movies/{path.TrimStart('/')}";
+    private static string BuildImageUrl(string? cdn, string? primaryPath, string? fallbackPath)
+    {
+        var primary = BuildCandidateImageUrl(cdn, primaryPath);
+        if (primary.Length <= 2000) return primary;
+
+        var fallback = BuildCandidateImageUrl(cdn, fallbackPath);
+        return fallback.Length <= 2000 ? fallback : string.Empty;
+    }
+
+    private static string BuildCandidateImageUrl(string? cdn, string? path) =>
+        string.IsNullOrWhiteSpace(path)
+            ? string.Empty
+            : path.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                ? path
+                : $"{cdn?.TrimEnd('/') ?? "https://img.ophim.live"}/uploads/movies/{path.TrimStart('/')}";
     private static string Limit(string? value, int maxLength, string fallback) => (value ?? fallback).Trim() switch { "" => fallback, var text => text.Length <= maxLength ? text : text[..maxLength] };
 
     [GeneratedRegex("<[^>]+>", RegexOptions.Compiled)]

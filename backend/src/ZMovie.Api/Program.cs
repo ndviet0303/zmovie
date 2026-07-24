@@ -84,6 +84,7 @@ if (args.Contains("--import-ophim-genres", StringComparer.OrdinalIgnoreCase))
 if (args.Contains("--import-ophim-catalog", StringComparer.OrdinalIgnoreCase))
 {
     var maxPages = ReadIntegerOption(args, "--max-pages");
+    var startPage = ReadIntegerOption(args, "--start-page") ?? 1;
     var importAll = args.Contains("--all", StringComparer.OrdinalIgnoreCase);
     var includeEpisodes = args.Contains("--with-episodes", StringComparer.OrdinalIgnoreCase);
     if (!importAll && maxPages is null) maxPages = 1;
@@ -91,7 +92,7 @@ if (args.Contains("--import-ophim-catalog", StringComparer.OrdinalIgnoreCase))
     await using var importScope = app.Services.CreateAsyncScope();
     var importDb = importScope.ServiceProvider.GetRequiredService<CatalogDbContext>();
     await importDb.Database.MigrateAsync();
-    var options = new OPhimCatalogImportOptions(maxPages, includeEpisodes, TimeSpan.FromMilliseconds(300));
+    var options = new OPhimCatalogImportOptions(maxPages, startPage, includeEpisodes, TimeSpan.FromMilliseconds(300));
     var imported = await OPhimCatalogImporter.ImportAsync(importDb, new HttpClient(), options, Console.WriteLine, CancellationToken.None);
     Console.WriteLine($"Imported {imported.TitlesImported} OPhim titles from {imported.PagesImported} pages (source total: {imported.TotalItems}; episodes: {imported.EpisodesImported}).");
     return;
