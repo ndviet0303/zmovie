@@ -23,8 +23,8 @@ npm start
 
 The service binds to `0.0.0.0:8788` and proxies generation to Ollama at
 `127.0.0.1:11434`. From another device on the same LAN/Tailscale network, use the
-Mac hostname `http://ziet-mac:8788` (or set `NUXT_PUBLIC_LOCAL_AI_URL` to the
-Mac's reachable address). It allows the deployed demo origin
+Mac endpoint `http://ziet-mac:8788/v1/chat` (or set `NUXT_PUBLIC_LOCAL_AI_URL` to
+the reachable `/v1/chat` endpoint on the Mac). It allows the deployed demo origin
 `https://movie.ziet.dev` by default. Override `LOCAL_AI_HOST`,
 `LOCAL_AI_ALLOWED_ORIGINS`, `LOCAL_AI_PORT`, `OLLAMA_URL`, or `OLLAMA_MODEL` only
 for local development.
