@@ -46,7 +46,13 @@ public static partial class OPhimCatalogImporter
         {
             var source = page == 1 ? first : await GetListPageAsync(http, page, ct);
             EnsureSuccess(source.Status, source.Message);
-            var movies = source.Data.Items.Where(x => !string.IsNullOrWhiteSpace(x.Slug)).ToList();
+            // OPhim occasionally repeats an item on a page. Keep one detail task per slug;
+            // otherwise two tasks can add the same (title_id, episode number) in one batch.
+            var movies = source.Data.Items
+                .Where(x => !string.IsNullOrWhiteSpace(x.Slug))
+                .GroupBy(x => x.Slug, StringComparer.OrdinalIgnoreCase)
+                .Select(x => x.First())
+                .ToList();
             var slugs = movies.Select(x => x.Slug).ToList();
             var existingTitles = await db.Titles.Where(x => slugs.Contains(x.Slug)).ToDictionaryAsync(x => x.Slug, ct);
             var titlesBySlug = new Dictionary<string, CatalogTitle>(StringComparer.OrdinalIgnoreCase);
