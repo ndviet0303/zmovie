@@ -6,7 +6,7 @@ export default defineNuxtPlugin(() => {
     import.meta.server && configuredBaseUrl === "/"
       ? "https://movie-api.ziet.dev"
       : configuredBaseUrl;
-  const api = $fetch.create({ baseURL });
+  const api = $fetch.create({ baseURL, credentials: "include" });
 
   return {
     provide: { api },
