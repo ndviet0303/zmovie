@@ -89,7 +89,7 @@ backend:test:
   script:
     - test -S /var/run/docker.sock
     - mkdir -p "$CI_PROJECT_DIR/test-results"
-    - dotnet test "$BACKEND_SOLUTION" --logger "junit;LogFilePath=$CI_PROJECT_DIR/test-results/{assembly}.xml" --collect:"XPlat Code Coverage" --results-directory "$CI_PROJECT_DIR/coverage"
+    - dotnet test "$BACKEND_SOLUTION" --logger "junit;LogFilePath=$CI_PROJECT_DIR/test-results/{assembly}.xml" --settings coverage.runsettings --collect:"XPlat Code Coverage" --results-directory "$CI_PROJECT_DIR/coverage"
     - |
       awk 'match($0, /filename="[^"]+"/) { file = substr($0, RSTART + 10, RLENGTH - 11) } file && match($0, /<line number="[0-9]+"/) { line = substr($0, RSTART + 14, RLENGTH - 14); key = file ":" line; valid[key] = 1; if (match($0, /hits="[0-9]+"/) && substr($0, RSTART + 6, RLENGTH - 6) + 0 > 0) { covered[key] = 1 } } END { for (key in valid) { total++ } for (key in covered) { hit++ } printf "Line coverage: %.2f%%\n", total ? (hit / total * 100) : 0 }' "$CI_PROJECT_DIR"/coverage/*/coverage.cobertura.xml
   artifacts:

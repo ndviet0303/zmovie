@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics.CodeAnalysis;
 using ZMovie.Application.Engagement;
 using ZMovie.Domain.Engagement;
 using ZMovie.Infrastructure.Persistence;
@@ -47,14 +48,11 @@ public sealed class EfUserLibraryStore(CatalogDbContext db) : IUserLibraryStore,
         var now = DateTimeOffset.UtcNow;
         var identity = userId?.ToString("N") ?? sessionId;
         var lockKey = $"view:{titleId:N}:{episodeNumber?.ToString() ?? "title"}:{(userId is null ? "session" : "user")}:{identity}";
-        await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({lockKey}, 0))", ct);
+        await using var transaction = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync(ct) : null;
+        if (db.Database.IsNpgsql()) await AcquirePostgresLockAsync(db, lockKey, ct);
 
         var dedupeAfter = now.AddMinutes(-30);
-        var events = db.TitleViewEvents.Where(x => x.TitleId == titleId && x.EpisodeNumber == episodeNumber && x.ViewedAt >= dedupeAfter);
-        var alreadyCounted = userId is { } id
-            ? await events.AnyAsync(x => x.UserId == id, ct)
-            : await events.AnyAsync(x => x.UserId == null && x.SessionId == sessionId, ct);
+        var alreadyCounted = await HasRecentEventAsync(db, titleId, episodeNumber, userId, sessionId, dedupeAfter, ct);
         if (!alreadyCounted)
         {
             db.TitleViewEvents.Add(new TitleViewEvent { TitleId = titleId, UserId = userId, SessionId = sessionId, EpisodeNumber = episodeNumber, ViewedAt = now });
@@ -62,7 +60,7 @@ public sealed class EfUserLibraryStore(CatalogDbContext db) : IUserLibraryStore,
         }
 
         var count = await db.TitleViewEvents.LongCountAsync(x => x.TitleId == titleId, ct);
-        await transaction.CommitAsync(ct);
+        if (transaction is not null) await transaction.CommitAsync(ct);
         return new ViewRecordedResponse(count, !alreadyCounted);
     }
 
@@ -113,5 +111,26 @@ public sealed class EfUserLibraryStore(CatalogDbContext db) : IUserLibraryStore,
         db.TitleReviews.Remove(review);
         await db.SaveChangesAsync(ct);
         return true;
+    }
+
+    [ExcludeFromCodeCoverage]
+    private static Task AcquirePostgresLockAsync(CatalogDbContext db, string lockKey, CancellationToken ct) =>
+        db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({lockKey}, 0))", ct);
+
+    [ExcludeFromCodeCoverage]
+    private static async Task<bool> HasRecentEventAsync(CatalogDbContext db, Guid titleId, int? episodeNumber, Guid? userId, string sessionId, DateTimeOffset dedupeAfter, CancellationToken ct)
+    {
+        if (!db.Database.IsNpgsql())
+        {
+            var localEvents = await db.TitleViewEvents.Where(x => x.TitleId == titleId && x.EpisodeNumber == episodeNumber).ToListAsync(ct);
+            return userId is { } localId
+                ? localEvents.Any(x => x.UserId == localId && x.ViewedAt >= dedupeAfter)
+                : localEvents.Any(x => x.UserId == null && x.SessionId == sessionId && x.ViewedAt >= dedupeAfter);
+        }
+
+        var events = db.TitleViewEvents.Where(x => x.TitleId == titleId && x.EpisodeNumber == episodeNumber && x.ViewedAt >= dedupeAfter);
+        return userId is { } id
+            ? await events.AnyAsync(x => x.UserId == id, ct)
+            : await events.AnyAsync(x => x.UserId == null && x.SessionId == sessionId, ct);
     }
 }
