@@ -10,6 +10,7 @@ namespace ZMovie.Infrastructure.Catalog;
 
 public sealed record OPhimCatalogImportOptions(int? MaxPages, int StartPage, bool IncludeEpisodes, TimeSpan RequestDelay)
 {
+    public int DetailConcurrency { get; init; } = 3;
     public static readonly OPhimCatalogImportOptions FullMetadata = new(null, 1, false, TimeSpan.FromMilliseconds(300));
 }
 
@@ -48,19 +49,17 @@ public static partial class OPhimCatalogImporter
             var movies = source.Data.Items.Where(x => !string.IsNullOrWhiteSpace(x.Slug)).ToList();
             var slugs = movies.Select(x => x.Slug).ToList();
             var existingTitles = await db.Titles.Where(x => slugs.Contains(x.Slug)).ToDictionaryAsync(x => x.Slug, ct);
+            var titlesBySlug = new Dictionary<string, CatalogTitle>(StringComparer.OrdinalIgnoreCase);
             foreach (var movie in movies)
             {
                 var title = UpsertTitle(db, existingTitles, movie, source.Data.ImageCdn);
+                titlesBySlug[movie.Slug] = title;
                 titlesImported++;
+            }
 
-                if (options.IncludeEpisodes)
-                {
-                    await DelayAsync(options.RequestDelay, ct);
-                    var detail = await GetDetailAsync(http, movie.Slug, ct);
-                    EnsureSuccess(detail.Status, detail.Message);
-                    ApplySynopsis(title, detail.Data.Item.Content);
-                    episodesImported += await UpsertEpisodesAsync(db, title, detail.Data.Item.Episodes, ct);
-                }
+            if (options.IncludeEpisodes)
+            {
+                episodesImported += await ImportDetailsAsync(db, http, movies, titlesBySlug, options, ct);
             }
 
             await db.SaveChangesAsync(ct);
@@ -70,6 +69,43 @@ public static partial class OPhimCatalogImporter
         }
 
         return new(totalItems, pagesToImport, titlesImported, episodesImported);
+    }
+
+    private static async Task<int> ImportDetailsAsync(
+        CatalogDbContext db,
+        HttpClient http,
+        IReadOnlyList<OPhimMovie> movies,
+        IReadOnlyDictionary<string, CatalogTitle> titlesBySlug,
+        OPhimCatalogImportOptions options,
+        CancellationToken ct)
+    {
+        using var concurrencyGate = new SemaphoreSlim(Math.Clamp(options.DetailConcurrency, 1, 8));
+        var detailTasks = movies.Select(async movie =>
+        {
+            await concurrencyGate.WaitAsync(ct);
+            try
+            {
+                await DelayAsync(options.RequestDelay, ct);
+                var detail = await GetDetailAsync(http, movie.Slug, ct);
+                EnsureSuccess(detail.Status, detail.Message);
+                return new FetchedDetail(movie.Slug, detail.Data.Item.Content, detail.Data.Item.Episodes);
+            }
+            finally
+            {
+                concurrencyGate.Release();
+            }
+        }).ToArray();
+
+        var details = await Task.WhenAll(detailTasks);
+        var episodesImported = 0;
+        foreach (var detail in details)
+        {
+            if (!titlesBySlug.TryGetValue(detail.Slug, out var title)) continue;
+            ApplySynopsis(title, detail.Content);
+            episodesImported += await UpsertEpisodesAsync(db, title, detail.Episodes, ct);
+        }
+
+        return episodesImported;
     }
 
     private static CatalogTitle UpsertTitle(CatalogDbContext db, IReadOnlyDictionary<string, CatalogTitle> existingTitles, OPhimMovie source, string? imageCdn)
@@ -144,13 +180,52 @@ public static partial class OPhimCatalogImporter
         title.UpdatedAt = DateTimeOffset.UtcNow;
     }
 
-    private static async Task<OPhimListResponse> GetListPageAsync(HttpClient http, int page, CancellationToken ct) =>
-        await http.GetFromJsonAsync<OPhimListResponse>($"{BaseUrl}/danh-sach/phim-moi-cap-nhat?page={page}", ct)
-        ?? throw new InvalidOperationException("OPhim returned no catalog payload.");
+    private static Task<OPhimListResponse> GetListPageAsync(HttpClient http, int page, CancellationToken ct) =>
+        GetJsonWithRetryAsync<OPhimListResponse>(http, $"{BaseUrl}/danh-sach/phim-moi-cap-nhat?page={page}", ct);
 
-    private static async Task<OPhimDetailResponse> GetDetailAsync(HttpClient http, string slug, CancellationToken ct) =>
-        await http.GetFromJsonAsync<OPhimDetailResponse>($"{BaseUrl}/phim/{Uri.EscapeDataString(slug)}", ct)
-        ?? throw new InvalidOperationException($"OPhim returned no detail payload for {slug}.");
+    private static Task<OPhimDetailResponse> GetDetailAsync(HttpClient http, string slug, CancellationToken ct) =>
+        GetJsonWithRetryAsync<OPhimDetailResponse>(http, $"{BaseUrl}/phim/{Uri.EscapeDataString(slug)}", ct);
+
+    private static async Task<T> GetJsonWithRetryAsync<T>(HttpClient http, string url, CancellationToken ct)
+    {
+        const int maxAttempts = 4;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            try
+            {
+                using var response = await http.GetAsync(url, ct);
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadFromJsonAsync<T>(ct)
+                        ?? throw new InvalidOperationException("OPhim returned no JSON payload.");
+                }
+
+                if (!IsTransient(response.StatusCode) || attempt == maxAttempts - 1)
+                {
+                    response.EnsureSuccessStatusCode();
+                }
+
+                var serverDelay = response.Headers.RetryAfter?.Delta;
+                await DelayAsync(serverDelay is { } retryAfter && retryAfter > TimeSpan.Zero
+                    ? retryAfter
+                    : TimeSpan.FromSeconds(Math.Min(30, Math.Pow(2, attempt))), ct);
+            }
+            catch (HttpRequestException) when (attempt < maxAttempts - 1)
+            {
+                await DelayAsync(TimeSpan.FromSeconds(Math.Min(30, Math.Pow(2, attempt))), ct);
+            }
+        }
+
+        throw new InvalidOperationException("OPhim request failed after retries.");
+    }
+
+    private static bool IsTransient(System.Net.HttpStatusCode statusCode) =>
+        statusCode is System.Net.HttpStatusCode.RequestTimeout
+            or System.Net.HttpStatusCode.TooManyRequests
+            or System.Net.HttpStatusCode.InternalServerError
+            or System.Net.HttpStatusCode.BadGateway
+            or System.Net.HttpStatusCode.ServiceUnavailable
+            or System.Net.HttpStatusCode.GatewayTimeout;
 
     private static async Task DelayAsync(TimeSpan delay, CancellationToken ct)
     {
@@ -200,4 +275,5 @@ public static partial class OPhimCatalogImporter
     private sealed record OPhimCategory(string Name);
     private sealed record OPhimServer([property: JsonPropertyName("server_data")] IReadOnlyList<OPhimEpisode> ServerData);
     private sealed record OPhimEpisode(string? Name, [property: JsonPropertyName("link_m3u8")] string? LinkM3u8);
+    private sealed record FetchedDetail(string Slug, string? Content, IReadOnlyList<OPhimServer> Episodes);
 }
