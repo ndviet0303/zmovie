@@ -9,13 +9,16 @@ type Title = {
   type: string;
   posterUrl: string;
 };
-type Reply = { message: string; suggestions: Title[] };
+type AssistantMatch = { title: Title; synopsis: string };
+type AssistantContext = { matches: AssistantMatch[] };
+type LocalAiReply = { reply: string };
 type Message = { role: "bot" | "user"; text: string; suggestions?: Title[] };
 
 const locale = useCookie<"vi" | "en">("zmovie-locale", { default: () => "vi" });
 const prompt = ref("");
 const isSending = ref(false);
 const { $api } = useNuxtApp();
+const runtimeConfig = useRuntimeConfig();
 const messages = ref<Message[]>([
   {
     role: "bot",
@@ -57,30 +60,71 @@ async function setLocale(nextLocale: "vi" | "en") {
   locale.value = nextLocale;
 }
 
+function statusOf(error: unknown) {
+  if (!error || typeof error !== "object") return undefined;
+  const candidate = error as {
+    status?: unknown;
+    response?: { status?: unknown };
+  };
+  const status = candidate.response?.status ?? candidate.status;
+  return typeof status === "number" ? status : undefined;
+}
+
 async function send(nextPrompt = prompt.value) {
   const message = nextPrompt.trim();
   if (!message || isSending.value) return;
   messages.value.push({ role: "user", text: message });
   prompt.value = "";
   isSending.value = true;
+  let phase: "context" | "local-ai" = "context";
   try {
-    const reply = await $api<Reply>("/v1/assistant/chat", {
+    const context = await $api<AssistantContext>("/v1/assistant/context", {
       method: "POST",
       credentials: "include",
       body: { message, locale: locale.value },
     });
+    const suggestions = context.matches.slice(0, 3).map((match) => match.title);
+    if (context.matches.length === 0) {
+      messages.value.push({
+        role: "bot",
+        text:
+          locale.value === "vi"
+            ? "Mình chưa tìm được phim khớp. Bạn thử nêu thể loại, tâm trạng hoặc tên diễn viên nhé."
+            : "I could not find a close match. Try a genre, mood, or actor name.",
+      });
+      return;
+    }
+
+    phase = "local-ai";
+    const localReply = await $fetch<LocalAiReply>(
+      String(runtimeConfig.public.localAiUrl),
+      {
+        method: "POST",
+        body: { message, locale: locale.value, matches: context.matches },
+      },
+    );
     messages.value.push({
       role: "bot",
-      text: reply.message,
-      suggestions: reply.suggestions,
+      text: localReply.reply,
+      suggestions,
     });
-  } catch {
+  } catch (error) {
+    console.error(`[assistant:${phase}]`, error);
+    const status = statusOf(error);
     messages.value.push({
       role: "bot",
       text:
-        locale.value === "vi"
-          ? "Mình đang gặp sự cố. Bạn thử lại sau nhé."
-          : "I am having trouble right now. Please try again.",
+        phase === "context" && status === 401
+          ? locale.value === "vi"
+            ? "Bạn cần đăng nhập để dùng tìm phim theo lịch sử và sở thích cá nhân."
+            : "Please sign in to use recommendations based on your history and preferences."
+          : phase === "local-ai"
+            ? locale.value === "vi"
+              ? "Bạn cần chạy AI local: cd local-ai && npm start."
+              : "Start the local AI service with: cd local-ai && npm start."
+            : locale.value === "vi"
+              ? "Mình đang gặp sự cố. Bạn thử lại sau nhé."
+              : "I am having trouble right now. Please try again.",
     });
   } finally {
     isSending.value = false;
