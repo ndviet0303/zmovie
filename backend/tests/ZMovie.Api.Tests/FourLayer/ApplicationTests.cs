@@ -103,10 +103,10 @@ public sealed class ApplicationTests
         var searchStore = new FakeSearchStore { Result = new([], 0) };
         (await new SearchCatalogHandler(searchStore).Handle(new("  hello  ", null, null, null), default)).Value.Total.Should().Be(0);
         var assistantStore = new FakeAssistantStore { Results = [new(new("first", "First", "Drama", 2026, "movie", "poster"), "Synopsis")] };
-        var assistant = await new AskCatalogAssistantHandler(assistantStore).Handle(new("  drama ", "en"), default);
+        var assistant = await new AskCatalogAssistantHandler(assistantStore, new FakeAssistantGenerator()).Handle(new(UserId, "  drama ", "en"), default);
         assistant.Value.Message.Should().Contain("I found 1");
         assistantStore.Results = [];
-        (await new AskCatalogAssistantHandler(assistantStore).Handle(new("drama", "vi"), default)).Value.Message.Should().Contain("chưa tìm");
+        (await new AskCatalogAssistantHandler(assistantStore, new FakeAssistantGenerator()).Handle(new(UserId, "drama", "vi"), default)).Value.Message.Should().Contain("chưa tìm");
 
         var verifier = new FakeVerifier { Identity = new("subject", "a@test", "A", null) };
         var users = new FakeUserIdentityStore { User = new(UserId, "a@test", "A", null) };
@@ -121,7 +121,7 @@ public sealed class ApplicationTests
         new ListTitlesValidator().Validate(new ListTitlesQuery(new string('x', 201), null, null)).IsValid.Should().BeFalse();
         new RecordTitleViewValidator().Validate(new RecordTitleViewCommand("", null, "", 0)).IsValid.Should().BeFalse();
         new SubmitTitleReviewValidator().Validate(new SubmitTitleReviewCommand(UserId, "", "", 11, new string('x', 2001))).IsValid.Should().BeFalse();
-        new AskCatalogAssistantValidator().Validate(new AskCatalogAssistantQuery("", null)).IsValid.Should().BeFalse();
+        new AskCatalogAssistantValidator().Validate(new AskCatalogAssistantQuery(UserId, "", null)).IsValid.Should().BeFalse();
 
         var valid = new ValidationBehavior<RecordTitleViewCommand, ViewRecordedResponse>([new RecordTitleViewValidator()]);
         var called = false;
@@ -229,7 +229,13 @@ public sealed class ApplicationTests
     private sealed class FakeAssistantStore : ICatalogAssistantStore
     {
         public IReadOnlyList<AssistantCatalogTitle> Results { get; set; } = [];
-        public Task<IReadOnlyList<AssistantCatalogTitle>> SearchAsync(string message, string locale, int limit, CancellationToken ct) => Task.FromResult(Results);
+        public Guid? UserId { get; private set; }
+        public Task<IReadOnlyList<AssistantCatalogTitle>> SearchAsync(Guid userId, string message, string locale, int limit, CancellationToken ct) { UserId = userId; return Task.FromResult(Results); }
+    }
+
+    private sealed class FakeAssistantGenerator : IAssistantTextGenerator
+    {
+        public Task<string?> GenerateAsync(AssistantGenerationRequest request, CancellationToken ct) => Task.FromResult<string?>(null);
     }
 
     private sealed class FakeVerifier : IGoogleIdentityVerifier

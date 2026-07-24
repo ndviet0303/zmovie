@@ -66,6 +66,7 @@ async function send(nextPrompt = prompt.value) {
   try {
     const reply = await $api<Reply>("/v1/assistant/chat", {
       method: "POST",
+      credentials: "include",
       body: { message, locale: locale.value },
     });
     messages.value.push({
