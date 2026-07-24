@@ -34,9 +34,11 @@ public static partial class OPhimCatalogImporter
         var first = await GetListPageAsync(http, 1, ct);
         EnsureSuccess(first.Status, first.Message);
         var totalItems = first.Data.Params.Pagination.TotalItems;
-        var totalPages = (int)Math.Ceiling(totalItems / (double)Math.Max(1, first.Data.Params.Pagination.TotalItemsPerPage));
-        var startPage = Math.Clamp(options.StartPage, 1, totalPages);
-        var pagesAvailable = totalPages - startPage + 1;
+        var totalPages = totalItems == 0
+            ? 0
+            : (int)Math.Ceiling(totalItems / (double)Math.Max(1, first.Data.Params.Pagination.TotalItemsPerPage));
+        var startPage = totalPages == 0 ? 1 : Math.Clamp(options.StartPage, 1, totalPages);
+        var pagesAvailable = Math.Max(0, totalPages - startPage + 1);
         var pagesToImport = Math.Min(options.MaxPages ?? pagesAvailable, pagesAvailable);
         var endPage = startPage + pagesToImport - 1;
         var titlesImported = 0;
@@ -197,28 +199,32 @@ public static partial class OPhimCatalogImporter
         const int maxAttempts = 4;
         for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
+            HttpResponseMessage response;
             try
             {
-                using var response = await http.GetAsync(url, ct);
+                response = await http.GetAsync(url, ct);
+            }
+            catch (HttpRequestException)
+            {
+                if (attempt == maxAttempts - 1) break;
+                await DelayAsync(TimeSpan.FromSeconds(Math.Min(30, Math.Pow(2, attempt))), ct);
+                continue;
+            }
+
+            using (response)
+            {
                 if (response.IsSuccessStatusCode)
                 {
                     return await response.Content.ReadFromJsonAsync<T>(ct)
                         ?? throw new InvalidOperationException("OPhim returned no JSON payload.");
                 }
 
-                if (!IsTransient(response.StatusCode) || attempt == maxAttempts - 1)
-                {
-                    response.EnsureSuccessStatusCode();
-                }
+                if (!IsTransient(response.StatusCode) || attempt == maxAttempts - 1) ThrowForStatus(response);
 
                 var serverDelay = response.Headers.RetryAfter?.Delta;
                 await DelayAsync(serverDelay is { } retryAfter && retryAfter > TimeSpan.Zero
                     ? retryAfter
                     : TimeSpan.FromSeconds(Math.Min(30, Math.Pow(2, attempt))), ct);
-            }
-            catch (HttpRequestException) when (attempt < maxAttempts - 1)
-            {
-                await DelayAsync(TimeSpan.FromSeconds(Math.Min(30, Math.Pow(2, attempt))), ct);
             }
         }
 
@@ -232,6 +238,9 @@ public static partial class OPhimCatalogImporter
             or System.Net.HttpStatusCode.BadGateway
             or System.Net.HttpStatusCode.ServiceUnavailable
             or System.Net.HttpStatusCode.GatewayTimeout;
+
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+    private static void ThrowForStatus(HttpResponseMessage response) => response.EnsureSuccessStatusCode();
 
     private static async Task DelayAsync(TimeSpan delay, CancellationToken ct)
     {
