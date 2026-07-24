@@ -1,6 +1,6 @@
 import http from "node:http";
 
-const host = process.env.LOCAL_AI_HOST ?? "127.0.0.1";
+const host = process.env.LOCAL_AI_HOST ?? "0.0.0.0";
 const port = Number(process.env.LOCAL_AI_PORT ?? 8788);
 const ollamaUrl = (process.env.OLLAMA_URL ?? "http://127.0.0.1:11434").replace(/\/$/, "");
 const model = process.env.OLLAMA_MODEL ?? "qwen3:0.6b";

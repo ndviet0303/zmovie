@@ -32,7 +32,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBaseUrl: '/',
-      localAiUrl: process.env.NUXT_PUBLIC_LOCAL_AI_URL ?? 'http://127.0.0.1:8788',
+      localAiUrl: process.env.NUXT_PUBLIC_LOCAL_AI_URL ?? 'http://ziet-mac:8788',
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL ?? 'https://movie.ziet.dev',
       googleClientId: process.env.NUXT_PUBLIC_GOOGLE_CLIENT_ID ?? '39010162417-34sjb806htrhds433p75b6s4k1l928nk.apps.googleusercontent.com',
     },

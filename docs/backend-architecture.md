@@ -67,7 +67,7 @@ and secret path; rotate its client secret through Infisical when required.
 require an authenticated session. The assistant retriever combines the request with
 the user's saved titles and watch history, then ranks catalog candidates with the
 local TF-IDF content model. For the demo, the deployed frontend sends that context
-to the user's local AI service at `127.0.0.1:8788`; the user's browser, not the
+to the user's local AI service at the Mac's LAN address on port `8788`; the user's browser, not the
 deployed backend, owns the localhost connection. The generator cannot create
 suggestion IDs, so its text never controls which titles appear in the response.
 
