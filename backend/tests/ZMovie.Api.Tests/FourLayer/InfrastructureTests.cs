@@ -166,11 +166,14 @@ public sealed class InfrastructureTests
     public async Task Assistant_store_scores_tokens_and_handles_empty_message()
     {
         using var database = new TestDatabase();
-        database.Db.Titles.Add(Title("dragon", "Dragon Quest", "Nhiệm vụ rồng", "movie", genre: "Adventure", synopsis: "A brave dragon adventure"));
+        database.Db.Titles.AddRange(
+            Title("dragon", "Dragon Quest", "Nhiệm vụ rồng", "movie", genre: "Adventure", synopsis: "A brave dragon adventure"),
+            Title("warm-friends", "Warm Friends", "Những người bạn ấm áp", "movie", genre: "Family", synopsis: "Một câu chuyện chữa lành nhẹ nhàng về hy vọng và tình bạn"));
         await database.Db.SaveChangesAsync();
         var store = new CatalogAssistantStore(database.Db);
         (await store.SearchAsync(Guid.NewGuid(), "!!!", "vi", 3, default)).Should().BeEmpty();
         (await store.SearchAsync(Guid.NewGuid(), "dragon adventure", "en", 3, default)).Should().ContainSingle().Which.Title.Title.Should().Be("Dragon Quest");
+        (await store.SearchAsync(Guid.NewGuid(), "hôm nay tôi buồn", "vi", 3, default)).Should().ContainSingle().Which.Title.Slug.Should().Be("warm-friends");
     }
 
     [Fact]

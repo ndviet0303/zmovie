@@ -44,13 +44,25 @@ public sealed class AskCatalogAssistantHandler(ICatalogAssistantStore store, IAs
         var matches = await store.SearchAsync(request.UserId, request.Message, locale, 8, ct);
         var suggestions = matches.Take(3).Select(x => x.Title).ToList();
         var generated = matches.Count > 0 ? await generator.GenerateAsync(new AssistantGenerationRequest(request.Message.Trim(), locale, matches), ct) : null;
-        var message = string.IsNullOrWhiteSpace(generated) ? locale == "vi"
-            ? suggestions.Count > 0
-                ? $"Mình tìm được {suggestions.Count} phim hợp với “{request.Message.Trim()}”. Bạn thử xem các lựa chọn bên dưới nhé."
-                : "Mình chưa tìm được phim khớp. Bạn thử nêu thể loại, tâm trạng hoặc tên diễn viên nhé."
-            : suggestions.Count > 0
-                ? $"I found {suggestions.Count} titles that match “{request.Message.Trim()}”. Try these picks."
-                : "I could not find a close match. Try a genre, mood, or actor name." : generated.Trim();
+        var message = string.IsNullOrWhiteSpace(generated)
+            ? FallbackMessage(request.Message, locale, suggestions.Count)
+            : generated.Trim();
         return new AssistantReply(message, suggestions);
+    }
+
+    private static string FallbackMessage(string request, string locale, int suggestionCount)
+    {
+        if (locale == "vi" && AssistantMood.WantsComfort(request))
+            return suggestionCount > 0
+                ? "Nghe như hôm nay bạn đang cần một bộ phim thật nhẹ nhàng. Mình chọn vài lựa chọn ấm áp và có chút hy vọng để bạn xem nhé."
+                : "Nếu hôm nay bạn đang thấy buồn, hãy cho mình biết bạn muốn một bộ phim nhẹ nhàng, hài hước hay có chút lãng mạn nhé.";
+
+        return locale == "vi"
+            ? suggestionCount > 0
+                ? $"Mình tìm được {suggestionCount} phim hợp với “{request.Trim()}”. Bạn thử xem các lựa chọn bên dưới nhé."
+                : "Mình chưa tìm được phim khớp. Bạn thử nêu thể loại, tâm trạng hoặc tên diễn viên nhé."
+            : suggestionCount > 0
+                ? $"I found {suggestionCount} titles that match “{request.Trim()}”. Try these picks."
+                : "I could not find a close match. Try a genre, mood, or actor name.";
     }
 }

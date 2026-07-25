@@ -109,6 +109,8 @@ public sealed class ApplicationTests
         assistant.Value.Message.Should().Contain("I found 1");
         assistantStore.Results = [];
         (await new AskCatalogAssistantHandler(assistantStore, new FakeAssistantGenerator()).Handle(new(UserId, "drama", "vi"), default)).Value.Message.Should().Contain("chưa tìm");
+        assistantStore.Results = [new(new("comfort", "Warm Friends", "Family", 2026, "movie", "poster"), "A gentle story")];
+        (await new AskCatalogAssistantHandler(assistantStore, new FakeAssistantGenerator()).Handle(new(UserId, "hôm nay tôi buồn", "vi"), default)).Value.Message.Should().Contain("nhẹ nhàng");
 
         var verifier = new FakeVerifier { Identity = new("subject", "a@test", "A", null) };
         var users = new FakeUserIdentityStore { User = new(UserId, "a@test", "A", null) };

@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using ZMovie.Application.Assistant;
 using ZMovie.Application.Catalog;
@@ -9,7 +8,6 @@ namespace ZMovie.Infrastructure.Assistant;
 
 public sealed class CatalogAssistantStore : ICatalogAssistantStore
 {
-    private static readonly Regex Word = new("[\\p{L}\\p{Nd}]{2,}", RegexOptions.Compiled);
     private readonly CatalogDbContext _db;
     private readonly IUserLibraryStore? _library;
     private readonly ILibraryCatalogReader? _catalog;
@@ -27,8 +25,8 @@ public sealed class CatalogAssistantStore : ICatalogAssistantStore
 
     public async Task<IReadOnlyList<AssistantCatalogTitle>> SearchAsync(Guid userId, string message, string locale, int limit, CancellationToken ct)
     {
-        var tokens = Word.Matches(message.ToLowerInvariant()).Select(x => x.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-        if (tokens.Length == 0) return [];
+        var tokens = AssistantMood.SearchTermWeights(message);
+        if (tokens.Count == 0) return [];
 
         if (_library is null || _catalog is null || _recommender is null)
             return await SearchCatalogAsync(tokens, locale, limit, ct);
@@ -51,7 +49,7 @@ public sealed class CatalogAssistantStore : ICatalogAssistantStore
             .Where(x => x.Score > 0).OrderByDescending(x => x.Score).ThenByDescending(x => x.Item.Title.Year).Take(limit).Select(x => x.Item).ToList();
     }
 
-    private async Task<IReadOnlyList<AssistantCatalogTitle>> SearchCatalogAsync(string[] tokens, string locale, int limit, CancellationToken ct)
+    private async Task<IReadOnlyList<AssistantCatalogTitle>> SearchCatalogAsync(IReadOnlyDictionary<string, int> tokens, string locale, int limit, CancellationToken ct)
     {
         var titles = await _db.Titles.AsNoTracking().ToListAsync(ct);
         return titles.Select(title => new
@@ -65,13 +63,13 @@ public sealed class CatalogAssistantStore : ICatalogAssistantStore
     private static AssistantCatalogTitle ToAssistantTitle(RecommendationCandidate candidate) =>
         new(new TitleSummary(candidate.Title.Slug, candidate.Title.Title, candidate.Title.Genre, candidate.Title.Year, candidate.Title.Type, candidate.Title.PosterUrl), candidate.Synopsis);
 
-    private static int Score(RecommendationCandidate candidate, string[] tokens) =>
+    private static int Score(RecommendationCandidate candidate, IReadOnlyDictionary<string, int> tokens) =>
         Score(candidate.Title.Title, candidate.Title.Genre, candidate.Synopsis, tokens);
 
-    private static int Score(string title, string genre, string synopsis, string[] tokens)
+    private static int Score(string title, string genre, string synopsis, IReadOnlyDictionary<string, int> tokens)
     {
         var name = title.ToLowerInvariant();
         var text = $"{name} {genre} {synopsis}".ToLowerInvariant();
-        return tokens.Sum(token => (name.Contains(token) ? 5 : 0) + (genre.Contains(token, StringComparison.OrdinalIgnoreCase) ? 3 : 0) + (text.Contains(token) ? 1 : 0));
+        return tokens.Sum(token => token.Value * ((name.Contains(token.Key) ? 5 : 0) + (genre.Contains(token.Key, StringComparison.OrdinalIgnoreCase) ? 3 : 0) + (text.Contains(token.Key) ? 1 : 0)));
     }
 }
