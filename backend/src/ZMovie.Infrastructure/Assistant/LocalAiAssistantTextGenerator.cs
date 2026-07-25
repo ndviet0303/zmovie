@@ -9,7 +9,7 @@ namespace ZMovie.Infrastructure.Assistant;
 public sealed class LocalAiOptions
 {
     public bool Enabled { get; set; }
-    public string BaseUrl { get; set; } = "http://127.0.0.1:8788";
+    public string BaseUrl { get; set; } = "http://ziet-mac.ts.bantool.net:8788";
     public int TimeoutSeconds { get; set; } = 15;
 }
 

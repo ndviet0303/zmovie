@@ -12,7 +12,10 @@ variables:
   - when: never
 
 frontend:lint:
-  image: oven/bun:1
+  image:
+    name: oven/bun:1
+    docker:
+      platform: linux/amd64
   stage: verify
   before_script:
     - cd "$FRONTEND_PATH"
@@ -27,6 +30,8 @@ frontend:lint:
   image:
     name: jfxs/wrangler:latest
     entrypoint: [""]
+    docker:
+      platform: linux/amd64
   stage: deploy
   needs: []
   before_script:
