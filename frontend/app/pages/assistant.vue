@@ -61,10 +61,28 @@ function statusOf(error: unknown) {
   if (!error || typeof error !== "object") return undefined;
   const candidate = error as {
     status?: unknown;
+    statusCode?: unknown;
     response?: { status?: unknown };
   };
-  const status = candidate.response?.status ?? candidate.status;
+  const status =
+    candidate.response?.status ?? candidate.status ?? candidate.statusCode;
   return typeof status === "number" ? status : undefined;
+}
+
+function errorText(status: number | undefined) {
+  if (status === 524 || status === 504) {
+    return locale.value === "vi"
+      ? `Backend đang timeout (HTTP ${status}). Vui lòng kiểm tra API/deployment.`
+      : `The backend timed out (HTTP ${status}). Check the API deployment.`;
+  }
+  if (status && status >= 500) {
+    return locale.value === "vi"
+      ? `Backend đang lỗi (HTTP ${status}). Bạn thử lại sau nhé.`
+      : `The backend returned an error (HTTP ${status}). Please try again.`;
+  }
+  return locale.value === "vi"
+    ? "Mình đang gặp sự cố. Bạn thử lại sau nhé."
+    : "I am having trouble right now. Please try again.";
 }
 
 async function send(nextPrompt = prompt.value) {
@@ -95,9 +113,7 @@ async function send(nextPrompt = prompt.value) {
           ? locale.value === "vi"
             ? "Bạn cần đăng nhập để dùng tìm phim theo lịch sử và sở thích cá nhân."
             : "Please sign in to use recommendations based on your history and preferences."
-          : locale.value === "vi"
-            ? "Mình đang gặp sự cố. Bạn thử lại sau nhé."
-            : "I am having trouble right now. Please try again.",
+          : errorText(status),
     });
   } finally {
     isSending.value = false;
