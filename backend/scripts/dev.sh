@@ -25,7 +25,7 @@ trap stop_children EXIT INT TERM
 
 cd "$project_root"
 
-dotnet run --project backend/src/ZMovie.Api --launch-profile http &
+dotnet run --no-restore --project backend/src/ZMovie.Api --launch-profile http &
 api_pid=$!
 
 (
