@@ -73,7 +73,7 @@ async function send(nextPrompt = prompt.value) {
   messages.value.push({ role: "user", text: message });
   prompt.value = "";
   isSending.value = true;
-  let phase: "assistant" = "assistant";
+  const phase = "assistant";
   try {
     const assistantReply = await $api<AssistantReply>("/v1/assistant/chat", {
       method: "POST",
