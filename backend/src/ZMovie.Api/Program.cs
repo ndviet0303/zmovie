@@ -113,15 +113,12 @@ if (args.Contains("--import-ophim-catalog", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
-await using (var scope = app.Services.CreateAsyncScope())
+if (app.Environment.IsDevelopment())
 {
+    await using var scope = app.Services.CreateAsyncScope();
     var catalogDb = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
     await catalogDb.Database.MigrateAsync();
-
-    if (app.Environment.IsDevelopment())
-    {
-        await CatalogSeed.SeedAsync(catalogDb);
-    }
+    await CatalogSeed.SeedAsync(catalogDb);
 }
 
 if (app.Environment.IsDevelopment())
