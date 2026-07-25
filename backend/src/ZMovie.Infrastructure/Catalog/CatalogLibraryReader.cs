@@ -31,6 +31,13 @@ public sealed class CatalogLibraryReader(CatalogDbContext db) : ILibraryCatalogR
             .Select(x => new LibraryTitle(x.Slug, x.LocalizedTitle(locale), x.Genre, x.Year, x.Type, x.PosterUrl, x.RuntimeMinutes)).ToList();
 
     public async Task<IReadOnlyList<RecommendationCandidate>> GetRecommendationCandidatesAsync(string locale, CancellationToken ct) =>
-        (await db.Titles.AsNoTracking().OrderByDescending(x => x.Featured).ThenByDescending(x => x.Year).ToListAsync(ct))
+        // Keep assistant retrieval bounded. The recommender only returns a handful of
+        // suggestions, so loading the entire production catalog is unnecessary and can
+        // hold a database request open long enough for the edge proxy to return 524.
+        (await db.Titles.AsNoTracking()
+            .OrderByDescending(x => x.Featured)
+            .ThenByDescending(x => x.Year)
+            .Take(500)
+            .ToListAsync(ct))
             .Select(x => new RecommendationCandidate(x.Id, new LibraryTitle(x.Slug, x.LocalizedTitle(locale), x.Genre, x.Year, x.Type, x.PosterUrl, x.RuntimeMinutes), x.LocalizedSynopsis(locale))).ToList();
 }
