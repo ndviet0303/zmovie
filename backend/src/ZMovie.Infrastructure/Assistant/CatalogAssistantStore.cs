@@ -12,15 +12,17 @@ public sealed class CatalogAssistantStore : ICatalogAssistantStore
     private readonly IUserLibraryStore? _library;
     private readonly ILibraryCatalogReader? _catalog;
     private readonly IRecommendationEngine? _recommender;
+    private readonly IAssistantLearningStore? _learning;
 
     public CatalogAssistantStore(CatalogDbContext db) => _db = db;
 
-    public CatalogAssistantStore(CatalogDbContext db, IUserLibraryStore library, ILibraryCatalogReader catalog, IRecommendationEngine recommender)
+    public CatalogAssistantStore(CatalogDbContext db, IUserLibraryStore library, ILibraryCatalogReader catalog, IRecommendationEngine recommender, IAssistantLearningStore? learning = null)
     {
         _db = db;
         _library = library;
         _catalog = catalog;
         _recommender = recommender;
+        _learning = learning;
     }
 
     public async Task<IReadOnlyList<AssistantCatalogTitle>> SearchAsync(Guid userId, string message, string locale, int limit, CancellationToken ct)
@@ -40,11 +42,15 @@ public sealed class CatalogAssistantStore : ICatalogAssistantStore
         var personalizedIds = profile.Count == 0
             ? []
             : _recommender.Recommend(candidates, profile, excluded, Math.Max(limit * 3, 12)).ToHashSet();
+        var learnedScores = _learning is null
+            ? new Dictionary<Guid, double>()
+            : await _learning.GetTitleScoresAsync(userId, tokens, ct);
 
         return candidates.Select(candidate => new
         {
             Item = ToAssistantTitle(candidate),
-            Score = Score(candidate, tokens) + (personalizedIds.Contains(candidate.TitleId) ? 4 : 0),
+            Score = Score(candidate, tokens) + (personalizedIds.Contains(candidate.TitleId) ? 4 : 0)
+                + Math.Clamp(learnedScores.GetValueOrDefault(candidate.TitleId), -6, 6),
         })
             .Where(x => x.Score > 0).OrderByDescending(x => x.Score).ThenByDescending(x => x.Item.Title.Year).Take(limit).Select(x => x.Item).ToList();
     }

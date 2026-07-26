@@ -14,6 +14,7 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
     public DbSet<WatchProgress> WatchHistory => Set<WatchProgress>();
     public DbSet<TitleViewEvent> TitleViewEvents => Set<TitleViewEvent>();
     public DbSet<TitleReview> TitleReviews => Set<TitleReview>();
+    public DbSet<AssistantLearningEvent> AssistantLearningEvents => Set<AssistantLearningEvent>();
     public DbSet<ZMovieUser> Users => Set<ZMovieUser>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -32,6 +33,7 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
         title.Property(x => x.Type).HasMaxLength(32).IsRequired();
         title.Property(x => x.PosterUrl).HasMaxLength(2000).IsRequired();
         title.Property(x => x.UpdatedAt).IsConcurrencyToken();
+        title.HasIndex(x => x.UpdatedAt);
         var episode = modelBuilder.Entity<CatalogEpisode>();
         episode.ToTable("episodes");
         episode.HasKey(x => x.Id);
@@ -50,6 +52,7 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
         saved.ToTable("saved_titles");
         saved.HasKey(x => new { x.UserId, x.TitleId });
         saved.HasIndex(x => new { x.UserId, x.SavedAt });
+        saved.HasIndex(x => x.TitleId);
 
         var history = modelBuilder.Entity<WatchProgress>();
         history.ToTable("watch_history");
@@ -57,6 +60,7 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
         history.Property(x => x.PlayableId).IsRequired();
         history.HasIndex(x => new { x.UserId, x.UpdatedAt });
         history.HasIndex(x => new { x.UserId, x.TitleId, x.UpdatedAt });
+        history.HasIndex(x => x.TitleId);
 
         var view = modelBuilder.Entity<TitleViewEvent>();
         view.ToTable("title_view_events");
@@ -73,6 +77,15 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
         review.HasIndex(x => new { x.TitleId, x.UserId }).IsUnique();
         review.HasIndex(x => new { x.TitleId, x.UpdatedAt });
 
+        var learning = modelBuilder.Entity<AssistantLearningEvent>();
+        learning.ToTable("assistant_learning_events");
+        learning.HasKey(x => x.Id);
+        learning.Property(x => x.Features).HasMaxLength(2_000).IsRequired();
+        learning.Property(x => x.EventType).HasMaxLength(32).IsRequired();
+        learning.HasIndex(x => new { x.UserId, x.RecommendationId, x.TitleId });
+        learning.HasIndex(x => new { x.UserId, x.CreatedAt });
+        learning.HasIndex(x => x.TitleId);
+
         var user = modelBuilder.Entity<ZMovieUser>();
         user.ToTable("users");
         user.HasKey(x => x.Id);
@@ -81,6 +94,9 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
         user.Property(x => x.Email).HasMaxLength(320).IsRequired();
         user.Property(x => x.DisplayName).HasMaxLength(300).IsRequired();
         user.Property(x => x.AvatarUrl).HasMaxLength(2000);
+        user.Property(x => x.Role).HasMaxLength(32).IsRequired().HasDefaultValue(ZMovieRoles.Member);
+        user.HasIndex(x => x.Email);
+        user.HasIndex(x => new { x.Role, x.CreatedAt });
 
     }
 }

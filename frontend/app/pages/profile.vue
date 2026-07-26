@@ -3,30 +3,19 @@ import { BadgeCheck, Film, LogOut, Mail, ShieldCheck } from "@lucide/vue";
 
 useHead({ title: "Hồ sơ — ZMovie" });
 
-type User = {
-  id: string;
-  email: string;
-  displayName: string;
-  avatarUrl: string | null;
-};
-const user = ref<User | null>(null);
 const loading = ref(true);
 const locale = useCookie<"vi" | "en">("zmovie-locale", { default: () => "vi" });
-const { $api } = useNuxtApp();
+const { user, isAdmin, fetchSession, signOut } = useAuthSession();
 
 async function logout() {
-  await $api("/v1/auth/logout", { method: "POST", credentials: "include" });
+  await signOut();
   await navigateTo("/login");
 }
 
 onMounted(async () => {
-  try {
-    user.value = await $api<User>("/v1/auth/me", { credentials: "include" });
-  } catch {
-    await navigateTo("/login");
-  } finally {
-    loading.value = false;
-  }
+  const session = await fetchSession();
+  loading.value = false;
+  if (!session) await navigateTo("/login");
 });
 </script>
 
@@ -73,7 +62,9 @@ onMounted(async () => {
                   </h2>
                   <BadgeCheck class="size-5 text-primary" />
                 </div>
-                <p class="mt-2 text-sm text-white/60">Thành viên ZMovie</p>
+                <p class="mt-2 text-sm text-white/60">
+                  {{ isAdmin ? "Quản trị viên ZMovie" : "Thành viên ZMovie" }}
+                </p>
               </div>
             </div>
           </div>
@@ -126,6 +117,13 @@ onMounted(async () => {
               >Mở danh sách của tôi →</NuxtLink
             >
           </div>
+          <NuxtLink
+            v-if="isAdmin"
+            to="/admin"
+            class="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/20"
+          >
+            <ShieldCheck class="size-4" /> Khu vực quản trị
+          </NuxtLink>
           <button
             type="button"
             class="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/12 px-4 py-3 text-sm font-semibold text-muted-foreground transition hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"

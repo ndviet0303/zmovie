@@ -24,7 +24,9 @@ using ZMovie.Infrastructure.Search;
 using ZMovie.Infrastructure.Seed;
 using ZMovie.Infrastructure.Recommendations;
 using ZMovie.Infrastructure.Assistant;
-using ZMovie.Api.Services;
+using ZMovie.Infrastructure.Administration;
+using ZMovie.Application.Administration;
+using ZMovie.Domain.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 var exposeDetailedErrors = builder.Configuration.GetValue<bool>("ExposeDetailedErrors");
@@ -47,8 +49,11 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     options.Cookie.SameSite = builder.Environment.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.None;
     options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
     options.Events.OnRedirectToLogin = context => { context.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; };
+    options.Events.OnRedirectToAccessDenied = context => { context.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
 });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(ZMovieRoles.AdminPolicy, policy => policy.RequireAuthenticatedUser().RequireRole(ZMovieRoles.Admin));
+builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection("Admin"));
 builder.Services.AddDbContext<CatalogDbContext>(options => options.UseNpgsql(
     builder.Configuration.GetConnectionString("ZMovie")
     ?? throw new InvalidOperationException("ConnectionStrings:ZMovie must be configured.")).UseSnakeCaseNamingConvention());
@@ -70,6 +75,8 @@ builder.Services.AddSingleton<ITopTitlesResponseCache, TopTitlesResponseCache>()
 builder.Services.AddSingleton<IRecommendationEngine, TinyContentRecommendationEngine>();
 builder.Services.AddScoped<ILibraryCatalogReader, CatalogLibraryReader>();
 builder.Services.AddScoped<ICatalogAssistantStore, CatalogAssistantStore>();
+builder.Services.AddScoped<IAssistantLearningStore, EfAssistantLearningStore>();
+builder.Services.AddScoped<IAdminStore, EfAdminStore>();
 builder.Services.Configure<LocalAiOptions>(builder.Configuration.GetSection("LocalAi"));
 builder.Services.AddHttpClient<IAssistantTextGenerator, LocalAiAssistantTextGenerator>((serviceProvider, http) =>
 {
@@ -77,7 +84,6 @@ builder.Services.AddHttpClient<IAssistantTextGenerator, LocalAiAssistantTextGene
     http.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
     http.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.TimeoutSeconds, 1, 60));
 });
-builder.Services.AddSingleton<OPhimCrawlerService>();
 
 var app = builder.Build();
 
@@ -125,7 +131,6 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
-    app.MapCrawlerEndpoints();
 }
 
 app.UseExceptionHandler(errorApp => errorApp.Run(async context =>

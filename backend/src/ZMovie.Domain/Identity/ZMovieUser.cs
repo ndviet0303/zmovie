@@ -7,6 +7,7 @@ public sealed class ZMovieUser
     public required string Email { get; set; }
     public required string DisplayName { get; set; }
     public string? AvatarUrl { get; set; }
+    public string Role { get; set; } = ZMovieRoles.Member;
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset LastSignedInAt { get; set; } = DateTimeOffset.UtcNow;
 }

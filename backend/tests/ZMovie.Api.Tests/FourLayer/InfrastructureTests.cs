@@ -12,6 +12,7 @@ using ZMovie.Application.Catalog;
 using ZMovie.Application.Engagement;
 using ZMovie.Domain.Catalog;
 using ZMovie.Domain.Engagement;
+using ZMovie.Domain.Identity;
 using ZMovie.Infrastructure.Assistant;
 using ZMovie.Infrastructure.Catalog;
 using ZMovie.Infrastructure.Engagement;
@@ -177,6 +178,25 @@ public sealed class InfrastructureTests
     }
 
     [Fact]
+    public async Task Assistant_learning_records_feedback_and_returns_contextual_title_scores()
+    {
+        using var database = new TestDatabase();
+        var user = Guid.NewGuid();
+        var title = Title("warm-friends", "Warm Friends", "Những người bạn ấm áp", "movie", genre: "Family", synopsis: "Một câu chuyện chữa lành");
+        database.Db.Titles.Add(title);
+        await database.Db.SaveChangesAsync();
+
+        var learning = new EfAssistantLearningStore(database.Db, NullLogger<EfAssistantLearningStore>.Instance);
+        var recommendationId = await learning.RecordImpressionAsync(user, "hôm nay tôi buồn", [new(new("warm-friends", "Warm Friends", "Family", 2026, "movie", "poster"), "Một câu chuyện chữa lành")], default);
+        recommendationId.Should().NotBeNull();
+        (await learning.RecordFeedbackAsync(user, recommendationId!.Value, title.Id, "like", default)).Should().BeTrue();
+
+        var scores = await learning.GetTitleScoresAsync(user, AssistantMood.SearchTermWeights("hôm nay tôi buồn"), default);
+        scores[title.Id].Should().BeGreaterThan(0);
+        database.Db.AssistantLearningEvents.Should().HaveCount(2);
+    }
+
+    [Fact]
     public async Task Personalized_assistant_retriever_uses_history_and_saved_titles()
     {
         using var database = new TestDatabase();
@@ -240,12 +260,37 @@ public sealed class InfrastructureTests
     public async Task Identity_store_creates_and_updates_user()
     {
         using var database = new TestDatabase();
-        var store = new EfUserIdentityStore(database.Db);
+        var store = new EfUserIdentityStore(database.Db, Options.Create(new AdminOptions()));
         var first = await store.UpsertGoogleUserAsync(new("sub", "first@test", "First", "avatar"), default);
         var second = await store.UpsertGoogleUserAsync(new("sub", "second@test", "Second", null), default);
         second.Id.Should().Be(first.Id);
         second.Email.Should().Be("second@test");
         second.AvatarUrl.Should().BeNull();
+        second.Role.Should().Be(ZMovieRoles.Member);
+    }
+
+    [Fact]
+    public async Task Identity_store_promotes_allowlisted_email_but_never_demotes()
+    {
+        using var database = new TestDatabase();
+        var allowlist = Options.Create(new AdminOptions { Emails = ["  Owner@ZMovie.dev  "] });
+
+        var promoted = await new EfUserIdentityStore(database.Db, allowlist)
+            .UpsertGoogleUserAsync(new("owner-sub", "owner@zmovie.dev", "Owner", null), default);
+        promoted.Role.Should().Be(ZMovieRoles.Admin);
+
+        // A role granted in the admin UI must survive a sign-in where the email is no
+        // longer in the config allowlist.
+        var granted = new ZMovieUser { GoogleSubject = "granted-sub", Email = "granted@zmovie.dev", DisplayName = "Granted", Role = ZMovieRoles.Admin };
+        database.Db.Users.Add(granted);
+        await database.Db.SaveChangesAsync();
+
+        var emptyAllowlist = new EfUserIdentityStore(database.Db, Options.Create(new AdminOptions()));
+        var reSignedIn = await emptyAllowlist.UpsertGoogleUserAsync(new("granted-sub", "granted@zmovie.dev", "Granted", null), default);
+        reSignedIn.Role.Should().Be(ZMovieRoles.Admin);
+
+        var member = await emptyAllowlist.UpsertGoogleUserAsync(new("member-sub", "member@zmovie.dev", "Member", null), default);
+        member.Role.Should().Be(ZMovieRoles.Member);
     }
 
     [Fact]
