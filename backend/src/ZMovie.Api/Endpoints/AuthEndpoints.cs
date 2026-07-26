@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using ZMovie.Api;
 using ZMovie.Application.Identity;
 using ZMovie.Application.Engagement;
+using ZMovie.Domain.Identity;
 
 namespace ZMovie.Api.Endpoints;
 
@@ -24,6 +25,7 @@ public static class AuthEndpoints
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Name, user.DisplayName),
                 new Claim("picture", user.AvatarUrl ?? string.Empty),
+                new Claim(ClaimTypes.Role, user.Role),
             };
             await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)));
             return Results.Ok(user);
@@ -32,11 +34,16 @@ public static class AuthEndpoints
         endpoints.MapGet("/v1/auth/me", (HttpContext context) =>
         {
             var user = context.User;
+            // RequireAuthorization only guarantees a principal, not that it carries a usable
+            // NameIdentifier — a ticket minted under an older claim layout still decrypts.
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Unauthorized();
+
             return Results.Ok(new AuthenticatedUser(
-                Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!),
-                user.FindFirstValue(ClaimTypes.Email)!,
-                user.FindFirstValue(ClaimTypes.Name)!,
-                user.FindFirstValue("picture")));
+                userId,
+                user.FindFirstValue(ClaimTypes.Email) ?? string.Empty,
+                user.FindFirstValue(ClaimTypes.Name) ?? string.Empty,
+                user.FindFirstValue("picture"),
+                ZMovieRoles.Normalize(user.FindFirstValue(ClaimTypes.Role))));
         }).RequireAuthorization().Produces<AuthenticatedUser>(StatusCodes.Status200OK).ProducesApiErrors();
 
         endpoints.MapPost("/v1/auth/logout", async (HttpContext context) =>

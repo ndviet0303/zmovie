@@ -7,8 +7,8 @@ using ZMovie.Application.Common;
 namespace ZMovie.Application.Assistant;
 
 public sealed record AssistantCatalogTitle(TitleSummary Title, string Synopsis);
-public sealed record AssistantReply(string Message, IReadOnlyList<TitleSummary> Suggestions);
-public sealed record AssistantContextResponse(IReadOnlyList<AssistantCatalogTitle> Matches);
+public sealed record AssistantReply(string Message, IReadOnlyList<TitleSummary> Suggestions, Guid? RecommendationId = null);
+public sealed record AssistantContextResponse(IReadOnlyList<AssistantCatalogTitle> Matches, Guid? RecommendationId = null);
 public sealed record AssistantGenerationRequest(string Message, string Locale, IReadOnlyList<AssistantCatalogTitle> Matches);
 
 public interface ICatalogAssistantStore
@@ -23,12 +23,13 @@ public interface IAssistantTextGenerator
 
 public sealed record AskCatalogAssistantQuery(Guid UserId, string Message, string? Locale) : IQuery<AssistantReply>;
 public sealed record GetAssistantContextQuery(Guid UserId, string Message, string? Locale) : IQuery<AssistantContextResponse>;
-public sealed class GetAssistantContextHandler(ICatalogAssistantStore store) : IRequestHandler<GetAssistantContextQuery, ErrorOr<AssistantContextResponse>>
+public sealed class GetAssistantContextHandler(ICatalogAssistantStore store, IAssistantLearningStore? learning = null) : IRequestHandler<GetAssistantContextQuery, ErrorOr<AssistantContextResponse>>
 {
     public async Task<ErrorOr<AssistantContextResponse>> Handle(GetAssistantContextQuery request, CancellationToken ct)
     {
         var matches = await store.SearchAsync(request.UserId, request.Message, Locale.Normalize(request.Locale), 8, ct);
-        return new AssistantContextResponse(matches);
+        var recommendationId = learning is null ? null : await learning.RecordImpressionAsync(request.UserId, request.Message, matches, ct);
+        return new AssistantContextResponse(matches, recommendationId);
     }
 }
 
@@ -36,7 +37,7 @@ public sealed class AskCatalogAssistantValidator : AbstractValidator<AskCatalogA
 {
     public AskCatalogAssistantValidator() => RuleFor(x => x.Message).NotEmpty().MaximumLength(500);
 }
-public sealed class AskCatalogAssistantHandler(ICatalogAssistantStore store, IAssistantTextGenerator generator) : IRequestHandler<AskCatalogAssistantQuery, ErrorOr<AssistantReply>>
+public sealed class AskCatalogAssistantHandler(ICatalogAssistantStore store, IAssistantTextGenerator generator, IAssistantLearningStore? learning = null) : IRequestHandler<AskCatalogAssistantQuery, ErrorOr<AssistantReply>>
 {
     public async Task<ErrorOr<AssistantReply>> Handle(AskCatalogAssistantQuery request, CancellationToken ct)
     {
@@ -47,7 +48,8 @@ public sealed class AskCatalogAssistantHandler(ICatalogAssistantStore store, IAs
         var message = string.IsNullOrWhiteSpace(generated)
             ? FallbackMessage(request.Message, locale, suggestions.Count)
             : generated.Trim();
-        return new AssistantReply(message, suggestions);
+        var recommendationId = learning is null ? null : await learning.RecordImpressionAsync(request.UserId, request.Message, matches.Take(3).ToList(), ct);
+        return new AssistantReply(message, suggestions, recommendationId);
     }
 
     private static string FallbackMessage(string request, string locale, int suggestionCount)

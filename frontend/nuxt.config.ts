@@ -38,6 +38,16 @@ export default defineNuxtConfig({
   },
   routeRules: {
     '/v1/**': { proxy: 'http://localhost:5275/v1/**' },
+    // The admin area is session-gated and must never be baked into the public
+    // static output. It renders client-side and is reached through the SPA
+    // fallback in public/_redirects.
+    '/admin/**': { ssr: false, prerender: false },
+    '/admin': { ssr: false, prerender: false },
+  },
+  nitro: {
+    prerender: {
+      ignore: ['/admin'],
+    },
   },
   components: [{ path: '~/components', pathPrefix: false, ignore: ['**/index.ts'] }],
 })

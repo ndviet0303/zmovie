@@ -33,8 +33,15 @@ public static class AssistantEndpoints
             .Produces<AssistantReply>(StatusCodes.Status200OK)
             .ProducesApiErrors()
             .RequireAuthorization();
+        endpoints.MapPost("/v1/assistant/feedback", async (ISender sender, HttpContext context, AssistantFeedbackRequest request, CancellationToken ct) =>
+                (await sender.Send(new RecordAssistantFeedbackCommand(Guid.Parse(context.User.FindFirstValue(ClaimTypes.NameIdentifier)!), request.RecommendationId, request.Slug, request.EventType), ct)).ToApiResult())
+            .WithTags("Assistant")
+            .Produces<bool>(StatusCodes.Status200OK)
+            .ProducesApiErrors()
+            .RequireAuthorization();
         return endpoints;
     }
 }
 
 public sealed record AssistantChatRequest(string Message, string? Locale);
+public sealed record AssistantFeedbackRequest(Guid RecommendationId, string Slug, string EventType);

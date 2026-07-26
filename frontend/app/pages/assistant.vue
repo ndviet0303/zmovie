@@ -9,8 +9,17 @@ type Title = {
   type: string;
   posterUrl: string;
 };
-type AssistantReply = { message: string; suggestions: Title[] };
-type Message = { role: "bot" | "user"; text: string; suggestions?: Title[] };
+type AssistantReply = {
+  message: string;
+  suggestions: Title[];
+  recommendationId?: string | null;
+};
+type Message = {
+  role: "bot" | "user";
+  text: string;
+  suggestions?: Title[];
+  recommendationId?: string | null;
+};
 
 const locale = useCookie<"vi" | "en">("zmovie-locale", { default: () => "vi" });
 const prompt = ref("");
@@ -102,6 +111,7 @@ async function send(nextPrompt = prompt.value) {
       role: "bot",
       text: assistantReply.message,
       suggestions: assistantReply.suggestions,
+      recommendationId: assistantReply.recommendationId,
     });
   } catch (error) {
     console.error(`[assistant:${phase}]`, error);
@@ -117,6 +127,23 @@ async function send(nextPrompt = prompt.value) {
     });
   } finally {
     isSending.value = false;
+  }
+}
+
+async function recordFeedback(message: Message, slug: string) {
+  if (!message.recommendationId) return;
+  try {
+    await $api("/v1/assistant/feedback", {
+      method: "POST",
+      credentials: "include",
+      body: {
+        recommendationId: message.recommendationId,
+        slug,
+        eventType: "click",
+      },
+    });
+  } catch (error) {
+    console.debug("[assistant:feedback]", error);
   }
 }
 </script>
@@ -173,6 +200,7 @@ async function send(nextPrompt = prompt.value) {
                   :key="title.slug"
                   :to="`/movies/${title.slug}`"
                   class="overflow-hidden rounded-xl border border-white/10 bg-black/20 transition hover:border-primary/60"
+                  @click="recordFeedback(message, title.slug)"
                 >
                   <img
                     :src="title.posterUrl"

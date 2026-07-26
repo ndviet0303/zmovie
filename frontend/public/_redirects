@@ -1,0 +1,10 @@
+# Cloudflare Pages serves static files first, so every prerendered route keeps its
+# own HTML. Only the paths that genuinely need client-side resolution fall back to
+# the SPA shell — catalog slugs outside the prerendered set, and the client-only
+# /admin area. Everything else still reaches 404.html with a real 404 status, so
+# typos and dead links are not turned into indexable soft-404s.
+/movies/*  /200.html  200
+/watch/*   /200.html  200
+/genres/*  /200.html  200
+/admin     /200.html  200
+/admin/*   /200.html  200

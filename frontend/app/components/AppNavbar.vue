@@ -6,21 +6,18 @@ import {
   CircleUserRound,
   LogOut,
   Search,
+  ShieldCheck,
   UserRound,
 } from "@lucide/vue";
 
 const props = defineProps<{ locale: "vi" | "en" }>();
 const emit = defineEmits<{ localeChange: [locale: "vi" | "en"] }>();
-const { $api } = useNuxtApp();
 const route = useRoute();
 const isLanguageOpen = ref(false);
 const isAccountOpen = ref(false);
-const user = ref<{
-  id: string;
-  email: string;
-  displayName: string;
-  avatarUrl: string | null;
-} | null>(null);
+// Shared across routes, so navigating no longer re-fetches the session on every
+// page mount and the account chip stops flickering back to "Đăng nhập".
+const { user, isAdmin, fetchSession, signOut } = useAuthSession();
 const languages = [
   {
     code: "vi" as const,
@@ -66,26 +63,14 @@ function selectLocale(locale: "vi" | "en") {
   emit("localeChange", locale);
 }
 
-async function loadUser() {
-  try {
-    user.value = await $api("/v1/auth/me", { credentials: "include" });
-  } catch {
-    user.value = null;
-  }
-}
-
 async function logout() {
-  await $api("/v1/auth/logout", {
-    method: "POST",
-    credentials: "include",
-  });
-  user.value = null;
+  await signOut();
   isAccountOpen.value = false;
   await navigateTo("/");
 }
 
 onMounted(() => {
-  void loadUser();
+  void fetchSession();
 });
 </script>
 
@@ -213,6 +198,13 @@ onMounted(() => {
               class="mt-1 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-white/7 hover:text-foreground"
               @click="isAccountOpen = false"
               ><UserRound class="size-4" /> Hồ sơ</NuxtLink
+            >
+            <NuxtLink
+              v-if="isAdmin"
+              to="/admin"
+              class="mt-1 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-white/7 hover:text-foreground"
+              @click="isAccountOpen = false"
+              ><ShieldCheck class="size-4" /> Quản trị</NuxtLink
             >
             <button
               type="button"

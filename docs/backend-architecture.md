@@ -82,20 +82,82 @@ Production keeps it disabled by default; configure `LocalAi__Enabled` and
 service is available. The deterministic reply remains the fallback when the model
 service is disabled or unavailable.
 
-## Authentication direction
+## Authentication
 
-Google OAuth 2.0 / OpenID Connect is the selected identity provider. Authentication has not yet been wired into the API or Nuxt BFF. The future implementation will validate Google ID tokens using Google's issuer, JWKS, and the configured `GOOGLE_CLIENT_ID`; it will provision local users by the stable `sub` claim. ZMovie roles will be stored and managed locally, never inferred from a Google email address.
+Google Identity Services is the identity provider. The browser obtains a Google ID
+token client-side and posts it to `POST /v1/auth/google`; `GoogleIdentityVerifier`
+validates it against Google's issuer and JWKS with the configured `Google:ClientId`
+as the audience, and users are provisioned by the stable `sub` claim. The API then
+issues its own Data-Protection-encrypted cookie (`zmovie.session`) carrying the
+user id, email, display name, avatar and role. Only `Google__ClientId` is required
+server-side — there is no authorization-code flow, so no client secret, redirect
+URI, or Google token ever reaches the server config or the browser bundle.
 
-Required server-side configuration for that work:
+## Admin area
+
+Roles live on `users.role` (`member` | `admin`, see `ZMovieRoles`) and are managed
+locally — never inferred from an email domain. The role is written into the auth
+cookie as a `ClaimTypes.Role` claim, and the whole `/v1/admin` group requires the
+`ZMovie.Admin` policy (`RequireRole("admin")`).
+
+Because the role is carried in the cookie, **a role change only takes effect on the
+user's next sign-in.**
+
+### Bootstrapping the first admin
+
+Configure an allowlist of verified Google emails:
 
 ```text
-GOOGLE_CLIENT_ID
-GOOGLE_CLIENT_SECRET
-GOOGLE_REDIRECT_URI
-GOOGLE_POST_LOGOUT_REDIRECT_URI
+Admin__Emails__0=owner@example.com
+Admin__Emails__1=ops@example.com
 ```
 
-No client secret or Google token may be exposed to browser code, source control, or logs.
+A user whose verified email matches is promoted to admin on every sign-in. The
+allowlist only ever **promotes**: removing an entry does not demote anyone, and a
+role granted through the admin UI survives later sign-ins. Revoke through the UI.
+
+Two guardrails prevent lockout: an admin cannot remove their own role, and the last
+remaining admin cannot be demoted.
+
+### Endpoints
+
+All of these require the admin policy:
+
+- `GET /v1/admin/overview` — catalog, engagement and identity counters
+- `GET|PUT|DELETE /v1/admin/titles[/{slug}]`, `PATCH /v1/admin/titles/{slug}/featured`
+- `GET /v1/admin/users`, `PATCH /v1/admin/users/{id}/role`
+- `GET /v1/admin/reviews`, `DELETE /v1/admin/reviews/{id}`
+- `GET|POST /v1/admin/genres`, `PUT|DELETE /v1/admin/genres/{id}`
+
+Deleting a title also removes its episodes, saved entries, watch history, reviews,
+view events and assistant learning events — the engagement tables carry no foreign
+keys (migration `202607230003` dropped them), so the cascade is done in code, in
+bounded batches, inside one transaction.
+
+Renaming a genre rewrites that name on every title carrying it: `titles.genre`
+stores a comma-joined list of display names rather than a foreign key, so the
+rename would otherwise orphan every affected title. For the same reason the genre
+filter and the per-genre title counts match by list membership, not equality.
+
+## Catalog import
+
+There is no in-app crawler. The catalog is populated by running the API as a CLI:
+
+```bash
+dotnet run --project src/ZMovie.Api -- --import-ophim-genres
+dotnet run --project src/ZMovie.Api -- --import-ophim-catalog --max-pages 10 --with-episodes
+```
+
+Both branches migrate the database first and exit without serving.
+
+### Frontend
+
+`/admin/**` is `ssr: false, prerender: false`, so the session-gated area is never
+baked into the public static output; it is reached through the SPA fallback in
+`frontend/public/_redirects` and is disallowed in `robots.txt`. The `admin` route
+middleware resolves the shared session (`useAuthSession`) and redirects anonymous
+visitors to `/login?redirect=…`, or raises a 403 for signed-in non-admins. That
+check is a UX affordance only — the API enforces authorization independently.
 
 ## Planned modules
 

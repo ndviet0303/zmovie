@@ -113,7 +113,7 @@ public sealed class ApplicationTests
         (await new AskCatalogAssistantHandler(assistantStore, new FakeAssistantGenerator()).Handle(new(UserId, "hôm nay tôi buồn", "vi"), default)).Value.Message.Should().Contain("nhẹ nhàng");
 
         var verifier = new FakeVerifier { Identity = new("subject", "a@test", "A", null) };
-        var users = new FakeUserIdentityStore { User = new(UserId, "a@test", "A", null) };
+        var users = new FakeUserIdentityStore { User = new(UserId, "a@test", "A", null, ZMovie.Domain.Identity.ZMovieRoles.Member) };
         (await new SignInWithGoogleHandler(verifier, users).Handle(new("credential"), default)).Value.Id.Should().Be(UserId);
         verifier.Identity = null;
         (await new SignInWithGoogleHandler(verifier, users).Handle(new("bad"), default)).FirstError.Code.Should().Be("auth.google.invalid_credential");
@@ -154,7 +154,7 @@ public sealed class ApplicationTests
         _ = new ZMovie.Domain.Engagement.TitleReview { TitleId = FirstTitleId, UserId = UserId, AuthorName = "A", Rating = 8 }.UpdatedAt;
         _ = new ZMovie.Domain.Identity.ZMovieUser { GoogleSubject = "sub", Email = "e", DisplayName = "n" }.LastSignedInAt;
         _ = new GoogleIdentity("s", "e", "n", null);
-        _ = new AuthenticatedUser(UserId, "e", "n", null);
+        _ = new AuthenticatedUser(UserId, "e", "n", null, ZMovie.Domain.Identity.ZMovieRoles.Member);
         _ = new UserLibraryResponse([], []);
         _ = new PersonalizedDiscoveryResponse([], []);
         _ = new AssistantContextResponse([]);

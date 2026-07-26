@@ -349,12 +349,13 @@ async function toggleMyList() {
   }
 }
 
-async function recordWatchProgress() {
+async function recordWatchProgress(keepalive = false) {
   if (
     isSavingProgress ||
     !title.value ||
     currentTime.value < 5 ||
-    !Number.isFinite(currentTime.value)
+    !Number.isFinite(currentTime.value) ||
+    Math.abs(currentTime.value - lastProgressSaved) < 1
   )
     return;
   if (authState.value === "anonymous") {
@@ -369,6 +370,7 @@ async function recordWatchProgress() {
     await $api(`/v1/me/history/${title.value.slug}`, {
       method: "POST",
       credentials: "include",
+      keepalive,
       body: {
         episodeNumber: playback.value?.isSeries ? episode.value?.number : null,
         progressSeconds,
@@ -384,16 +386,15 @@ async function recordWatchProgress() {
 
 function onTimeUpdate() {
   currentTime.value = video.value?.currentTime || 0;
-  if (
-    currentTime.value >= 5 &&
-    (lastProgressSaved === 0 || currentTime.value - lastProgressSaved >= 30)
-  )
-    void recordWatchProgress();
 }
 
 function onVideoPause() {
   isPlaying.value = false;
   void recordWatchProgress();
+}
+
+function onPageExit() {
+  void recordWatchProgress(true);
 }
 
 async function recordView() {
@@ -519,13 +520,17 @@ watchEffect(() => {
     showUnavailableDialog();
 });
 onMounted(() => {
+  window.addEventListener("pagehide", onPageExit);
+  document.addEventListener("visibilitychange", onPageExit);
   if (video.value) video.value.volume = volume.value;
   viewCount.value = title.value?.viewCount ?? 0;
   void loadResumePosition();
   void loadEpisode();
 });
 onBeforeUnmount(() => {
-  void recordWatchProgress();
+  window.removeEventListener("pagehide", onPageExit);
+  document.removeEventListener("visibilitychange", onPageExit);
+  void recordWatchProgress(true);
   hls?.destroy();
 });
 </script>

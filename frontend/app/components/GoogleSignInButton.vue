@@ -6,7 +6,20 @@ const props = withDefaults(
 const button = ref<HTMLElement | null>(null);
 const error = ref("");
 const config = useRuntimeConfig();
+const route = useRoute();
 const { $api } = useNuxtApp();
+const { fetchSession } = useAuthSession();
+
+/**
+ * Only same-site absolute paths are honoured, so a crafted
+ * `?redirect=https://evil.example` cannot turn login into an open redirect.
+ */
+function safeRedirectTarget() {
+  const requested = route.query.redirect;
+  const value = Array.isArray(requested) ? requested[0] : requested;
+  if (typeof value !== "string") return "/";
+  return value.startsWith("/") && !value.startsWith("//") ? value : "/";
+}
 
 declare global {
   interface Window {
@@ -55,7 +68,10 @@ async function signIn(response: { credential: string }) {
       credentials: "include",
       body: { credential: response.credential },
     });
-    await navigateTo("/");
+    // Refresh shared session state so the navbar and admin middleware see the
+    // new role without another navigation.
+    await fetchSession(true);
+    await navigateTo(safeRedirectTarget());
   } catch {
     error.value = "Không thể đăng nhập với Google. Vui lòng thử lại.";
   }
