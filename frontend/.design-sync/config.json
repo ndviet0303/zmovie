@@ -1,0 +1,11 @@
+{
+  "projectId": "544c926a-0300-4b68-84b9-3be7684112fd",
+  "shape": "package",
+  "pkg": "zmovie",
+  "globalName": "ZMovie",
+  "entry": ".design-sync/tokens-entry.mjs",
+  "buildCmd": "node .design-sync/css/build.mjs",
+  "cssEntry": ".design-sync/.cache/zmovie-tokens.css",
+  "extraFonts": [".design-sync/fonts/nunito-sans.css"],
+  "readmeHeader": ".design-sync/conventions.md"
+}

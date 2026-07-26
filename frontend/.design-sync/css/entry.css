@@ -1,0 +1,19 @@
+/* Tailwind entry for the design-sync tokens build.
+ *
+ * Compiles the app's REAL stylesheet (assets/css/main.css — tokens, @theme
+ * mappings, base layer) into a single self-contained sheet for claude.ai/design.
+ *
+ * Two source scans, both deliberate:
+ *   - app/**    reproduces the utility set zmovie itself uses (layout, spacing,
+ *               radii, type scale) from source, so the sheet doesn't depend on
+ *               a Nuxt build artifact being present.
+ *   - safelist  emits the full semantic-colour vocabulary derived from the
+ *               @theme block, so the design agent can use bg-surface-container,
+ *               text-muted-foreground, etc. even where the app never did.
+ *
+ * Regenerate with: node .design-sync/css/build.mjs
+ */
+@import "../../assets/css/main.css";
+
+@source "../../app/**/*.{vue,ts,js}";
+@source "../.cache/safelist.txt";
