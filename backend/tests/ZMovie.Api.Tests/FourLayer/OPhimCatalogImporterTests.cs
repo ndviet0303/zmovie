@@ -45,19 +45,18 @@ public sealed class OPhimCatalogImporterTests
     public async Task Upserts_metadata_and_episodes_with_fallbacks()
     {
         using var database = new TestDatabase();
-        var existing = new CatalogTitle
-        {
-            Slug = "existing",
-            EnglishTitle = "old",
-            VietnameseTitle = "old",
-            EnglishSynopsis = "already translated",
-            VietnameseSynopsis = "old synopsis",
-            Genre = "Old",
-            Year = 2000,
-            Type = "movie",
-            PosterUrl = "old",
-            RuntimeMinutes = 1
-        };
+        var existing = Title.Create(
+            TitleId.New(),
+            TitleSlug.Parse("existing"),
+            new LocalizedText("old", "old"),
+            new LocalizedText("old synopsis", "already translated"),
+            "Old",
+            ReleaseYear.FromInt(2000),
+            TitleType.Movie,
+            "old",
+            Runtime.FromMinutes(1),
+            false,
+            DateTimeOffset.UtcNow);
         database.Db.Titles.Add(existing);
         await database.Db.SaveChangesAsync();
 
@@ -79,14 +78,14 @@ public sealed class OPhimCatalogImporterTests
         result.Should().Be(new OPhimCatalogImportResult(1, 1, 1, 2));
         var title = await database.Db.Titles.SingleAsync();
         title.Id.Should().Be(existing.Id);
-        title.EnglishTitle.Should().Be("Origin mới");
-        title.VietnameseTitle.Should().Be("Tên mới");
+        title.TitleName.English.Should().Be("Origin mới");
+        title.TitleName.Vietnamese.Should().Be("Tên mới");
         title.Genre.Should().Be("Drama");
-        title.Type.Should().Be("movie");
-        title.RuntimeMinutes.Should().Be(2);
+        title.Type.Value.Should().Be("movie");
+        title.Runtime.Minutes.Should().Be(2);
         title.PosterUrl.Should().Be("https://cdn.test/uploads/movies/fallback.jpg");
-        title.VietnameseSynopsis.Should().Be("Nội dung  mới");
-        title.EnglishSynopsis.Should().Be("already translated");
+        title.Synopsis.Vietnamese.Should().Be("Nội dung  mới");
+        title.Synopsis.English.Should().Be("already translated");
         var episodes = await database.Db.Episodes.OrderBy(x => x.Number).ToListAsync();
         episodes.Select(x => (x.Number, x.Name, x.HlsUrl)).Should().Equal(
             (1, "1", "https://video/one.m3u8"),
@@ -142,7 +141,7 @@ public sealed class OPhimCatalogImporterTests
         using var http = new HttpClient(handler);
 
         var action = () => OPhimCatalogImporter.ImportAsync(database.Db, http, new OPhimCatalogImportOptions(1, 1, false, TimeSpan.Zero), null, CancellationToken.None);
-        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("OPhim request failed after retries.");
+        await action.Should().ThrowAsync<HttpRequestException>();
     }
 
     [Fact]

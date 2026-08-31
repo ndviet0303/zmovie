@@ -1,0 +1,11 @@
+{
+  "viewport": "mobile",
+  "route": "/the-loai/hinh-su",
+  "url": "https://cobephim.pro/the-loai/hinh-su",
+  "files": [
+    "mobile/homethe-loai-hinh-su/full-page.png",
+    "mobile/homethe-loai-hinh-su/viewport.png"
+  ],
+  "states": [],
+  "title": "Danh sách phim Hình Sự"
+}

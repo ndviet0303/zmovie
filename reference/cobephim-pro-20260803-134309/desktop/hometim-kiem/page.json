@@ -1,0 +1,14 @@
+{
+  "viewport": "desktop",
+  "route": "/tim-kiem",
+  "url": "https://cobephim.pro/tim-kiem",
+  "files": [
+    "desktop/hometim-kiem/full-page.png",
+    "desktop/hometim-kiem/viewport.png",
+    "desktop/hometim-kiem/state-search-phim.png"
+  ],
+  "states": [
+    "search: phim"
+  ],
+  "title": "Duyệt Tìm Phim - Phim Mới, Phim Hay | CôBe Phim"
+}

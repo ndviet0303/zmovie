@@ -1,32 +1,23 @@
 using System.Diagnostics;
-using Microsoft.AspNetCore.Diagnostics;
-using FluentValidation;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
-using ZMovie.Api.Configuration;
-using MediatR;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Scalar.AspNetCore;
 using ZMovie.Api;
+using ZMovie.Api.Configuration;
 using ZMovie.Api.Endpoints;
-using ZMovie.Application.Catalog;
-using ZMovie.Application.Assistant;
-using ZMovie.Application.Common;
-using ZMovie.Application.Engagement;
-using ZMovie.Application.Identity;
-using ZMovie.Application.Search;
-using ZMovie.Infrastructure.Catalog;
-using ZMovie.Infrastructure.Engagement;
-using ZMovie.Infrastructure.Identity;
-using ZMovie.Infrastructure.Persistence;
-using ZMovie.Infrastructure.Search;
-using ZMovie.Infrastructure.Seed;
-using ZMovie.Infrastructure.Recommendations;
-using ZMovie.Infrastructure.Assistant;
-using ZMovie.Infrastructure.Administration;
-using ZMovie.Application.Administration;
+using ZMovie.Application;
 using ZMovie.Domain.Identity;
+using ZMovie.Infrastructure;
+using ZMovie.Infrastructure.Analytics.Persistence;
+using ZMovie.Infrastructure.Catalog;
+using ZMovie.Infrastructure.Catalog.Persistence;
+using ZMovie.Infrastructure.Engagement.Persistence;
+using ZMovie.Infrastructure.Identity.Persistence;
+using ZMovie.Infrastructure.Personalization.Persistence;
+using ZMovie.Infrastructure.Seed;
 
 var builder = WebApplication.CreateBuilder(args);
 var exposeDetailedErrors = builder.Configuration.GetValue<bool>("ExposeDetailedErrors");
@@ -36,7 +27,6 @@ builder.AddServiceDefaults();
 
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
-builder.Services.AddMemoryCache(options => options.SizeLimit = 10_000);
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .WithOrigins(builder.Configuration["FrontendOrigin"] ?? "http://localhost:3000")
     .AllowAnyHeader()
@@ -46,44 +36,15 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 {
     options.Cookie.Name = "zmovie.session";
     options.Cookie.HttpOnly = true;
-    options.Cookie.SameSite = builder.Environment.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.None;
-    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.None;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Events.OnRedirectToLogin = context => { context.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; };
     options.Events.OnRedirectToAccessDenied = context => { context.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
 });
 builder.Services.AddAuthorizationBuilder()
-    .AddPolicy(ZMovieRoles.AdminPolicy, policy => policy.RequireAuthenticatedUser().RequireRole(ZMovieRoles.Admin));
-builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection("Admin"));
-builder.Services.AddDbContext<CatalogDbContext>(options => options.UseNpgsql(
-    builder.Configuration.GetConnectionString("ZMovie")
-    ?? throw new InvalidOperationException("ConnectionStrings:ZMovie must be configured.")).UseSnakeCaseNamingConvention());
-builder.Services.AddMediatR(cfg =>
-{
-    cfg.RegisterServicesFromAssembly(typeof(ListTitlesQuery).Assembly);
-    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
-});
-builder.Services.AddValidatorsFromAssembly(typeof(ListTitlesQuery).Assembly);
-builder.Services.AddScoped<ICatalogReadStore, EfCatalogReadStore>();
-builder.Services.AddHttpClient<ISearchCatalogStore, SearchCatalogStore>();
-builder.Services.AddScoped<IUserIdentityStore, EfUserIdentityStore>();
-builder.Services.AddScoped<IGoogleIdentityVerifier, GoogleIdentityVerifier>();
-builder.Services.AddScoped<EfUserLibraryStore>();
-builder.Services.AddScoped<IUserLibraryStore>(provider => provider.GetRequiredService<EfUserLibraryStore>());
-builder.Services.AddScoped<IViewAnalyticsStore, CachedViewAnalyticsStore>();
-builder.Services.AddScoped<ITitleReviewStore>(provider => provider.GetRequiredService<EfUserLibraryStore>());
-builder.Services.AddSingleton<ITopTitlesResponseCache, TopTitlesResponseCache>();
-builder.Services.AddSingleton<IRecommendationEngine, TinyContentRecommendationEngine>();
-builder.Services.AddScoped<ILibraryCatalogReader, CatalogLibraryReader>();
-builder.Services.AddScoped<ICatalogAssistantStore, CatalogAssistantStore>();
-builder.Services.AddScoped<IAssistantLearningStore, EfAssistantLearningStore>();
-builder.Services.AddScoped<IAdminStore, EfAdminStore>();
-builder.Services.Configure<LocalAiOptions>(builder.Configuration.GetSection("LocalAi"));
-builder.Services.AddHttpClient<IAssistantTextGenerator, LocalAiAssistantTextGenerator>((serviceProvider, http) =>
-{
-    var options = serviceProvider.GetRequiredService<IOptions<LocalAiOptions>>().Value;
-    http.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
-    http.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.TimeoutSeconds, 1, 60));
-});
+    .AddPolicy(ApiAuthorizationPolicies.AdminPolicy, policy => policy.RequireAuthenticatedUser().RequireRole(Role.AdminName));
+builder.Services.AddZMovieApplication();
+builder.Services.AddZMovieInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
@@ -91,8 +52,9 @@ if (args.Contains("--import-ophim-genres", StringComparer.OrdinalIgnoreCase))
 {
     await using var importScope = app.Services.CreateAsyncScope();
     var importDb = importScope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+    var httpClient = importScope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient();
     await importDb.Database.MigrateAsync();
-    var imported = await OPhimGenreImporter.ImportAsync(importDb, new HttpClient(), CancellationToken.None);
+    var imported = await OPhimGenreImporter.ImportAsync(importDb, httpClient, CancellationToken.None);
     Console.WriteLine($"Imported {imported} OPhim genres into genres.");
     return;
 }
@@ -109,12 +71,13 @@ if (args.Contains("--import-ophim-catalog", StringComparer.OrdinalIgnoreCase))
 
     await using var importScope = app.Services.CreateAsyncScope();
     var importDb = importScope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+    var httpClient = importScope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient();
     await importDb.Database.MigrateAsync();
     var options = new OPhimCatalogImportOptions(maxPages, startPage, includeEpisodes, TimeSpan.FromMilliseconds(300))
     {
         DetailConcurrency = detailConcurrency,
     };
-    var imported = await OPhimCatalogImporter.ImportAsync(importDb, new HttpClient(), options, Console.WriteLine, CancellationToken.None);
+    var imported = await OPhimCatalogImporter.ImportAsync(importDb, httpClient, options, Console.WriteLine, CancellationToken.None);
     Console.WriteLine($"Imported {imported.TitlesImported} OPhim titles from {imported.PagesImported} pages (source total: {imported.TotalItems}; episodes: {imported.EpisodesImported}).");
     return;
 }
@@ -123,8 +86,21 @@ if (app.Environment.IsDevelopment())
 {
     await using var scope = app.Services.CreateAsyncScope();
     var catalogDb = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-    await catalogDb.Database.MigrateAsync();
-    await CatalogSeed.SeedAsync(catalogDb);
+    if (string.Equals(catalogDb.Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.OrdinalIgnoreCase))
+    {
+        var identityDb = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var engagementDb = scope.ServiceProvider.GetRequiredService<EngagementDbContext>();
+        var analyticsDb = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
+        var personalizationDb = scope.ServiceProvider.GetRequiredService<PersonalizationDbContext>();
+
+        await catalogDb.Database.MigrateAsync();
+        await identityDb.Database.MigrateAsync();
+        await engagementDb.Database.MigrateAsync();
+        await analyticsDb.Database.MigrateAsync();
+        await personalizationDb.Database.MigrateAsync();
+
+        await CatalogSeed.SeedAsync(catalogDb);
+    }
 }
 
 if (app.Environment.IsDevelopment())
@@ -142,29 +118,42 @@ app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
 
     context.Response.StatusCode = StatusCodes.Status500InternalServerError;
     context.Response.ContentType = "application/problem+json";
-    var response = new Dictionary<string, object?>
+
+    var problem = new ProblemDetails
     {
-        ["type"] = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
-        ["title"] = "An error occurred while processing your request.",
-        ["status"] = 500,
-        ["traceId"] = traceId,
+        Status = StatusCodes.Status500InternalServerError,
+        Title = "An unexpected error occurred.",
+        Detail = exposeDetailedErrors ? exception?.Message : null,
+        Instance = context.Request.Path,
+        Extensions =
+        {
+            ["traceId"] = traceId,
+            ["timestamp"] = DateTimeOffset.UtcNow,
+        },
     };
-    if (exposeDetailedErrors) response["detail"] = exception?.GetBaseException().Message;
-    await context.Response.WriteAsJsonAsync(response);
+
+    if (exposeDetailedErrors && exception is not null)
+    {
+        problem.Extensions["stackTrace"] = exception.StackTrace;
+    }
+
+    await context.Response.WriteAsJsonAsync(problem);
 }));
-// app.UseHttpsRedirection();
+
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapDefaultEndpoints();
-app.MapApiEndpoints();
 
-static int? ReadIntegerOption(string[] arguments, string name)
-{
-    var index = Array.FindIndex(arguments, x => string.Equals(x, name, StringComparison.OrdinalIgnoreCase));
-    return index >= 0 && index + 1 < arguments.Length && int.TryParse(arguments[index + 1], out var result) && result > 0 ? result : null;
-}
+app.MapApiEndpoints();
 
 app.Run();
 
-public partial class Program;
+public partial class Program
+{
+    private static int? ReadIntegerOption(string[] args, string optionName)
+    {
+        var index = Array.FindIndex(args, arg => string.Equals(arg, optionName, StringComparison.OrdinalIgnoreCase));
+        if (index < 0 || index + 1 >= args.Length) return null;
+        return int.TryParse(args[index + 1], out var parsed) ? parsed : null;
+    }
+}

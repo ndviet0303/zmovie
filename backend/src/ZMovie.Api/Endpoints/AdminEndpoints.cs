@@ -2,7 +2,7 @@ using MediatR;
 using System.Security.Claims;
 using ZMovie.Api;
 using ZMovie.Application.Administration;
-using ZMovie.Domain.Identity;
+using ZMovie.Application.Engagement;
 
 namespace ZMovie.Api.Endpoints;
 
@@ -12,7 +12,7 @@ public static class AdminEndpoints
     {
         var admin = endpoints.MapGroup("/v1/admin")
             .WithTags("Admin")
-            .RequireAuthorization(ZMovieRoles.AdminPolicy);
+            .RequireAuthorization(ApiAuthorizationPolicies.AdminPolicy);
 
         admin.MapGet("/overview", async (ISender sender, CancellationToken ct) =>
                 (await sender.Send(new GetAdminOverviewQuery(), ct)).ToApiResult())
@@ -59,7 +59,7 @@ public static class AdminEndpoints
             .ProducesApiErrors();
         admin.MapPatch("/users/{id:guid}/role", async (ISender sender, HttpContext context, Guid id, SetUserRoleRequest request, CancellationToken ct) =>
         {
-            if (!TryGetUserId(context, out var actorId)) return Results.Unauthorized();
+            if (!UserIdentityAdapter.TryGetUserId(context.User, out var actorId)) return Results.Unauthorized();
             return (await sender.Send(new SetUserRoleCommand(actorId, id, request.Role), ct)).ToApiResult();
         })
             .Produces<AdminUserSummary>(StatusCodes.Status200OK)
@@ -73,7 +73,7 @@ public static class AdminEndpoints
             .Produces<PagedResult<AdminReviewSummary>>(StatusCodes.Status200OK)
             .ProducesApiErrors();
         admin.MapDelete("/reviews/{id:guid}", async (ISender sender, Guid id, CancellationToken ct) =>
-                (await sender.Send(new DeleteAdminReviewCommand(id), ct)).ToApiResult())
+                (await sender.Send(new DeleteReviewCommand(id), ct)).ToApiResult())
             .Produces<bool>(StatusCodes.Status200OK)
             .ProducesApiErrors();
     }
@@ -97,9 +97,6 @@ public static class AdminEndpoints
             .Produces<bool>(StatusCodes.Status200OK)
             .ProducesApiErrors();
     }
-
-    private static bool TryGetUserId(HttpContext context, out Guid userId) =>
-        Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
 }
 
 public sealed record SetFeaturedRequest(bool Featured);

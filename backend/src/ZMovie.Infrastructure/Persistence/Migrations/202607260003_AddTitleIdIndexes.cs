@@ -10,7 +10,7 @@ namespace ZMovie.Infrastructure.Persistence.Migrations;
 /// The engagement tables are keyed user-first, so deleting a title (admin catalog delete)
 /// had to sequential-scan them. These indexes make the per-title cleanup an index scan.
 /// </summary>
-[DbContext(typeof(CatalogDbContext))]
+[DbContext(typeof(LegacyCatalogDbContext))]
 [Migration("202607260003_AddTitleIdIndexes")]
 public partial class AddTitleIdIndexes : Migration
 {

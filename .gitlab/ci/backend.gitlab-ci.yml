@@ -74,26 +74,23 @@ variables:
         curl -fsS --retry 3 --retry-delay 2 -X POST "$url"
       done
 
-# Verify stage (build, test)
-backend:build:
+# Verify stage (build, unit, HTTP contract, architecture, PostgreSQL migration tests)
+backend:verify:
   extends: ".backend-dotnet"
   stage: verify
   rules: *backend-rules
-  script:
-    - dotnet restore "$BACKEND_SOLUTION"
-    - dotnet build "$BACKEND_SOLUTION" --no-restore
-
-backend:test:
-  extends: ".backend-dotnet"
-  stage: verify
-  needs:
-    - job: "backend:build"
-      artifacts: false
-  rules: *backend-rules
+  services:
+    - name: "postgres:17-alpine"
+      alias: "postgres"
+  variables:
+    POSTGRES_DB: "postgres"
+    POSTGRES_USER: "postgres"
+    POSTGRES_PASSWORD: "postgres"
+    ZMOVIE_TEST_POSTGRES: "Host=postgres;Port=5432;Database=postgres;Username=postgres;Password=postgres;Pooling=false"
   coverage: '/Line coverage: \d+(?:\.\d+)?%/'
   script:
     - mkdir -p "$CI_PROJECT_DIR/test-results"
-    - dotnet test "$BACKEND_SOLUTION" --logger "junit;LogFilePath=$CI_PROJECT_DIR/test-results/{assembly}.xml" --settings coverage.runsettings --collect:"XPlat Code Coverage" --results-directory "$CI_PROJECT_DIR/coverage"
+    - bash scripts/verify.sh --logger "junit;LogFilePath=$CI_PROJECT_DIR/test-results/{assembly}.xml" --settings coverage.runsettings --collect:"XPlat Code Coverage" --results-directory "$CI_PROJECT_DIR/coverage"
     - |
       awk 'match($0, /filename="[^"]+"/) { file = substr($0, RSTART + 10, RLENGTH - 11) } file && match($0, /<line number="[0-9]+"/) { line = substr($0, RSTART + 14, RLENGTH - 14); key = file ":" line; valid[key] = 1; if (match($0, /hits="[0-9]+"/) && substr($0, RSTART + 6, RLENGTH - 6) + 0 > 0) { covered[key] = 1 } } END { for (key in valid) { total++ } for (key in covered) { hit++ } printf "Line coverage: %.2f%%\n", total ? (hit / total * 100) : 0 }' "$CI_PROJECT_DIR"/coverage/*/coverage.cobertura.xml
   artifacts:
@@ -114,7 +111,7 @@ backend:image:build:
   extends: ".backend-docker"
   stage: package
   needs:
-    - job: "backend:test"
+    - job: "backend:verify"
       artifacts: false
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'

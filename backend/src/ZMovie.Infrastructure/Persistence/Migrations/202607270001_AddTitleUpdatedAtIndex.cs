@@ -11,7 +11,7 @@ namespace ZMovie.Infrastructure.Persistence.Migrations;
 /// 36k-row catalog that was a full sequential scan plus a top-N sort (~56 ms) just to
 /// return 20 rows, on the most frequently hit query in the admin area.
 /// </summary>
-[DbContext(typeof(CatalogDbContext))]
+[DbContext(typeof(LegacyCatalogDbContext))]
 [Migration("202607270001_AddTitleUpdatedAtIndex")]
 public partial class AddTitleUpdatedAtIndex : Migration
 {

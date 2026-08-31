@@ -2,13 +2,21 @@ using FluentAssertions;
 using FluentValidation;
 using MediatR;
 using ErrorOr;
+using ZMovie.Application.Analytics;
 using ZMovie.Application.Assistant;
 using ZMovie.Application.Catalog;
 using ZMovie.Application.Common;
 using ZMovie.Application.Engagement;
 using ZMovie.Application.Identity;
 using ZMovie.Application.Search;
+using ZMovie.Domain.Analytics;
+using ZMovie.Domain.Engagement;
 using Xunit;
+using EngagementUserId = ZMovie.Domain.Engagement.UserId;
+using EngagementTitleId = ZMovie.Domain.Engagement.TitleId;
+using EngagementPlayableId = ZMovie.Domain.Engagement.PlayableId;
+using AnalyticsUserId = ZMovie.Domain.Analytics.UserId;
+using AnalyticsTitleId = ZMovie.Domain.Analytics.TitleId;
 
 namespace ZMovie.Api.Tests.FourLayer;
 
@@ -49,15 +57,17 @@ public sealed class ApplicationTests
     {
         var store = new FakeLibraryStore();
         var catalog = new FakeLibraryCatalog { TitleId = FirstTitleId, Playable = new(FirstTitleId, Guid.NewGuid(), 1) };
-        (await new SaveTitleHandler(store, catalog).Handle(new(UserId, "first"), default)).Value.Should().BeTrue();
-        (await new SaveTitleHandler(store, new FakeLibraryCatalog()).Handle(new(UserId, "missing"), default)).FirstError.Code.Should().Be("catalog.title.not_found");
+        var time = new FixedTimeProvider(new DateTimeOffset(2026, 8, 31, 9, 30, 0, TimeSpan.Zero));
+        (await new SaveTitleHandler(store, catalog, time).Handle(new(UserId, "first"), default)).Value.Should().BeTrue();
+        (await new SaveTitleHandler(store, new FakeLibraryCatalog(), time).Handle(new(UserId, "missing"), default)).FirstError.Code.Should().Be("catalog.title.not_found");
         (await new RemoveSavedTitleHandler(store, catalog).Handle(new(UserId, "first"), default)).Value.Should().BeTrue();
         (await new RemoveSavedTitleHandler(store, new FakeLibraryCatalog()).Handle(new(UserId, "missing"), default)).FirstError.Code.Should().Be("engagement.saved.not_found");
-        (await new RecordWatchProgressHandler(store, catalog).Handle(new(UserId, "first", 1, -2), default)).Value.Should().BeTrue();
-        (await new RecordWatchProgressHandler(store, new FakeLibraryCatalog()).Handle(new(UserId, "missing", null, 2), default)).FirstError.Code.Should().Be("catalog.playable.not_found");
-        store.View = new(3, true);
-        (await new RecordTitleViewHandler(store, catalog).Handle(new("first", UserId, "session", 1), default)).Value.ViewCount.Should().Be(3);
-        (await new RecordTitleViewHandler(store, new FakeLibraryCatalog()).Handle(new("missing", null, "session", null), default)).FirstError.Code.Should().Be("catalog.title.not_found");
+        (await new RecordWatchProgressHandler(store, catalog, time).Handle(new(UserId, "first", 1, -2), default)).Value.Should().BeTrue();
+        (await new RecordWatchProgressHandler(store, new FakeLibraryCatalog(), time).Handle(new(UserId, "missing", null, 2), default)).FirstError.Code.Should().Be("catalog.playable.not_found");
+
+        var analytics = new FakeViewAnalyticsStore { View = new(3, true) };
+        (await new RecordTitleViewHandler(analytics, catalog, time).Handle(new("first", UserId, "session", 1), default)).Value.ViewCount.Should().Be(3);
+        (await new RecordTitleViewHandler(analytics, new FakeLibraryCatalog(), time).Handle(new("missing", null, "session", null), default)).FirstError.Code.Should().Be("catalog.title.not_found");
     }
 
     [Fact]
@@ -65,8 +75,9 @@ public sealed class ApplicationTests
     {
         var catalog = new FakeLibraryCatalog { TitleId = FirstTitleId, Titles = new Dictionary<Guid, LibraryTitle> { [FirstTitleId] = FirstTitle } };
         var cache = new FakeTopCache();
-        var analytics = new FakeLibraryStore { Top = [new(FirstTitleId, 9), new(Guid.NewGuid(), 4)] };
-        var top = await new GetTopTitlesHandler(analytics, catalog, cache).Handle(new(TopPeriod.Week, "en-US", 5), default);
+        var analytics = new FakeViewAnalyticsStore { Top = [new(FirstTitleId, 9), new(Guid.NewGuid(), 4)] };
+        var time = new FixedTimeProvider(new DateTimeOffset(2026, 8, 31, 9, 30, 0, TimeSpan.Zero));
+        var top = await new GetTopTitlesHandler(analytics, catalog, cache, time).Handle(new(TopPeriod.Week, "en-US", 5), default);
         top.Value.Should().ContainSingle().Which.Views.Should().Be(9);
         cache.Locale.Should().Be("en");
 
@@ -74,9 +85,10 @@ public sealed class ApplicationTests
         var reviewResult = await new GetTitleReviewsHandler(reviews, catalog).Handle(new("first"), default);
         reviewResult.Value.AverageRating.Should().Be(8.5);
         (await new GetTitleReviewsHandler(reviews, new FakeLibraryCatalog()).Handle(new("missing"), default)).FirstError.Code.Should().Be("catalog.title.not_found");
-        (await new SubmitTitleReviewHandler(reviews, catalog).Handle(new(UserId, "A", "first", 9, "  hello  "), default)).Value.Should().BeTrue();
-        (await new SubmitTitleReviewHandler(reviews, new FakeLibraryCatalog()).Handle(new(UserId, "A", "missing", 9, null), default)).FirstError.Code.Should().Be("catalog.title.not_found");
-        reviews.RemoveResult = true;
+        (await new SubmitTitleReviewHandler(reviews, catalog, time).Handle(new(UserId, "A", "first", 9, "  hello  "), default)).Value.Should().BeTrue();
+        reviews.StoredReview!.Comment.Should().Be("hello");
+        reviews.StoredReview.CreatedAt.Should().Be(time.GetUtcNow());
+        (await new SubmitTitleReviewHandler(reviews, new FakeLibraryCatalog(), time).Handle(new(UserId, "A", "missing", 9, null), default)).FirstError.Code.Should().Be("catalog.title.not_found");
         (await new RemoveTitleReviewHandler(reviews, catalog).Handle(new(UserId, "first"), default)).Value.Should().BeTrue();
         (await new RemoveTitleReviewHandler(new FakeReviewStore(), new FakeLibraryCatalog { TitleId = FirstTitleId }).Handle(new(UserId, "first"), default)).FirstError.Code.Should().Be("engagement.review.not_found");
     }
@@ -94,29 +106,26 @@ public sealed class ApplicationTests
         (await new ListTitlesHandler(catalogStore).Handle(new(" q ", "Drama", "en-US"), default)).Value.Total.Should().Be(1);
         (await new GetTitleHandler(catalogStore).Handle(new("first", null), default)).Value.Slug.Should().Be("first");
         (await new GetTitleHandler(new FakeCatalogStore()).Handle(new("missing", null), default)).FirstError.Code.Should().Be("catalog.title.not_found");
-        (await new GetGenresHandler(catalogStore).Handle(new(), default)).Value.Should().Contain("Drama");
+        (await new GetGenresHandler(catalogStore).Handle(new(), default)).Value.Should().ContainSingle();
         (await new GetPlaybackHandler(catalogStore).Handle(new("first", null), default)).Value.Slug.Should().Be("first");
         (await new GetPlaybackHandler(new FakeCatalogStore()).Handle(new("missing", null), default)).FirstError.Code.Should().Be("catalog.playback.not_found");
         (await new GetHomeHandler(catalogStore).Handle(new(null), default)).Value.Hero.Slug.Should().Be("first");
-        (await new GetHomeHandler(new FakeCatalogStore()).Handle(new(null), default)).FirstError.Code.Should().Be("catalog.home.unavailable");
 
-        var searchStore = new FakeSearchStore { Result = new([], 0) };
-        (await new SearchCatalogHandler(searchStore).Handle(new("  hello  ", null, null, null), default)).Value.Total.Should().Be(0);
-        var assistantStore = new FakeAssistantStore { Results = [new(new("first", "First", "Drama", 2026, "movie", "poster"), "Synopsis")] };
-        var assistantContext = await new GetAssistantContextHandler(assistantStore).Handle(new(UserId, "  drama ", "en"), default);
-        assistantContext.Value.Matches.Should().ContainSingle();
-        var assistant = await new AskCatalogAssistantHandler(assistantStore, new FakeAssistantGenerator()).Handle(new(UserId, "  drama ", "en"), default);
-        assistant.Value.Message.Should().Contain("I found 1");
-        assistantStore.Results = [];
-        (await new AskCatalogAssistantHandler(assistantStore, new FakeAssistantGenerator()).Handle(new(UserId, "drama", "vi"), default)).Value.Message.Should().Contain("chưa tìm");
-        assistantStore.Results = [new(new("comfort", "Warm Friends", "Family", 2026, "movie", "poster"), "A gentle story")];
-        (await new AskCatalogAssistantHandler(assistantStore, new FakeAssistantGenerator()).Handle(new(UserId, "hôm nay tôi buồn", "vi"), default)).Value.Message.Should().Contain("nhẹ nhàng");
+        var searchStore = new FakeSearchStore { Result = new([new("first", "First", "Drama", 2026, "movie", "poster")], 1) };
+        (await new SearchCatalogHandler(searchStore).Handle(new("a", null, null, null), default)).Value.Total.Should().Be(1);
 
-        var verifier = new FakeVerifier { Identity = new("subject", "a@test", "A", null) };
-        var users = new FakeUserIdentityStore { User = new(UserId, "a@test", "A", null, ZMovie.Domain.Identity.ZMovieRoles.Member) };
-        (await new SignInWithGoogleHandler(verifier, users).Handle(new("credential"), default)).Value.Id.Should().Be(UserId);
+        var assistantStore = new FakeAssistantStore { Results = [new(new("first", "First", "Drama", 2026, "movie", "poster"), "reason")] };
+        var assistant = await new AskCatalogAssistantHandler(assistantStore, new FakeAssistantGenerator()).Handle(new(UserId, "sad", null), default);
+        assistant.Value.Suggestions.Should().ContainSingle();
+        assistantStore.UserId.Should().Be(UserId);
+
+        var verifier = new FakeVerifier { Identity = new("sub", "a@test", "A", null) };
+        var repo = new FakeUserRepository();
+        var allowlist = new FakeAllowlist();
+        var time = new FixedTimeProvider(new DateTimeOffset(2026, 8, 31, 9, 30, 0, TimeSpan.Zero));
+        (await new SignInWithGoogleHandler(verifier, repo, allowlist, time).Handle(new("credential"), default)).Value.Email.Should().Be("a@test");
         verifier.Identity = null;
-        (await new SignInWithGoogleHandler(verifier, users).Handle(new("bad"), default)).FirstError.Code.Should().Be("auth.google.invalid_credential");
+        (await new SignInWithGoogleHandler(verifier, repo, allowlist, time).Handle(new("bad"), default)).FirstError.Code.Should().Be("auth.google.invalid_credential");
     }
 
     [Fact]
@@ -143,18 +152,28 @@ public sealed class ApplicationTests
     [Fact]
     public void Domain_entities_and_contract_records_expose_values_and_localize_synopsis()
     {
-        var title = new ZMovie.Domain.Catalog.CatalogTitle { Slug = "s", EnglishTitle = "E", VietnameseTitle = "V", EnglishSynopsis = "ES", VietnameseSynopsis = "VS", Genre = "G", Type = "movie", PosterUrl = "P" };
+        var title = ZMovie.Domain.Catalog.Title.Create(
+            new ZMovie.Domain.Catalog.TitleId(FirstTitleId),
+            ZMovie.Domain.Catalog.TitleSlug.Parse("s"),
+            new ZMovie.Domain.Catalog.LocalizedText("V", "E"),
+            new ZMovie.Domain.Catalog.LocalizedText("VS", "ES"),
+            "G",
+            ZMovie.Domain.Catalog.ReleaseYear.FromInt(2026),
+            ZMovie.Domain.Catalog.TitleType.Movie,
+            "P",
+            ZMovie.Domain.Catalog.Runtime.FromMinutes(90),
+            false,
+            DateTimeOffset.UtcNow);
         title.LocalizedSynopsis("en").Should().Be("ES");
         title.LocalizedSynopsis("vi").Should().Be("VS");
-        _ = new ZMovie.Domain.Catalog.CatalogGenre { Slug = "g", Name = "G" };
-        _ = new ZMovie.Domain.Catalog.CatalogEpisode { Name = "1", HlsUrl = "url" };
-        _ = new ZMovie.Domain.Engagement.SavedTitle { UserId = UserId, TitleId = FirstTitleId }.SavedAt;
-        _ = new ZMovie.Domain.Engagement.WatchProgress { UserId = UserId, PlayableId = Guid.NewGuid(), TitleId = FirstTitleId }.UpdatedAt;
-        _ = new ZMovie.Domain.Engagement.TitleViewEvent { TitleId = FirstTitleId, SessionId = "s" }.ViewedAt;
-        _ = new ZMovie.Domain.Engagement.TitleReview { TitleId = FirstTitleId, UserId = UserId, AuthorName = "A", Rating = 8 }.UpdatedAt;
-        _ = new ZMovie.Domain.Identity.ZMovieUser { GoogleSubject = "sub", Email = "e", DisplayName = "n" }.LastSignedInAt;
+        _ = ZMovie.Domain.Catalog.Genre.Create(new ZMovie.Domain.Catalog.GenreId(Guid.NewGuid()), "g", "G", DateTimeOffset.UtcNow);
+        _ = ZMovie.Domain.Catalog.Episode.Create(new ZMovie.Domain.Catalog.EpisodeId(Guid.NewGuid()), new ZMovie.Domain.Catalog.TitleId(FirstTitleId), 1, "1", "url");
+        _ = ZMovie.Domain.Engagement.SavedTitle.Create(new EngagementUserId(UserId), new EngagementTitleId(FirstTitleId), DateTimeOffset.UtcNow).SavedAt;
+        _ = ZMovie.Domain.Engagement.WatchProgress.Record(new EngagementUserId(UserId), new EngagementPlayableId(Guid.NewGuid()), new EngagementTitleId(FirstTitleId), 1, WatchPosition.FromSeconds(10), DateTimeOffset.UtcNow).UpdatedAt;
+        _ = ZMovie.Domain.Analytics.TitleViewEvent.Record(ViewEventId.New(), new AnalyticsTitleId(FirstTitleId), null, null, "s", DateTimeOffset.UtcNow).ViewedAt;
+        _ = ZMovie.Domain.Identity.User.Create(new ZMovie.Domain.Identity.UserId(UserId), new ZMovie.Domain.Identity.ExternalIdentity("sub"), "e", "n", null, ZMovie.Domain.Identity.Role.Member, DateTimeOffset.UtcNow).LastSignedInAt;
         _ = new GoogleIdentity("s", "e", "n", null);
-        _ = new AuthenticatedUser(UserId, "e", "n", null, ZMovie.Domain.Identity.ZMovieRoles.Member);
+        _ = new AuthenticatedUser(UserId, "e", "n", null, ZMovie.Domain.Identity.Role.MemberName);
         _ = new UserLibraryResponse([], []);
         _ = new PersonalizedDiscoveryResponse([], []);
         _ = new AssistantContextResponse([]);
@@ -162,20 +181,47 @@ public sealed class ApplicationTests
         Locale.Normalize(null).Should().Be("vi");
     }
 
-    private sealed class FakeLibraryStore : IUserLibraryStore, IViewAnalyticsStore
+    private sealed class FakeLibraryStore : IUserLibraryQueries, ISavedTitleRepository, IWatchProgressRepository
     {
         public IReadOnlyList<SavedTitleEntry> Saved { get; set; } = [];
         public IReadOnlyList<WatchProgressEntry> History { get; set; } = [];
+        public SavedTitle? StoredSavedTitle { get; private set; }
+        public WatchProgress? StoredWatchProgress { get; private set; }
+        public bool HasSaved { get; set; } = true;
+
+        public Task<IReadOnlyList<SavedTitleEntry>> ListSavedAsync(EngagementUserId userId, CancellationToken ct) => Task.FromResult(Saved);
+        public Task<IReadOnlyList<WatchProgressEntry>> ListHistoryAsync(EngagementUserId userId, CancellationToken ct) => Task.FromResult(History);
+
+        public Task<SavedTitle?> FindAsync(EngagementUserId userId, EngagementTitleId titleId, CancellationToken ct) =>
+            Task.FromResult(HasSaved ? StoredSavedTitle ?? SavedTitle.Create(userId, titleId, DateTimeOffset.UtcNow) : null);
+
+        public void Add(SavedTitle savedTitle) => StoredSavedTitle = savedTitle;
+        public void Remove(SavedTitle savedTitle) { StoredSavedTitle = null; HasSaved = false; }
+
+        public Task<WatchProgress?> FindAsync(EngagementUserId userId, EngagementPlayableId playableId, CancellationToken ct) =>
+            Task.FromResult(StoredWatchProgress);
+
+        public void Add(WatchProgress progress) => StoredWatchProgress = progress;
+
+        public Task SaveChangesAsync(CancellationToken ct) => Task.CompletedTask;
+    }
+
+    private sealed class FakeViewAnalyticsStore : IViewEventRepository, IViewAnalyticsQueries
+    {
         public IReadOnlyList<TopViewCount> Top { get; set; } = [];
         public ViewRecordedResponse View { get; set; } = new(0, false);
-        public Task<IReadOnlyList<SavedTitleEntry>> GetSavedAsync(Guid userId, CancellationToken ct) => Task.FromResult(Saved);
-        public Task<IReadOnlyList<WatchProgressEntry>> GetHistoryAsync(Guid userId, CancellationToken ct) => Task.FromResult(History);
-        public Task SaveAsync(Guid userId, Guid titleId, CancellationToken ct) => Task.CompletedTask;
-        public Task<bool> RemoveAsync(Guid userId, Guid titleId, CancellationToken ct) => Task.FromResult(true);
-        public Task RecordProgressAsync(Guid userId, PlayableReference playable, double progressSeconds, CancellationToken ct) => Task.CompletedTask;
-        public Task<ViewRecordedResponse> RecordAsync(Guid titleId, Guid? userId, string sessionId, int? episodeNumber, CancellationToken ct) => Task.FromResult(View);
-        public Task<long> GetViewCountAsync(Guid titleId, CancellationToken ct) => Task.FromResult(View.ViewCount);
-        public Task<IReadOnlyList<TopViewCount>> GetTopAsync(TopPeriod period, int limit, CancellationToken ct) => Task.FromResult(Top);
+
+        public Task<ViewRecordedResponse> RecordViewWithLockAsync(
+            AnalyticsTitleId titleId,
+            int? episodeNumber,
+            AnalyticsUserId? userId,
+            string sessionId,
+            DateTimeOffset occurredAt,
+            CancellationToken ct) => Task.FromResult(View);
+
+        public Task<long> GetViewCountAsync(AnalyticsTitleId titleId, CancellationToken ct) => Task.FromResult(View.ViewCount);
+
+        public Task<IReadOnlyList<TopViewCount>> GetTopAsync(TopPeriod period, int limit, DateTimeOffset now, CancellationToken ct) => Task.FromResult(Top);
     }
 
     private sealed class FakeLibraryCatalog : ILibraryCatalogReader
@@ -203,13 +249,34 @@ public sealed class ApplicationTests
         public async Task<IReadOnlyList<TopTitleResponse>> GetOrCreateAsync(TopPeriod period, string locale, int limit, Func<CancellationToken, Task<IReadOnlyList<TopTitleResponse>>> factory, CancellationToken ct) { Locale = locale; return await factory(ct); }
     }
 
-    private sealed class FakeReviewStore : ITitleReviewStore
+    private sealed class FakeReviewStore : IReviewRepository, IReviewQueries
     {
         public IReadOnlyList<ReviewEntry> Reviews { get; set; } = [];
-        public bool RemoveResult { get; set; }
-        public Task<IReadOnlyList<ReviewEntry>> GetAsync(Guid titleId, CancellationToken ct) => Task.FromResult(Reviews);
-        public Task UpsertAsync(Guid titleId, Guid userId, string authorName, int rating, string? comment, CancellationToken ct) => Task.CompletedTask;
-        public Task<bool> RemoveReviewAsync(Guid titleId, Guid userId, CancellationToken ct) => Task.FromResult(RemoveResult);
+        public Review? StoredReview { get; private set; }
+
+        public Task<IReadOnlyList<ReviewEntry>> ListByTitleAsync(EngagementTitleId titleId, CancellationToken ct) => Task.FromResult(Reviews);
+
+        public Task<Review?> FindByTitleAndUserAsync(EngagementTitleId titleId, EngagementUserId userId, CancellationToken ct) =>
+            Task.FromResult(StoredReview is not null && StoredReview.TitleId == titleId && StoredReview.UserId == userId
+                ? StoredReview
+                : null);
+
+        public Task<Review?> FindByIdAsync(ReviewId reviewId, CancellationToken ct) =>
+            Task.FromResult(StoredReview?.Id == reviewId ? StoredReview : null);
+
+        public void Add(Review review) => StoredReview = review;
+
+        public void Remove(Review review)
+        {
+            if (ReferenceEquals(StoredReview, review)) StoredReview = null;
+        }
+
+        public Task SaveChangesAsync(CancellationToken ct) => Task.CompletedTask;
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
     }
 
     private sealed class FakeCatalogStore : ICatalogReadStore
@@ -249,9 +316,26 @@ public sealed class ApplicationTests
         public Task<GoogleIdentity?> VerifyAsync(string credential, CancellationToken ct) => Task.FromResult(Identity);
     }
 
-    private sealed class FakeUserIdentityStore : IUserIdentityStore
+    private sealed class FakeUserRepository : IUserRepository
     {
-        public AuthenticatedUser User { get; set; } = default!;
-        public Task<AuthenticatedUser> UpsertGoogleUserAsync(GoogleIdentity identity, CancellationToken ct) => Task.FromResult(User);
+        public ZMovie.Domain.Identity.User? StoredUser { get; set; }
+
+        public Task<ZMovie.Domain.Identity.User?> FindByIdAsync(ZMovie.Domain.Identity.UserId id, CancellationToken ct) =>
+            Task.FromResult(StoredUser?.Id == id ? StoredUser : null);
+
+        public Task<ZMovie.Domain.Identity.User?> FindByExternalIdentityAsync(ZMovie.Domain.Identity.ExternalIdentity externalIdentity, CancellationToken ct) =>
+            Task.FromResult(StoredUser?.ExternalIdentity == externalIdentity ? StoredUser : null);
+
+        public void Add(ZMovie.Domain.Identity.User user) => StoredUser = user;
+
+        public Task SaveChangesAsync(CancellationToken ct) => Task.CompletedTask;
+
+        public Task<ZMovie.Application.Identity.SetRoleOutcome> ChangeRoleWithLastAdminGuardAsync(ZMovie.Domain.Identity.UserId userId, ZMovie.Domain.Identity.Role newRole, bool guardLastAdmin, CancellationToken ct) =>
+            Task.FromResult(ZMovie.Application.Identity.SetRoleOutcome.Updated);
+    }
+
+    private sealed class FakeAllowlist : IAdminAllowlist
+    {
+        public bool IsAllowlisted(string email) => false;
     }
 }

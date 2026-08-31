@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ZMovie.Infrastructure.Persistence.Migrations;
 
 [Migration("202607220001_AddTitleViewEvents")]
-[DbContext(typeof(CatalogDbContext))]
+[DbContext(typeof(LegacyCatalogDbContext))]
 public partial class AddTitleViewEvents : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)

@@ -1,8 +1,10 @@
 using MediatR;
 using System.Security.Claims;
 using ZMovie.Api;
+using ZMovie.Application.Analytics;
 using ZMovie.Application.Catalog;
 using ZMovie.Application.Engagement;
+using ZMovie.Domain.Analytics;
 
 namespace ZMovie.Api.Endpoints;
 
@@ -23,7 +25,7 @@ public static class DiscoveryEndpoints
             .Produces<IReadOnlyList<TopTitleResponse>>(StatusCodes.Status200OK)
             .ProducesApiErrors();
         endpoints.MapGet("/v1/discovery/for-you", async (ISender sender, HttpContext context, string? locale, CancellationToken ct) =>
-                (await sender.Send(new GetPersonalizedDiscoveryQuery(Guid.Parse(context.User.FindFirstValue(ClaimTypes.NameIdentifier)!), locale?.StartsWith("en", StringComparison.OrdinalIgnoreCase) is true ? "en" : "vi"), ct)).ToApiResult())
+                (await sender.Send(new GetPersonalizedDiscoveryQuery(UserIdentityAdapter.GetRequiredUserId(context.User), locale?.StartsWith("en", StringComparison.OrdinalIgnoreCase) is true ? "en" : "vi"), ct)).ToApiResult())
             .RequireAuthorization()
             .Produces<PersonalizedDiscoveryResponse>(StatusCodes.Status200OK)
             .ProducesApiErrors();

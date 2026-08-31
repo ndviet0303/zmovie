@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using ZMovie.Domain.Catalog;
-using ZMovie.Infrastructure.Persistence;
+using ZMovie.Infrastructure.Catalog.Persistence;
 
 namespace ZMovie.Infrastructure.Catalog;
 
@@ -27,6 +27,15 @@ public static partial class OPhimCatalogImporter
         CatalogDbContext db,
         HttpClient http,
         OPhimCatalogImportOptions options,
+        Action<string>? report,
+        CancellationToken ct) =>
+        await ImportAsync(db, http, options, TimeProvider.System, report, ct);
+
+    public static async Task<OPhimCatalogImportResult> ImportAsync(
+        CatalogDbContext db,
+        HttpClient http,
+        OPhimCatalogImportOptions options,
+        TimeProvider timeProvider,
         Action<string>? report,
         CancellationToken ct)
     {
@@ -51,23 +60,24 @@ public static partial class OPhimCatalogImporter
             // OPhim occasionally repeats an item on a page. Keep one detail task per slug;
             // otherwise two tasks can add the same (title_id, episode number) in one batch.
             var movies = source.Data.Items
-                .Where(x => !string.IsNullOrWhiteSpace(x.Slug))
+                .Where(x => !string.IsNullOrWhiteSpace(x.Slug) && TitleSlug.TryCreate(x.Slug, out _))
                 .GroupBy(x => x.Slug, StringComparer.OrdinalIgnoreCase)
                 .Select(x => x.First())
                 .ToList();
-            var slugs = movies.Select(x => x.Slug).ToList();
-            var existingTitles = await db.Titles.Where(x => slugs.Contains(x.Slug)).ToDictionaryAsync(x => x.Slug, ct);
-            var titlesBySlug = new Dictionary<string, CatalogTitle>(StringComparer.OrdinalIgnoreCase);
+            var parsedSlugs = movies.Select(x => TitleSlug.Parse(x.Slug)).ToList();
+            var existingTitles = await db.Titles.Where(x => parsedSlugs.Contains(x.Slug)).ToDictionaryAsync(x => x.Slug.Value, StringComparer.OrdinalIgnoreCase, ct);
+            var titlesBySlug = new Dictionary<string, Title>(StringComparer.OrdinalIgnoreCase);
+            var now = timeProvider.GetUtcNow();
             foreach (var movie in movies)
             {
-                var title = UpsertTitle(db, existingTitles, movie, source.Data.ImageCdn);
+                var title = UpsertTitle(db, existingTitles, movie, source.Data.ImageCdn, now);
                 titlesBySlug[movie.Slug] = title;
                 titlesImported++;
             }
 
             if (options.IncludeEpisodes)
             {
-                episodesImported += await ImportDetailsAsync(db, http, movies, titlesBySlug, options, ct);
+                episodesImported += await ImportDetailsAsync(db, http, movies, titlesBySlug, options, timeProvider, ct);
             }
 
             await db.SaveChangesAsync(ct);
@@ -83,8 +93,9 @@ public static partial class OPhimCatalogImporter
         CatalogDbContext db,
         HttpClient http,
         IReadOnlyList<OPhimMovie> movies,
-        IReadOnlyDictionary<string, CatalogTitle> titlesBySlug,
+        IReadOnlyDictionary<string, Title> titlesBySlug,
         OPhimCatalogImportOptions options,
+        TimeProvider timeProvider,
         CancellationToken ct)
     {
         using var concurrencyGate = new SemaphoreSlim(Math.Clamp(options.DetailConcurrency, 1, 8));
@@ -106,55 +117,61 @@ public static partial class OPhimCatalogImporter
 
         var details = await Task.WhenAll(detailTasks);
         var episodesImported = 0;
+        var now = timeProvider.GetUtcNow();
         foreach (var detail in details)
         {
             if (!titlesBySlug.TryGetValue(detail.Slug, out var title)) continue;
-            ApplySynopsis(title, detail.Content);
+            ApplySynopsis(title, detail.Content, now);
             episodesImported += await UpsertEpisodesAsync(db, title, detail.Episodes, ct);
         }
 
         return episodesImported;
     }
 
-    private static CatalogTitle UpsertTitle(CatalogDbContext db, IReadOnlyDictionary<string, CatalogTitle> existingTitles, OPhimMovie source, string? imageCdn)
+    private static Title UpsertTitle(CatalogDbContext db, IReadOnlyDictionary<string, Title> existingTitles, OPhimMovie source, string? imageCdn, DateTimeOffset now)
     {
         existingTitles.TryGetValue(source.Slug, out var title);
         var vietnameseTitle = Limit(source.Name, 300, source.Slug);
         var englishTitle = Limit(source.OriginName, 300, vietnameseTitle);
         var genre = Limit(string.Join(", ", (source.Category ?? []).Select(x => x.Name).Where(x => !string.IsNullOrWhiteSpace(x))), 100, "Khác");
         var poster = BuildImageUrl(imageCdn, source.PosterUrl, source.ThumbUrl);
+        var slug = TitleSlug.Parse(source.Slug);
+        var year = ReleaseYear.FromInt(source.Year ?? 0);
+        var type = TitleType.Normalize(source.Type);
+        var runtime = Runtime.FromMinutes(ParseMinutes(source.Time));
+
         if (title is null)
         {
-            title = new CatalogTitle
-            {
-                Slug = source.Slug,
-                EnglishTitle = englishTitle,
-                VietnameseTitle = vietnameseTitle,
-                EnglishSynopsis = string.Empty,
-                VietnameseSynopsis = string.Empty,
-                Genre = genre,
-                Year = source.Year ?? 0,
-                Type = ToZMovieType(source.Type),
-                PosterUrl = poster,
-                RuntimeMinutes = ParseMinutes(source.Time),
-                Featured = false
-            };
+            title = Title.Create(
+                TitleId.New(),
+                slug,
+                new LocalizedText(vietnameseTitle, englishTitle),
+                new LocalizedText(string.Empty, string.Empty),
+                genre,
+                year,
+                type,
+                poster,
+                runtime,
+                false,
+                now);
             db.Titles.Add(title);
             return title;
         }
 
-        title.EnglishTitle = englishTitle;
-        title.VietnameseTitle = vietnameseTitle;
-        title.Genre = genre;
-        title.Year = source.Year ?? 0;
-        title.Type = ToZMovieType(source.Type);
-        title.PosterUrl = poster;
-        title.RuntimeMinutes = ParseMinutes(source.Time);
-        title.UpdatedAt = DateTimeOffset.UtcNow;
+        title.UpdateMetadata(
+            new LocalizedText(vietnameseTitle, englishTitle),
+            title.Synopsis,
+            genre,
+            year,
+            type,
+            poster,
+            runtime,
+            title.Featured,
+            now);
         return title;
     }
 
-    private static async Task<int> UpsertEpisodesAsync(CatalogDbContext db, CatalogTitle title, IReadOnlyList<OPhimServer> servers, CancellationToken ct)
+    private static async Task<int> UpsertEpisodesAsync(CatalogDbContext db, Title title, IReadOnlyList<OPhimServer> servers, CancellationToken ct)
     {
         var existing = await db.Episodes.Where(x => x.TitleId == title.Id).ToDictionaryAsync(x => x.Number, ct);
         var addedOrUpdated = 0;
@@ -164,28 +181,38 @@ public static partial class OPhimCatalogImporter
             if (string.IsNullOrWhiteSpace(source.LinkM3u8)) continue;
             ordinal++;
             var number = int.TryParse(source.Name, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : ordinal;
+            var name = Limit(source.Name, 200, $"Tập {number}");
+            var hlsUrl = Limit(source.LinkM3u8, 2000, string.Empty);
+
             if (!existing.TryGetValue(number, out var episode))
             {
-                episode = new CatalogEpisode { TitleId = title.Id, Number = number, Name = Limit(source.Name, 300, $"Tập {number}"), HlsUrl = Limit(source.LinkM3u8, 2000, string.Empty) };
+                episode = Episode.Create(EpisodeId.New(), title.Id, number, name, hlsUrl);
                 db.Episodes.Add(episode);
                 existing[number] = episode;
             }
             else
             {
-                episode.Name = Limit(source.Name, 300, $"Tập {number}");
-                episode.HlsUrl = Limit(source.LinkM3u8, 2000, string.Empty);
+                episode.Update(name, hlsUrl);
             }
             addedOrUpdated++;
         }
         return addedOrUpdated;
     }
 
-    private static void ApplySynopsis(CatalogTitle title, string? content)
+    private static void ApplySynopsis(Title title, string? content, DateTimeOffset now)
     {
         var synopsis = Limit(Html.Replace(content ?? string.Empty, " "), 4000, string.Empty);
-        title.VietnameseSynopsis = synopsis;
-        if (string.IsNullOrWhiteSpace(title.EnglishSynopsis)) title.EnglishSynopsis = synopsis;
-        title.UpdatedAt = DateTimeOffset.UtcNow;
+        var englishSynopsis = string.IsNullOrWhiteSpace(title.Synopsis.English) ? synopsis : title.Synopsis.English;
+        title.UpdateMetadata(
+            title.TitleName,
+            new LocalizedText(synopsis, englishSynopsis),
+            title.Genre,
+            title.Year,
+            title.Type,
+            title.PosterUrl,
+            title.Runtime,
+            title.Featured,
+            now);
     }
 
     private static Task<OPhimListResponse> GetListPageAsync(HttpClient http, int page, CancellationToken ct) =>
@@ -228,36 +255,37 @@ public static partial class OPhimCatalogImporter
             }
         }
 
-        throw new InvalidOperationException("OPhim request failed after retries.");
+        throw new HttpRequestException($"Failed to fetch {url} after {maxAttempts} attempts.");
     }
 
-    private static bool IsTransient(System.Net.HttpStatusCode statusCode) =>
-        statusCode is System.Net.HttpStatusCode.RequestTimeout
+    private static void EnsureSuccess(string status, string? message)
+    {
+        if (!string.Equals(status, "success", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"OPhim request failed: {message}");
+    }
+
+    private static bool IsTransient(System.Net.HttpStatusCode status) =>
+        status is System.Net.HttpStatusCode.RequestTimeout
             or System.Net.HttpStatusCode.TooManyRequests
             or System.Net.HttpStatusCode.InternalServerError
             or System.Net.HttpStatusCode.BadGateway
             or System.Net.HttpStatusCode.ServiceUnavailable
             or System.Net.HttpStatusCode.GatewayTimeout;
 
-    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
-    private static void ThrowForStatus(HttpResponseMessage response) => response.EnsureSuccessStatusCode();
+    private static void ThrowForStatus(HttpResponseMessage response) =>
+        throw new HttpRequestException($"OPhim request failed with status {(int)response.StatusCode} ({response.ReasonPhrase})");
 
-    private static async Task DelayAsync(TimeSpan delay, CancellationToken ct)
+    private static string Limit(string? value, int max, string fallback)
     {
-        if (delay > TimeSpan.Zero) await Task.Delay(delay, ct);
+        if (string.IsNullOrWhiteSpace(value)) return fallback;
+        var trimmed = value.Trim();
+        return trimmed.Length <= max ? trimmed : trimmed[..max];
     }
 
-    private static void EnsureSuccess(string status, string? message)
-    {
-        if (!string.Equals(status, "success", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException($"OPhim request failed: {message ?? status}");
-    }
-
-    private static string ToZMovieType(string? sourceType) => string.Equals(sourceType, "single", StringComparison.OrdinalIgnoreCase) ? "movie" : "series";
-    private static int ParseMinutes(string? value) => int.TryParse(Minutes.Match(value ?? string.Empty).Value, out var minutes) ? minutes : 0;
     private static string BuildImageUrl(string? cdn, string? primaryPath, string? fallbackPath)
     {
         var primary = BuildCandidateImageUrl(cdn, primaryPath);
-        if (primary.Length <= 2000) return primary;
+        if (primary.Length > 0 && primary.Length <= 2000) return primary;
 
         var fallback = BuildCandidateImageUrl(cdn, fallbackPath);
         return fallback.Length <= 2000 ? fallback : string.Empty;
@@ -269,26 +297,43 @@ public static partial class OPhimCatalogImporter
             : path.StartsWith("http", StringComparison.OrdinalIgnoreCase)
                 ? path
                 : $"{cdn?.TrimEnd('/') ?? "https://img.ophim.live"}/uploads/movies/{path.TrimStart('/')}";
-    private static string Limit(string? value, int maxLength, string fallback) => (value ?? fallback).Trim() switch { "" => fallback, var text => text.Length <= maxLength ? text : text[..maxLength] };
 
-    [GeneratedRegex("<[^>]+>", RegexOptions.Compiled)]
-    private static partial Regex HtmlRegex();
-    [GeneratedRegex("\\d+", RegexOptions.Compiled)]
-    private static partial Regex MinutesRegex();
+    private static int ParseMinutes(string? value) => int.TryParse(Minutes.Match(value ?? string.Empty).Value, out var minutes) ? minutes : 0;
+
+    private static Task DelayAsync(TimeSpan delay, CancellationToken ct) =>
+        delay <= TimeSpan.Zero ? Task.CompletedTask : Task.Delay(delay, ct);
 
     private sealed record OPhimListResponse(string Status, string? Message, OPhimListData Data);
-    private sealed record OPhimListData(OPhimListParams Params, IReadOnlyList<OPhimMovie> Items, [property: JsonPropertyName("APP_DOMAIN_CDN_IMAGE")] string? APP_DOMAIN_CDN_IMAGE)
-    {
-        public string? ImageCdn => APP_DOMAIN_CDN_IMAGE;
-    }
-    private sealed record OPhimListParams(OPhimPagination Pagination);
-    private sealed record OPhimPagination(int TotalItems, int TotalItemsPerPage);
+    private sealed record OPhimListData(IReadOnlyList<OPhimMovie> Items, OPhimParams Params, [property: JsonPropertyName("APP_DOMAIN_CDN_IMAGE")] string? ImageCdn);
+    private sealed record OPhimParams(OPhimPagination Pagination);
+    private sealed record OPhimPagination(
+        [property: JsonPropertyName("totalItems")] int TotalItems,
+        [property: JsonPropertyName("totalItemsPerPage")] int TotalItemsPerPage);
+
+    private sealed record OPhimMovie(
+        string Name,
+        [property: JsonPropertyName("origin_name")] string? OriginName,
+        string Slug,
+        string? Type,
+        [property: JsonPropertyName("thumb_url")] string? ThumbUrl,
+        [property: JsonPropertyName("poster_url")] string? PosterUrl,
+        string? Time,
+        int? Year,
+        IReadOnlyList<OPhimCategory>? Category);
+
+    private sealed record OPhimCategory(string Name, string Slug);
+
     private sealed record OPhimDetailResponse(string Status, string? Message, OPhimDetailData Data);
     private sealed record OPhimDetailData(OPhimDetailItem Item);
-    private sealed record OPhimDetailItem(string? Content, IReadOnlyList<OPhimServer> Episodes);
-    private sealed record OPhimMovie(string Slug, string? Name, [property: JsonPropertyName("origin_name")] string? OriginName, string? Type, int? Year, string? Time, [property: JsonPropertyName("poster_url")] string? PosterUrl, [property: JsonPropertyName("thumb_url")] string? ThumbUrl, IReadOnlyList<OPhimCategory>? Category);
-    private sealed record OPhimCategory(string Name);
-    private sealed record OPhimServer([property: JsonPropertyName("server_data")] IReadOnlyList<OPhimEpisode> ServerData);
-    private sealed record OPhimEpisode(string? Name, [property: JsonPropertyName("link_m3u8")] string? LinkM3u8);
+    private sealed record OPhimDetailItem(string Content, IReadOnlyList<OPhimServer> Episodes);
+    private sealed record OPhimServer([property: JsonPropertyName("server_data")] IReadOnlyList<OPhimServerData> ServerData);
+    private sealed record OPhimServerData(string Name, [property: JsonPropertyName("link_m3u8")] string LinkM3u8);
+
     private sealed record FetchedDetail(string Slug, string? Content, IReadOnlyList<OPhimServer> Episodes);
+
+    [GeneratedRegex("<[^>]+>")]
+    private static partial Regex HtmlRegex();
+
+    [GeneratedRegex("\\d+")]
+    private static partial Regex MinutesRegex();
 }

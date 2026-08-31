@@ -1,25 +1,29 @@
 using Microsoft.EntityFrameworkCore;
 using ZMovie.Domain.Catalog;
-using ZMovie.Infrastructure.Persistence;
+using ZMovie.Infrastructure.Catalog.Persistence;
 
 namespace ZMovie.Infrastructure.Seed;
 
 public static class CatalogSeed
 {
-    public static async Task SeedAsync(CatalogDbContext db, CancellationToken ct = default)
-    {
-        var natra = await EnsureTitle(db, Create("natra-2-ma-dong-nao-hai", "Ne Zha 2: Demon Child Rages the Sea", "Natra 2: Ma Đồng Náo Hải", "Ne Zha faces a new trial across the sea.", "Natra đối diện thử thách mới giữa biển khơi.", "Animation", 2025, "movie", "https://upload.wikimedia.org/wikipedia/en/b/b6/Ne_Zha_2_poster.jpg", 144, true), ct);
-        var mushoku = await EnsureTitle(db, Create("that-nghiep-chuyen-sinh-phan-3", "Mushoku Tensei Season 3", "Thất nghiệp chuyển sinh phần 3", "Rudeus continues his journey in a new chapter.", "Rudeus tiếp tục hành trình của mình trong chương mới.", "Animation", 2026, "series", "https://static.animecorner.me/2026/05/1779187746-6b497063174d0afdd8395904b6919d82.jpg", 24, true), ct);
-        var translateLove = await EnsureTitle(db, Create("tieng-yeu-nay-anh-dich-duoc-khong", "Can This Love Be Translated?", "Tiếng yêu này, anh dịch được không?", "A celebrity and her interpreter struggle to make sense of their feelings while traveling the world to film a television show.", "Cảm xúc của một ngôi sao và phiên dịch viên của cô dễ lạc mất ý nghĩa khi họ cùng đi khắp thế giới để quay một chương trình truyền hình. Liệu tình yêu có tự tìm được ngôn ngữ riêng?", "Romance", 2026, "series", "https://occ-0-325-395.1.nflxso.net/dnm/api/v6/6AYY37jfdO6hpXcMjf9Yu5cnmO0/AAAABb3rnuwKYw2K1nEKI24J2BZCyTcttUmJkw9EXzIDUyH7wAqOU_WgR6nfWzXIaZOQADepqvSIZ_r0cu6ruYLasOwCCJrOf_jDLCai.jpg?r=605", 60, false), ct);
-        var heavyKnight = await EnsureTitle(db, Create("trong-giap-hiep-si-chuyen-sinh", "The Exiled Heavy Knight Knows How to Game the System", "Trọng Giáp Hiệp Sĩ Chuyển Sinh Bị Lưu Đày Trở Nên Vô Địch Nhờ Kiến Thức Về Game", "Born into a famous swordsman family, Elymas is disowned after awakening as a supposedly defective Heavy Knight. Memories of a past life reveal that this world is the VR game he once mastered, giving him the knowledge to rewrite his fate.", "Sinh ra trong gia tộc kiếm sĩ danh giá, Elymas bị ruồng bỏ khi thức tỉnh thành Trọng Giáp Hiệp Sĩ bị cho là vô dụng. Ký ức kiếp trước cho cậu biết đây chính là thế giới VR game từng chinh phục, giúp cậu viết lại số phận.", "Animation", 2026, "series", "https://sh-anime.shochiku.co.jp/jukishi-anime/img/ju_ogp_1.jpg", 24, false), ct);
-        var mushokuPart1 = await EnsureTitle(db, Create("that-nghiep-chuyen-sinh-phan-1", "Mushoku Tensei: Jobless Reincarnation", "Thất Nghiệp Chuyển Sinh - Phần 1", "A man is reborn in a magical world and resolves to live a life without regrets.", "Một người đàn ông tái sinh ở thế giới phép thuật và quyết tâm sống cuộc đời không hối tiếc.", "Animation", 2021, "series", "https://images.unsplash.com/photo-1518709594023-6eab9bab7b23?auto=format&fit=crop&w=1200&q=80", 24, false), ct);
-        var mushokuPart2 = await EnsureTitle(db, Create("that-nghiep-chuyen-sinh-phan-2", "Mushoku Tensei: Jobless Reincarnation Season 2 Part 2", "Thất Nghiệp Chuyển Sinh - Phần 2", "Rudeus continues his adventure as new bonds and challenges shape his path.", "Rudeus tiếp tục cuộc phiêu lưu khi những mối gắn kết và thử thách mới định hình con đường của cậu.", "Animation", 2024, "series", "https://images.unsplash.com/photo-1518709594023-6eab9bab7b23?auto=format&fit=crop&w=1200&q=80", 24, false), ct);
-        var teachYouLesson = await EnsureTitle(db, Create("bai-hoc-dang-doi", "Teach You a Lesson", "Bài Học Đáng Đời", "When respect collapses in schools, unconventional inspectors arrive to set things right with sharp, no-nonsense lessons.", "Khi sự tôn trọng trong trường học sụp đổ, những thanh tra không theo lối mòn xuất hiện để lập lại trật tự bằng những bài học thẳng thắn, không có trong sách giáo khoa.", "Action & Drama", 2026, "series", "https://occ-0-325-395.1.nflxso.net/dnm/api/v6/6AYY37jfdO6hpXcMjf9Yu5cnmO0/AAAABQ3AcAl3rz1Wl2YD0IA2m2FktFVwjArejUBWmfEpDn2RKx5RQHQFGvY3ugc-f_cTJzWhw3tYban2fnpPSVbSE_SbRBnNVXGZUz8G.jpg?r=38b", 52, false), ct);
+    public static async Task SeedAsync(CatalogDbContext db, CancellationToken ct = default) =>
+        await SeedAsync(db, TimeProvider.System, ct);
 
-        await EnsureTitle(db, Create("ben-kia-man-suong", "Beyond the Mist", "Bên Kia Màn Sương", "A quiet village hides a forgotten secret when a young cartographer follows a trail through the mountains.", "Một ngôi làng yên bình che giấu bí mật bị lãng quên khi một nhà vẽ bản đồ trẻ lần theo dấu vết xuyên qua núi rừng.", "Mystery, Adventure", 2026, "movie", "https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=1200&q=80", 118, true), ct);
-        await EnsureTitle(db, Create("tin-hieu-cuoi-cung", "The Last Signal", "Tín Hiệu Cuối Cùng", "An astronaut receives one impossible message from a station that vanished beyond the edge of the solar system.", "Một phi hành gia nhận được thông điệp không thể tồn tại từ trạm không gian đã biến mất ngoài rìa hệ Mặt Trời.", "Science Fiction, Thriller", 2026, "movie", "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?auto=format&fit=crop&w=1200&q=80", 126, true), ct);
-        await EnsureTitle(db, Create("mua-he-cuoi-hem", "Summer on the Corner", "Mùa Hè Cuối Hẻm", "Old friends return to a small neighborhood and discover that growing up does not mean leaving everything behind.", "Những người bạn cũ trở về khu phố nhỏ và nhận ra trưởng thành không có nghĩa là phải bỏ lại mọi thứ phía sau.", "Romance, Family", 2025, "series", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80", 48, true), ct);
-        await EnsureTitle(db, Create("ve-binh-ngan-ha", "Guardians of the Starlight", "Vệ Binh Ngân Hà", "A mismatched crew races across the stars to protect a world that has no idea it is in danger.", "Một đội phi hành đoàn bất đắc dĩ chạy đua giữa các vì sao để bảo vệ một thế giới chưa hề biết mình đang gặp nguy hiểm.", "Action, Science Fiction, Adventure", 2026, "series", "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=1200&q=80", 46, true), ct);
+    public static async Task SeedAsync(CatalogDbContext db, TimeProvider timeProvider, CancellationToken ct = default)
+    {
+        var now = timeProvider.GetUtcNow();
+        var natra = await EnsureTitle(db, Create("natra-2-ma-dong-nao-hai", "Ne Zha 2: Demon Child Rages the Sea", "Natra 2: Ma Đồng Náo Hải", "Ne Zha faces a new trial across the sea.", "Natra đối diện thử thách mới giữa biển khơi.", "Animation", 2025, "movie", "https://upload.wikimedia.org/wikipedia/en/b/b6/Ne_Zha_2_poster.jpg", 144, true, now), now, ct);
+        var mushoku = await EnsureTitle(db, Create("that-nghiep-chuyen-sinh-phan-3", "Mushoku Tensei Season 3", "Thất nghiệp chuyển sinh phần 3", "Rudeus continues his journey in a new chapter.", "Rudeus tiếp tục hành trình của mình trong chương mới.", "Animation", 2026, "series", "https://static.animecorner.me/2026/05/1779187746-6b497063174d0afdd8395904b6919d82.jpg", 24, true, now), now, ct);
+        var translateLove = await EnsureTitle(db, Create("tieng-yeu-nay-anh-dich-duoc-khong", "Can This Love Be Translated?", "Tiếng yêu này, anh dịch được không?", "A celebrity and her interpreter struggle to make sense of their feelings while traveling the world to film a television show.", "Cảm xúc của một ngôi sao và phiên dịch viên của cô dễ lạc mất ý nghĩa khi họ cùng đi khắp thế giới để quay một chương trình truyền hình. Liệu tình yêu có tự tìm được ngôn ngữ riêng?", "Romance", 2026, "series", "https://occ-0-325-395.1.nflxso.net/dnm/api/v6/6AYY37jfdO6hpXcMjf9Yu5cnmO0/AAAABb3rnuwKYw2K1nEKI24J2BZCyTcttUmJkw9EXzIDUyH7wAqOU_WgR6nfWzXIaZOQADepqvSIZ_r0cu6ruYLasOwCCJrOf_jDLCai.jpg?r=605", 60, false, now), now, ct);
+        var heavyKnight = await EnsureTitle(db, Create("trong-giap-hiep-si-chuyen-sinh", "The Exiled Heavy Knight Knows How to Game the System", "Trọng Giáp Hiệp Sĩ Chuyển Sinh Bị Lưu Đày Trở Nên Vô Địch Nhờ Kiến Thức Về Game", "Born into a famous swordsman family, Elymas is disowned after awakening as a supposedly defective Heavy Knight. Memories of a past life reveal that this world is the VR game he once mastered, giving him the knowledge to rewrite his fate.", "Sinh ra trong gia tộc kiếm sĩ danh giá, Elymas bị ruồng bỏ khi thức tỉnh thành Trọng Giáp Hiệp Sĩ bị cho là vô dụng. Ký ức kiếp trước cho cậu biết đây chính là thế giới VR game từng chinh phục, giúp cậu viết lại số phận.", "Animation", 2026, "series", "https://sh-anime.shochiku.co.jp/jukishi-anime/img/ju_ogp_1.jpg", 24, false, now), now, ct);
+        var mushokuPart1 = await EnsureTitle(db, Create("that-nghiep-chuyen-sinh-phan-1", "Mushoku Tensei: Jobless Reincarnation", "Thất Nghiệp Chuyển Sinh - Phần 1", "A man is reborn in a magical world and resolves to live a life without regrets.", "Một người đàn ông tái sinh ở thế giới phép thuật và quyết tâm sống cuộc đời không hối tiếc.", "Animation", 2021, "series", "https://images.unsplash.com/photo-1518709594023-6eab9bab7b23?auto=format&fit=crop&w=1200&q=80", 24, false, now), now, ct);
+        var mushokuPart2 = await EnsureTitle(db, Create("that-nghiep-chuyen-sinh-phan-2", "Mushoku Tensei: Jobless Reincarnation Season 2 Part 2", "Thất Nghiệp Chuyển Sinh - Phần 2", "Rudeus continues his adventure as new bonds and challenges shape his path.", "Rudeus tiếp tục cuộc phiêu lưu khi những mối gắn kết và thử thách mới định hình con đường của cậu.", "Animation", 2024, "series", "https://images.unsplash.com/photo-1518709594023-6eab9bab7b23?auto=format&fit=crop&w=1200&q=80", 24, false, now), now, ct);
+        var teachYouLesson = await EnsureTitle(db, Create("bai-hoc-dang-doi", "Teach You a Lesson", "Bài Học Đáng Đời", "When respect collapses in schools, unconventional inspectors arrive to set things right with sharp, no-nonsense lessons.", "Khi sự tôn trọng trong trường học sụp đổ, những thanh tra không theo lối mòn xuất hiện để lập lại trật tự bằng những bài học thẳng thắn, không có trong sách giáo khoa.", "Action & Drama", 2026, "series", "https://occ-0-325-395.1.nflxso.net/dnm/api/v6/6AYY37jfdO6hpXcMjf9Yu5cnmO0/AAAABQ3AcAl3rz1Wl2YD0IA2m2FktFVwjArejUBWmfEpDn2RKx5RQHQFGvY3ugc-f_cTJzWhw3tYban2fnpPSVbSE_SbRBnNVXGZUz8G.jpg?r=38b", 52, false, now), now, ct);
+
+        await EnsureTitle(db, Create("ben-kia-man-suong", "Beyond the Mist", "Bên Kia Màn Sương", "A quiet village hides a forgotten secret when a young cartographer follows a trail through the mountains.", "Một ngôi làng yên bình che giấu bí mật bị lãng quên khi một nhà vẽ bản đồ trẻ lần theo dấu vết xuyên qua núi rừng.", "Mystery, Adventure", 2026, "movie", "https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=1200&q=80", 118, true, now), now, ct);
+        await EnsureTitle(db, Create("tin-hieu-cuoi-cung", "The Last Signal", "Tín Hiệu Cuối Cùng", "An astronaut receives one impossible message from a station that vanished beyond the edge of the solar system.", "Một phi hành gia nhận được thông điệp không thể tồn tại từ trạm không gian đã biến mất ngoài rìa hệ Mặt Trời.", "Science Fiction, Thriller", 2026, "movie", "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?auto=format&fit=crop&w=1200&q=80", 126, true, now), now, ct);
+        await EnsureTitle(db, Create("mua-he-cuoi-hem", "Summer on the Corner", "Mùa Hè Cuối Hẻm", "Old friends return to a small neighborhood and discover that growing up does not mean leaving everything behind.", "Những người bạn cũ trở về khu phố nhỏ và nhận ra trưởng thành không có nghĩa là phải bỏ lại mọi thứ phía sau.", "Romance, Family", 2025, "series", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80", 48, true, now), now, ct);
+        await EnsureTitle(db, Create("ve-binh-ngan-ha", "Guardians of the Starlight", "Vệ Binh Ngân Hà", "A mismatched crew races across the stars to protect a world that has no idea it is in danger.", "Một đội phi hành đoàn bất đắc dĩ chạy đua giữa các vì sao để bảo vệ một thế giới chưa hề biết mình đang gặp nguy hiểm.", "Action, Science Fiction, Adventure", 2026, "series", "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=1200&q=80", 46, true, now), now, ct);
 
         await EnsureEpisodes(db, natra, ["https://vip.opstream90.com/20250731/9896_dd1970fb/index.m3u8"], ct);
         await EnsureEpisodes(db, mushoku, ["https://vip.opstream90.com/20260705/36184_705dd9f9/index.m3u8", "https://vip.opstream90.com/20260705/36185_f0260654/index.m3u8", "https://vip.opstream10.com/20260720/34407_ee79d5e1/index.m3u8", "https://vip.opstream10.com/20260720/34408_8f8f6380/index.m3u8"], ct);
@@ -30,34 +34,47 @@ public static class CatalogSeed
         await db.SaveChangesAsync(ct);
     }
 
-    private static async Task<CatalogTitle> EnsureTitle(CatalogDbContext db, CatalogTitle candidate, CancellationToken ct)
+    private static async Task<Title> EnsureTitle(CatalogDbContext db, Title candidate, DateTimeOffset now, CancellationToken ct)
     {
         var existing = await db.Titles.FirstOrDefaultAsync(x => x.Slug == candidate.Slug, ct);
         if (existing is null) return (await db.Titles.AddAsync(candidate, ct)).Entity;
-        existing.EnglishTitle = candidate.EnglishTitle;
-        existing.VietnameseTitle = candidate.VietnameseTitle;
-        existing.EnglishSynopsis = candidate.EnglishSynopsis;
-        existing.VietnameseSynopsis = candidate.VietnameseSynopsis;
-        existing.Genre = candidate.Genre;
-        existing.Year = candidate.Year;
-        existing.Type = candidate.Type;
-        existing.PosterUrl = candidate.PosterUrl;
-        existing.RuntimeMinutes = candidate.RuntimeMinutes;
-        existing.Featured = candidate.Featured;
-        existing.UpdatedAt = DateTimeOffset.UtcNow;
+        existing.UpdateMetadata(
+            candidate.TitleName,
+            candidate.Synopsis,
+            candidate.Genre,
+            candidate.Year,
+            candidate.Type,
+            candidate.PosterUrl,
+            candidate.Runtime,
+            candidate.Featured,
+            now);
         return existing;
     }
 
-    private static async Task EnsureEpisodes(CatalogDbContext db, CatalogTitle title, IReadOnlyList<string> urls, CancellationToken ct)
+    private static async Task EnsureEpisodes(CatalogDbContext db, Title title, IReadOnlyList<string> urls, CancellationToken ct)
     {
         var existingNumbers = await db.Episodes.Where(x => x.TitleId == title.Id).Select(x => x.Number).ToListAsync(ct);
         for (var index = 0; index < urls.Count; index++)
         {
             var number = index + 1;
-            if (!existingNumbers.Contains(number)) db.Episodes.Add(new CatalogEpisode { TitleId = title.Id, Number = number, Name = $"Episode {number}", HlsUrl = urls[index] });
+            if (!existingNumbers.Contains(number))
+            {
+                db.Episodes.Add(Episode.Create(EpisodeId.New(), title.Id, number, $"Episode {number}", urls[index]));
+            }
         }
     }
 
-    private static CatalogTitle Create(string slug, string englishTitle, string vietnameseTitle, string englishSynopsis, string vietnameseSynopsis, string genre, int year, string type, string posterUrl, int runtimeMinutes, bool featured) => new()
-    { Slug = slug, EnglishTitle = englishTitle, VietnameseTitle = vietnameseTitle, EnglishSynopsis = englishSynopsis, VietnameseSynopsis = vietnameseSynopsis, Genre = genre, Year = year, Type = type, PosterUrl = posterUrl, RuntimeMinutes = runtimeMinutes, Featured = featured };
+    private static Title Create(string slug, string englishTitle, string vietnameseTitle, string englishSynopsis, string vietnameseSynopsis, string genre, int year, string type, string posterUrl, int runtimeMinutes, bool featured, DateTimeOffset now) =>
+        Title.Create(
+            TitleId.New(),
+            TitleSlug.Parse(slug),
+            new LocalizedText(vietnameseTitle, englishTitle),
+            new LocalizedText(vietnameseSynopsis, englishSynopsis),
+            genre,
+            ReleaseYear.FromInt(year),
+            TitleType.Normalize(type),
+            posterUrl,
+            Runtime.FromMinutes(runtimeMinutes),
+            featured,
+            now);
 }

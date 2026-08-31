@@ -1,50 +1,42 @@
-using Microsoft.EntityFrameworkCore;
 using ZMovie.Application.Assistant;
 using ZMovie.Application.Catalog;
 using ZMovie.Application.Engagement;
-using ZMovie.Infrastructure.Persistence;
+using ZMovie.Application.Personalization;
+using EngagementUserId = ZMovie.Domain.Engagement.UserId;
+using PersonalizationUserId = ZMovie.Domain.Personalization.UserId;
 
 namespace ZMovie.Infrastructure.Assistant;
 
-public sealed class CatalogAssistantStore : ICatalogAssistantStore
+public sealed class CatalogAssistantStore(
+    ILibraryCatalogReader catalog,
+    IUserLibraryQueries library,
+    IRecommendationEngine recommender,
+    IPersonalizationQueries? personalization = null,
+    TimeProvider? timeProvider = null) : ICatalogAssistantStore
 {
-    private readonly CatalogDbContext _db;
-    private readonly IUserLibraryStore? _library;
-    private readonly ILibraryCatalogReader? _catalog;
-    private readonly IRecommendationEngine? _recommender;
-    private readonly IAssistantLearningStore? _learning;
-
-    public CatalogAssistantStore(CatalogDbContext db) => _db = db;
-
-    public CatalogAssistantStore(CatalogDbContext db, IUserLibraryStore library, ILibraryCatalogReader catalog, IRecommendationEngine recommender, IAssistantLearningStore? learning = null)
-    {
-        _db = db;
-        _library = library;
-        _catalog = catalog;
-        _recommender = recommender;
-        _learning = learning;
-    }
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
     public async Task<IReadOnlyList<AssistantCatalogTitle>> SearchAsync(Guid userId, string message, string locale, int limit, CancellationToken ct)
     {
         var tokens = AssistantMood.SearchTermWeights(message);
         if (tokens.Count == 0) return [];
 
-        if (_library is null || _catalog is null || _recommender is null)
-            return await SearchCatalogAsync(tokens, locale, limit, ct);
+        var saved = await library.ListSavedAsync(new EngagementUserId(userId), ct);
+        var history = await library.ListHistoryAsync(new EngagementUserId(userId), ct);
+        var candidates = await catalog.GetRecommendationCandidatesAsync(locale, ct);
 
-        var saved = await _library.GetSavedAsync(userId, ct);
-        var history = await _library.GetHistoryAsync(userId, ct);
-        var candidates = await _catalog.GetRecommendationCandidatesAsync(locale, ct);
         var profile = saved.Select(x => new RecommendationSeed(x.TitleId, 1))
             .Concat(history.Select(x => new RecommendationSeed(x.TitleId, 3))).ToList();
         var excluded = saved.Select(x => x.TitleId).Concat(history.Select(x => x.TitleId)).ToHashSet();
+
         var personalizedIds = profile.Count == 0
             ? []
-            : _recommender.Recommend(candidates, profile, excluded, Math.Max(limit * 3, 12)).ToHashSet();
-        var learnedScores = _learning is null
+            : recommender.Recommend(candidates, profile, excluded, Math.Max(limit * 3, 12)).ToHashSet();
+
+        var now = _timeProvider.GetUtcNow();
+        var learnedScores = personalization is null
             ? new Dictionary<Guid, double>()
-            : await _learning.GetTitleScoresAsync(userId, tokens, ct);
+            : await personalization.GetTitleScoresAsync(new PersonalizationUserId(userId), tokens, now, ct);
 
         return candidates.Select(candidate => new
         {
@@ -52,18 +44,12 @@ public sealed class CatalogAssistantStore : ICatalogAssistantStore
             Score = Score(candidate, tokens) + (personalizedIds.Contains(candidate.TitleId) ? 4 : 0)
                 + Math.Clamp(learnedScores.GetValueOrDefault(candidate.TitleId), -6, 6),
         })
-            .Where(x => x.Score > 0).OrderByDescending(x => x.Score).ThenByDescending(x => x.Item.Title.Year).Take(limit).Select(x => x.Item).ToList();
-    }
-
-    private async Task<IReadOnlyList<AssistantCatalogTitle>> SearchCatalogAsync(IReadOnlyDictionary<string, int> tokens, string locale, int limit, CancellationToken ct)
-    {
-        var titles = await _db.Titles.AsNoTracking().ToListAsync(ct);
-        return titles.Select(title => new
-        {
-            Item = new AssistantCatalogTitle(new TitleSummary(title.Slug, title.LocalizedTitle(locale), title.Genre, title.Year, title.Type, title.PosterUrl), title.LocalizedSynopsis(locale)),
-            Score = Score(title.LocalizedTitle(locale), title.Genre, title.LocalizedSynopsis(locale), tokens),
-        })
-            .Where(x => x.Score > 0).OrderByDescending(x => x.Score).ThenByDescending(x => x.Item.Title.Year).Take(limit).Select(x => x.Item).ToList();
+            .Where(x => x.Score > 0)
+            .OrderByDescending(x => x.Score)
+            .ThenByDescending(x => x.Item.Title.Year)
+            .Take(limit)
+            .Select(x => x.Item)
+            .ToList();
     }
 
     private static AssistantCatalogTitle ToAssistantTitle(RecommendationCandidate candidate) =>

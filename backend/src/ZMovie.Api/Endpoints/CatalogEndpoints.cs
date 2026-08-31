@@ -1,6 +1,7 @@
 using MediatR;
 using System.Security.Claims;
 using ZMovie.Api;
+using ZMovie.Application.Analytics;
 using ZMovie.Application.Catalog;
 using ZMovie.Application.Engagement;
 
@@ -31,7 +32,7 @@ public static class CatalogEndpoints
             .Produces<PlaybackResponse>(StatusCodes.Status200OK)
             .ProducesApiErrors();
         catalog.MapPost("/titles/{slug}/views", async (ISender sender, HttpContext context, string slug, RecordTitleViewRequest request, CancellationToken ct) =>
-                (await sender.Send(new RecordTitleViewCommand(slug, UserIdOrNull(context), AnalyticsSessionId(context), request.EpisodeNumber), ct)).ToApiResult())
+                (await sender.Send(new RecordTitleViewCommand(slug, UserIdentityAdapter.GetUserIdOrNull(context.User), UserIdentityAdapter.GetOrCreateAnalyticsSessionId(context), request.EpisodeNumber), ct)).ToApiResult())
             .Produces<ViewRecordedResponse>(StatusCodes.Status200OK)
             .ProducesApiErrors();
         catalog.MapGet("/titles/{slug}/reviews", async (ISender sender, string slug, CancellationToken ct) =>
@@ -40,25 +41,6 @@ public static class CatalogEndpoints
             .ProducesApiErrors();
 
         return endpoints;
-    }
-
-    private static Guid? UserIdOrNull(HttpContext context) =>
-        Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null;
-
-    private static string AnalyticsSessionId(HttpContext context)
-    {
-        const string cookieName = "zmovie.analytics-session";
-        if (context.Request.Cookies.TryGetValue(cookieName, out var sessionId) && Guid.TryParse(sessionId, out _)) return sessionId;
-
-        sessionId = Guid.CreateVersion7().ToString("N");
-        context.Response.Cookies.Append(cookieName, sessionId, new CookieOptions
-        {
-            HttpOnly = true,
-            SameSite = SameSiteMode.Lax,
-            Secure = context.Request.IsHttps,
-            MaxAge = TimeSpan.FromDays(30),
-        });
-        return sessionId;
     }
 }
 

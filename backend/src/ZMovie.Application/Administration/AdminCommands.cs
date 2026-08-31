@@ -1,8 +1,10 @@
 using ErrorOr;
 using FluentValidation;
 using MediatR;
+using ZMovie.Application.Catalog;
 using ZMovie.Application.Common;
-using ZMovie.Domain.Identity;
+using ZMovie.Application.Identity;
+using Role = ZMovie.Domain.Identity.Role;
 
 namespace ZMovie.Application.Administration;
 
@@ -34,7 +36,7 @@ public sealed class UpdateAdminTitleValidator : AbstractValidator<UpdateAdminTit
     private static bool BeAnHttpUrl(string? value) =>
         Uri.TryCreate(value, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 }
-public sealed class UpdateAdminTitleHandler(IAdminStore store) : IRequestHandler<UpdateAdminTitleCommand, ErrorOr<AdminTitleDetail>>
+public sealed class UpdateAdminTitleHandler(ICatalogAdministrationService catalogAdmin) : IRequestHandler<UpdateAdminTitleCommand, ErrorOr<AdminTitleDetail>>
 {
     public async Task<ErrorOr<AdminTitleDetail>> Handle(UpdateAdminTitleCommand request, CancellationToken ct)
     {
@@ -48,7 +50,7 @@ public sealed class UpdateAdminTitleHandler(IAdminStore store) : IRequestHandler
             Type = request.Edit.Type.Trim().ToLowerInvariant(),
             PosterUrl = request.Edit.PosterUrl.Trim(),
         };
-        return await store.UpdateTitleAsync(request.Slug.Trim(), edit, ct) is { } title
+        return await catalogAdmin.UpdateTitleAsync(request.Slug.Trim(), edit, ct) is { } title
             ? title
             : Error.NotFound("admin.title.not_found", "Catalog title not found.");
     }
@@ -59,10 +61,10 @@ public sealed class SetAdminTitleFeaturedValidator : AbstractValidator<SetAdminT
 {
     public SetAdminTitleFeaturedValidator() => RuleFor(x => x.Slug).NotEmpty().MaximumLength(160);
 }
-public sealed class SetAdminTitleFeaturedHandler(IAdminStore store) : IRequestHandler<SetAdminTitleFeaturedCommand, ErrorOr<AdminTitleDetail>>
+public sealed class SetAdminTitleFeaturedHandler(ICatalogAdministrationService catalogAdmin) : IRequestHandler<SetAdminTitleFeaturedCommand, ErrorOr<AdminTitleDetail>>
 {
     public async Task<ErrorOr<AdminTitleDetail>> Handle(SetAdminTitleFeaturedCommand request, CancellationToken ct) =>
-        await store.SetTitleFeaturedAsync(request.Slug.Trim(), request.Featured, ct) is { } title
+        await catalogAdmin.SetTitleFeaturedAsync(request.Slug.Trim(), request.Featured, ct) is { } title
             ? title
             : Error.NotFound("admin.title.not_found", "Catalog title not found.");
 }
@@ -72,10 +74,10 @@ public sealed class DeleteAdminTitleValidator : AbstractValidator<DeleteAdminTit
 {
     public DeleteAdminTitleValidator() => RuleFor(x => x.Slug).NotEmpty().MaximumLength(160);
 }
-public sealed class DeleteAdminTitleHandler(IAdminStore store) : IRequestHandler<DeleteAdminTitleCommand, ErrorOr<bool>>
+public sealed class DeleteAdminTitleHandler(IAdminTitleDeletionCoordinator coordinator) : IRequestHandler<DeleteAdminTitleCommand, ErrorOr<bool>>
 {
     public async Task<ErrorOr<bool>> Handle(DeleteAdminTitleCommand request, CancellationToken ct) =>
-        await store.DeleteTitleAsync(request.Slug.Trim(), ct)
+        await coordinator.DeleteTitleAsync(request.Slug.Trim(), ct)
             ? true
             : Error.NotFound("admin.title.not_found", "Catalog title not found.");
 }
@@ -86,46 +88,31 @@ public sealed class SetUserRoleValidator : AbstractValidator<SetUserRoleCommand>
     public SetUserRoleValidator()
     {
         RuleFor(x => x.UserId).NotEmpty();
-        RuleFor(x => x.Role).Must(ZMovieRoles.IsKnown).WithMessage("Role must be 'member' or 'admin'.");
+        RuleFor(x => x.Role).Must(Role.IsKnown).WithMessage("Role must be 'member' or 'admin'.");
     }
 }
-public sealed class SetUserRoleHandler(IAdminStore store) : IRequestHandler<SetUserRoleCommand, ErrorOr<AdminUserSummary>>
+public sealed class SetUserRoleHandler(IUserRepository users, IAdminDashboardQueries queries) : IRequestHandler<SetUserRoleCommand, ErrorOr<AdminUserSummary>>
 {
     public async Task<ErrorOr<AdminUserSummary>> Handle(SetUserRoleCommand request, CancellationToken ct)
     {
-        var role = ZMovieRoles.Normalize(request.Role);
-        var target = await store.GetUserAsync(request.UserId, ct);
+        var role = Role.Normalize(request.Role);
+        var target = await queries.GetUserAsync(request.UserId, ct);
         if (target is null) return Error.NotFound("admin.user.not_found", "User not found.");
-        if (string.Equals(target.Role, role, StringComparison.Ordinal)) return target;
+        if (string.Equals(target.Role, role.Value, StringComparison.Ordinal)) return target;
 
-        var isDemotion = ZMovieRoles.IsAdmin(target.Role) && !ZMovieRoles.IsAdmin(role);
+        var isDemotion = Role.Normalize(target.Role).IsAdmin && !role.IsAdmin;
         // Locking yourself out of /v1/admin is not recoverable through the UI.
         if (isDemotion && request.ActorId == request.UserId)
             return Error.Forbidden("admin.user.self_demotion", "You cannot remove your own admin role.");
 
-        // The last-admin check runs inside the store's write transaction, not here, so it
-        // cannot be defeated by two concurrent demotions each reading a stale count.
-        var result = await store.SetUserRoleAsync(request.UserId, role, isDemotion, ct);
-        return result.Outcome switch
+        var outcome = await users.ChangeRoleWithLastAdminGuardAsync(new Domain.Identity.UserId(request.UserId), role, isDemotion, ct);
+        return outcome switch
         {
-            SetRoleOutcome.Updated => result.User!,
+            SetRoleOutcome.Updated => (await queries.GetUserAsync(request.UserId, ct))!,
             SetRoleOutcome.LastAdmin => Error.Conflict("admin.user.last_admin", "The last remaining admin cannot be demoted."),
             _ => Error.NotFound("admin.user.not_found", "User not found."),
         };
     }
-}
-
-public sealed record DeleteAdminReviewCommand(Guid ReviewId) : ICommand<bool>;
-public sealed class DeleteAdminReviewValidator : AbstractValidator<DeleteAdminReviewCommand>
-{
-    public DeleteAdminReviewValidator() => RuleFor(x => x.ReviewId).NotEmpty();
-}
-public sealed class DeleteAdminReviewHandler(IAdminStore store) : IRequestHandler<DeleteAdminReviewCommand, ErrorOr<bool>>
-{
-    public async Task<ErrorOr<bool>> Handle(DeleteAdminReviewCommand request, CancellationToken ct) =>
-        await store.DeleteReviewAsync(request.ReviewId, ct)
-            ? true
-            : Error.NotFound("admin.review.not_found", "Review not found.");
 }
 
 public sealed record CreateAdminGenreCommand(string Slug, string Name) : ICommand<AdminGenreSummary>;
@@ -138,10 +125,10 @@ public sealed class CreateAdminGenreValidator : AbstractValidator<CreateAdminGen
         RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
     }
 }
-public sealed class CreateAdminGenreHandler(IAdminStore store) : IRequestHandler<CreateAdminGenreCommand, ErrorOr<AdminGenreSummary>>
+public sealed class CreateAdminGenreHandler(ICatalogAdministrationService catalogAdmin) : IRequestHandler<CreateAdminGenreCommand, ErrorOr<AdminGenreSummary>>
 {
     public async Task<ErrorOr<AdminGenreSummary>> Handle(CreateAdminGenreCommand request, CancellationToken ct) =>
-        await store.CreateGenreAsync(request.Slug.Trim().ToLowerInvariant(), request.Name.Trim(), ct) is { } genre
+        await catalogAdmin.CreateGenreAsync(request.Slug.Trim().ToLowerInvariant(), request.Name.Trim(), ct) is { } genre
             ? genre
             : Error.Conflict("admin.genre.duplicate_slug", "A genre with that slug already exists.");
 }
@@ -155,10 +142,10 @@ public sealed class UpdateAdminGenreValidator : AbstractValidator<UpdateAdminGen
         RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
     }
 }
-public sealed class UpdateAdminGenreHandler(IAdminStore store) : IRequestHandler<UpdateAdminGenreCommand, ErrorOr<AdminGenreSummary>>
+public sealed class UpdateAdminGenreHandler(ICatalogAdministrationService catalogAdmin) : IRequestHandler<UpdateAdminGenreCommand, ErrorOr<AdminGenreSummary>>
 {
     public async Task<ErrorOr<AdminGenreSummary>> Handle(UpdateAdminGenreCommand request, CancellationToken ct) =>
-        await store.UpdateGenreAsync(request.Id, request.Name.Trim(), ct) is { } genre
+        await catalogAdmin.UpdateGenreAsync(request.Id, request.Name.Trim(), ct) is { } genre
             ? genre
             : Error.NotFound("admin.genre.not_found", "Genre not found.");
 }
@@ -168,10 +155,10 @@ public sealed class DeleteAdminGenreValidator : AbstractValidator<DeleteAdminGen
 {
     public DeleteAdminGenreValidator() => RuleFor(x => x.Id).NotEmpty();
 }
-public sealed class DeleteAdminGenreHandler(IAdminStore store) : IRequestHandler<DeleteAdminGenreCommand, ErrorOr<bool>>
+public sealed class DeleteAdminGenreHandler(ICatalogAdministrationService catalogAdmin) : IRequestHandler<DeleteAdminGenreCommand, ErrorOr<bool>>
 {
     public async Task<ErrorOr<bool>> Handle(DeleteAdminGenreCommand request, CancellationToken ct) =>
-        await store.DeleteGenreAsync(request.Id, ct)
+        await catalogAdmin.DeleteGenreAsync(request.Id, ct)
             ? true
             : Error.NotFound("admin.genre.not_found", "Genre not found.");
 }

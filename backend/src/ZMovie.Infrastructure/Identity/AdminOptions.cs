@@ -1,3 +1,5 @@
+using ZMovie.Application.Identity;
+
 namespace ZMovie.Infrastructure.Identity;
 
 /// <summary>
@@ -6,7 +8,7 @@ namespace ZMovie.Infrastructure.Identity;
 /// A user whose verified Google email matches an entry is promoted to admin on every sign-in.
 /// Removing an entry does not demote anyone — revoke through the admin UI instead.
 /// </summary>
-public sealed class AdminOptions
+public sealed class AdminOptions : IAdminAllowlist
 {
     public IReadOnlyList<string> Emails { get; set; } = [];
 

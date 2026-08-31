@@ -1,0 +1,11 @@
+{
+  "viewport": "desktop",
+  "route": "/gioi-thieu",
+  "url": "https://cobephim.pro/gioi-thieu",
+  "files": [
+    "desktop/homegioi-thieu/full-page.png",
+    "desktop/homegioi-thieu/viewport.png"
+  ],
+  "states": [],
+  "title": "Giới Thiệu - CôBe Phim"
+}

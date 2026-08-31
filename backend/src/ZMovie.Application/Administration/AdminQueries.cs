@@ -2,7 +2,7 @@ using ErrorOr;
 using FluentValidation;
 using MediatR;
 using ZMovie.Application.Common;
-using ZMovie.Domain.Identity;
+using Role = ZMovie.Domain.Identity.Role;
 
 namespace ZMovie.Application.Administration;
 
@@ -16,9 +16,9 @@ public static class AdminPaging
 }
 
 public sealed record GetAdminOverviewQuery : IQuery<AdminOverview>;
-public sealed class GetAdminOverviewHandler(IAdminStore store) : IRequestHandler<GetAdminOverviewQuery, ErrorOr<AdminOverview>>
+public sealed class GetAdminOverviewHandler(IAdminDashboardQueries queries) : IRequestHandler<GetAdminOverviewQuery, ErrorOr<AdminOverview>>
 {
-    public async Task<ErrorOr<AdminOverview>> Handle(GetAdminOverviewQuery request, CancellationToken ct) => await store.GetOverviewAsync(ct);
+    public async Task<ErrorOr<AdminOverview>> Handle(GetAdminOverviewQuery request, CancellationToken ct) => await queries.GetOverviewAsync(ct);
 }
 
 public sealed record ListAdminTitlesQuery(string? Query, string? Genre, string? Type, bool? Featured, int? Page, int? PageSize) : IQuery<PagedResult<AdminTitleSummary>>;
@@ -33,10 +33,10 @@ public sealed class ListAdminTitlesValidator : AbstractValidator<ListAdminTitles
         RuleFor(x => x.Page).GreaterThan(0).When(x => x.Page.HasValue);
     }
 }
-public sealed class ListAdminTitlesHandler(IAdminStore store) : IRequestHandler<ListAdminTitlesQuery, ErrorOr<PagedResult<AdminTitleSummary>>>
+public sealed class ListAdminTitlesHandler(IAdminDashboardQueries queries) : IRequestHandler<ListAdminTitlesQuery, ErrorOr<PagedResult<AdminTitleSummary>>>
 {
     public async Task<ErrorOr<PagedResult<AdminTitleSummary>>> Handle(ListAdminTitlesQuery request, CancellationToken ct) =>
-        await store.ListTitlesAsync(
+        await queries.ListTitlesAsync(
             new AdminTitleFilter(
                 request.Query?.Trim(),
                 request.Genre?.Trim(),
@@ -52,10 +52,10 @@ public sealed class GetAdminTitleValidator : AbstractValidator<GetAdminTitleQuer
 {
     public GetAdminTitleValidator() => RuleFor(x => x.Slug).NotEmpty().MaximumLength(160);
 }
-public sealed class GetAdminTitleHandler(IAdminStore store) : IRequestHandler<GetAdminTitleQuery, ErrorOr<AdminTitleDetail>>
+public sealed class GetAdminTitleHandler(IAdminDashboardQueries queries) : IRequestHandler<GetAdminTitleQuery, ErrorOr<AdminTitleDetail>>
 {
     public async Task<ErrorOr<AdminTitleDetail>> Handle(GetAdminTitleQuery request, CancellationToken ct) =>
-        await store.GetTitleAsync(request.Slug.Trim(), ct) is { } title
+        await queries.GetTitleAsync(request.Slug.Trim(), ct) is { } title
             ? title
             : Error.NotFound("admin.title.not_found", "Catalog title not found.");
 }
@@ -66,18 +66,18 @@ public sealed class ListAdminUsersValidator : AbstractValidator<ListAdminUsersQu
     public ListAdminUsersValidator()
     {
         RuleFor(x => x.Query).MaximumLength(320);
-        RuleFor(x => x.Role).Must(ZMovieRoles.IsKnown).When(x => !string.IsNullOrWhiteSpace(x.Role))
+        RuleFor(x => x.Role).Must(Role.IsKnown).When(x => !string.IsNullOrWhiteSpace(x.Role))
             .WithMessage("Role must be 'member' or 'admin'.");
         RuleFor(x => x.PageSize).InclusiveBetween(1, AdminPaging.MaxPageSize).When(x => x.PageSize.HasValue);
         RuleFor(x => x.Page).GreaterThan(0).When(x => x.Page.HasValue);
     }
 }
-public sealed class ListAdminUsersHandler(IAdminStore store) : IRequestHandler<ListAdminUsersQuery, ErrorOr<PagedResult<AdminUserSummary>>>
+public sealed class ListAdminUsersHandler(IAdminDashboardQueries queries) : IRequestHandler<ListAdminUsersQuery, ErrorOr<PagedResult<AdminUserSummary>>>
 {
     public async Task<ErrorOr<PagedResult<AdminUserSummary>>> Handle(ListAdminUsersQuery request, CancellationToken ct) =>
-        await store.ListUsersAsync(
+        await queries.ListUsersAsync(
             request.Query?.Trim(),
-            string.IsNullOrWhiteSpace(request.Role) ? null : ZMovieRoles.Normalize(request.Role),
+            string.IsNullOrWhiteSpace(request.Role) ? null : Role.Normalize(request.Role).Value,
             AdminPaging.NormalizePage(request.Page),
             AdminPaging.NormalizePageSize(request.PageSize),
             ct);
@@ -94,10 +94,10 @@ public sealed class ListAdminReviewsValidator : AbstractValidator<ListAdminRevie
         RuleFor(x => x.Page).GreaterThan(0).When(x => x.Page.HasValue);
     }
 }
-public sealed class ListAdminReviewsHandler(IAdminStore store) : IRequestHandler<ListAdminReviewsQuery, ErrorOr<PagedResult<AdminReviewSummary>>>
+public sealed class ListAdminReviewsHandler(IAdminDashboardQueries queries) : IRequestHandler<ListAdminReviewsQuery, ErrorOr<PagedResult<AdminReviewSummary>>>
 {
     public async Task<ErrorOr<PagedResult<AdminReviewSummary>>> Handle(ListAdminReviewsQuery request, CancellationToken ct) =>
-        await store.ListReviewsAsync(
+        await queries.ListReviewsAsync(
             request.Query?.Trim(),
             request.MaxRating,
             AdminPaging.NormalizePage(request.Page),
@@ -106,8 +106,8 @@ public sealed class ListAdminReviewsHandler(IAdminStore store) : IRequestHandler
 }
 
 public sealed record ListAdminGenresQuery : IQuery<List<AdminGenreSummary>>;
-public sealed class ListAdminGenresHandler(IAdminStore store) : IRequestHandler<ListAdminGenresQuery, ErrorOr<List<AdminGenreSummary>>>
+public sealed class ListAdminGenresHandler(IAdminDashboardQueries queries) : IRequestHandler<ListAdminGenresQuery, ErrorOr<List<AdminGenreSummary>>>
 {
     public async Task<ErrorOr<List<AdminGenreSummary>>> Handle(ListAdminGenresQuery request, CancellationToken ct) =>
-        (await store.ListGenresAsync(ct)).ToList();
+        (await queries.ListGenresAsync(ct)).ToList();
 }
