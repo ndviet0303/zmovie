@@ -23,15 +23,22 @@ defineProps<{
       <div
         class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent"
       />
-      <span
-        class="absolute left-4 top-4 rounded-md px-2 py-1 text-[10px] font-bold tracking-wider"
-        :class="
-          index % 2 === 0
-            ? 'bg-primary text-primary-container-foreground'
-            : 'border border-white/20 bg-background/60 text-foreground backdrop-blur-sm'
-        "
-        >{{ title.type === "series" ? "SERIES" : "HD" }}</span
-      >
+      <div class="absolute left-4 top-4 flex flex-wrap gap-1.5">
+        <span
+          v-if="title.isR2Hosted"
+          class="rounded-md bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-1 text-[10px] font-bold tracking-wider text-white shadow-sm"
+          >⚡ R2 ULTRA HD</span
+        >
+        <span
+          class="rounded-md px-2 py-1 text-[10px] font-bold tracking-wider"
+          :class="
+            index % 2 === 0
+              ? 'bg-primary text-primary-container-foreground'
+              : 'border border-white/20 bg-background/60 text-foreground backdrop-blur-sm'
+          "
+          >{{ title.type === "series" ? "SERIES" : "HD" }}</span
+        >
+      </div>
       <div class="absolute inset-x-0 bottom-0 p-5">
         <h3 class="font-display truncate text-xl font-medium text-foreground">
           {{ title.title }}

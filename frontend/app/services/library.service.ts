@@ -53,6 +53,23 @@ export function recordWatchHistory(
   }).then(() => undefined);
 }
 
+export function removeWatchHistoryItem(
+  slug: string,
+  api?: ApiFetch,
+): Promise<void> {
+  return resolveApi(api)(`/v1/me/history/${encodeURIComponent(slug)}`, {
+    method: "DELETE",
+    credentials: "include",
+  }).then(() => undefined);
+}
+
+export function clearWatchHistory(api?: ApiFetch): Promise<void> {
+  return resolveApi(api)("/v1/me/history", {
+    method: "DELETE",
+    credentials: "include",
+  }).then(() => undefined);
+}
+
 export function submitTitleReview(
   slug: string,
   payload: CreateReviewPayload,

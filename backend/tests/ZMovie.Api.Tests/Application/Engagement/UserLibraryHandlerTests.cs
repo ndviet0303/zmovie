@@ -178,6 +178,35 @@ public sealed class UserLibraryHandlerTests
         repository.SaveChangesCalls.Should().Be(0);
     }
 
+    [Fact]
+    public async Task Remove_watch_history_removes_title_entries()
+    {
+        var repository = new FakeWatchProgressRepository();
+        var catalog = new FakeCatalogReader(Guid.NewGuid());
+        var handler = new RemoveWatchHistoryHandler(repository, catalog);
+
+        var result = await handler.Handle(new RemoveWatchHistoryCommand(RawUserId, "slug-1"), default);
+
+        result.IsError.Should().BeFalse();
+        result.Value.Should().BeTrue();
+        repository.RemovedTitleId.Should().NotBeNull();
+        repository.SaveChangesCalls.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Clear_watch_history_clears_all_user_entries()
+    {
+        var repository = new FakeWatchProgressRepository();
+        var handler = new ClearWatchHistoryHandler(repository);
+
+        var result = await handler.Handle(new ClearWatchHistoryCommand(RawUserId), default);
+
+        result.IsError.Should().BeFalse();
+        result.Value.Should().BeTrue();
+        repository.ClearedAll.Should().BeTrue();
+        repository.SaveChangesCalls.Should().Be(1);
+    }
+
     private sealed class FakeSavedTitleRepository(SavedTitle? savedTitle = null) : ISavedTitleRepository
     {
         private SavedTitle? _saved = savedTitle;
@@ -214,6 +243,8 @@ public sealed class UserLibraryHandlerTests
 
         public WatchProgress? AddedProgress { get; private set; }
         public int SaveChangesCalls { get; private set; }
+        public bool ClearedAll { get; private set; }
+        public TitleId? RemovedTitleId { get; private set; }
 
         public Task<WatchProgress?> FindAsync(UserId userId, PlayableId playableId, CancellationToken ct) =>
             Task.FromResult(_progress is not null && _progress.UserId == userId && _progress.PlayableId == playableId ? _progress : null);
@@ -222,6 +253,26 @@ public sealed class UserLibraryHandlerTests
         {
             AddedProgress = progress;
             _progress = progress;
+        }
+
+        public Task RemoveByTitleAsync(UserId userId, TitleId titleId, CancellationToken ct)
+        {
+            RemovedTitleId = titleId;
+            if (_progress is not null && _progress.UserId == userId && _progress.TitleId == titleId)
+            {
+                _progress = null;
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task ClearAllAsync(UserId userId, CancellationToken ct)
+        {
+            ClearedAll = true;
+            if (_progress is not null && _progress.UserId == userId)
+            {
+                _progress = null;
+            }
+            return Task.CompletedTask;
         }
 
         public Task SaveChangesAsync(CancellationToken ct)

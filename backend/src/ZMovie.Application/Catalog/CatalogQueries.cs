@@ -1,6 +1,7 @@
 using ErrorOr;
 using FluentValidation;
 using MediatR;
+using Microsoft.Extensions.Logging;
 using ZMovie.Application.Common;
 
 namespace ZMovie.Application.Catalog;
@@ -26,3 +27,18 @@ public sealed class GetPlaybackHandler(ICatalogReadStore store) : IRequestHandle
 public sealed record GetHomeQuery(string? Locale) : IQuery<HomeResponse>;
 public sealed class GetHomeHandler(ICatalogReadStore store) : IRequestHandler<GetHomeQuery, ErrorOr<HomeResponse>>
 { public async Task<ErrorOr<HomeResponse>> Handle(GetHomeQuery request, CancellationToken ct) => await store.GetHomeAsync(Locale.Normalize(request.Locale), ct) is { } item ? item : Error.Failure("catalog.home.unavailable", "Discovery catalog is unavailable."); }
+
+public sealed record ReportTitleIssueCommand(string Slug, string Category, string Description, double? TimestampSeconds) : ICommand<bool>;
+public sealed class ReportTitleIssueHandler(ICatalogReadStore store, Microsoft.Extensions.Logging.ILogger<ReportTitleIssueHandler> logger) : IRequestHandler<ReportTitleIssueCommand, ErrorOr<bool>>
+{
+    public async Task<ErrorOr<bool>> Handle(ReportTitleIssueCommand request, CancellationToken ct)
+    {
+        var title = await store.GetAsync(request.Slug, "vi", ct);
+        if (title is null) return Error.NotFound("catalog.title.not_found", "Catalog title not found.");
+
+        logger.LogWarning("Issue reported for {Slug} [{Category} at {Timestamp}s]: {Description}",
+            request.Slug, request.Category, request.TimestampSeconds, request.Description);
+
+        return true;
+    }
+}

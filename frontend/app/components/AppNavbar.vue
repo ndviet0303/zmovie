@@ -4,6 +4,7 @@ import {
   Bot,
   ChevronRight,
   CircleUserRound,
+  Crown,
   LogOut,
   Search,
   ShieldCheck,
@@ -15,6 +16,7 @@ const emit = defineEmits<{ localeChange: [locale: "vi" | "en"] }>();
 const route = useRoute();
 const isLanguageOpen = ref(false);
 const isAccountOpen = ref(false);
+const isVipModalOpen = ref(false);
 // Shared across routes, so navigating no longer re-fetches the session on every
 // page mount and the account chip stops flickering back to "Đăng nhập".
 const { user, isAdmin, fetchSession, signOut } = useAuthSession();
@@ -115,6 +117,7 @@ onMounted(() => {
           class="hidden size-10 place-items-center rounded-xl border border-white/10 bg-surface-container text-foreground/80 shadow-sm transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary xl:grid"
           ><Bot class="size-[18px]"
         /></NuxtLink>
+        <NotificationBell />
         <span class="hidden h-6 w-px bg-white/10 sm:block" />
         <div class="relative z-[60]">
           <button
@@ -155,7 +158,14 @@ onMounted(() => {
             </button>
           </div>
         </div>
-        <Bell class="hidden size-4 sm:block" />
+        <button
+          class="hidden sm:inline-flex h-10 items-center gap-1.5 rounded-full border border-amber-400/40 bg-gradient-to-r from-amber-500/20 to-amber-400/10 px-3.5 text-xs font-bold text-amber-300 shadow-sm transition hover:border-amber-400 hover:from-amber-500/30"
+          type="button"
+          @click="isVipModalOpen = true"
+        >
+          <Crown class="size-3.5 fill-current text-amber-400" />
+          <span>Nâng cấp VIP</span>
+        </button>
         <NuxtLink
           v-if="!user"
           to="/login"
@@ -217,5 +227,9 @@ onMounted(() => {
         </div>
       </div>
     </div>
+    <VipCheckoutModal
+      :is-open="isVipModalOpen"
+      @close="isVipModalOpen = false"
+    />
   </header>
 </template>

@@ -7,6 +7,7 @@ const {
   error,
   reviews,
   isSaved,
+  isTrailerOpen,
   actionNotice,
   reviewRating,
   reviewComment,
@@ -17,6 +18,7 @@ const {
   setLocale,
   toggleSaved,
   openTrailer,
+  closeTrailer,
   shareTitle,
   submitReview,
 } = await useMovieDetail();
@@ -47,6 +49,11 @@ const {
           />
           <div class="max-w-3xl pb-2">
             <div class="mb-4 flex flex-wrap items-center gap-2 text-xs">
+              <span
+                v-if="title.isR2Hosted"
+                class="rounded-md bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-1 font-bold tracking-wider text-white shadow-md"
+                >⚡ R2 ULTRA HD</span
+              >
               <span
                 class="rounded-md bg-primary px-2 py-1 font-bold text-primary-container-foreground"
                 >4K</span
@@ -113,10 +120,21 @@ const {
           class="rounded-3xl border border-white/10 bg-surface-container p-7"
         >
           <h2 class="font-display text-2xl font-semibold">{{ copy.cast }}</h2>
-          <p class="mt-2 text-sm text-tertiary">ZMovie Originals</p>
+          <p class="mt-2 text-sm text-tertiary">
+            {{
+              title.isR2Hosted
+                ? "Cloudflare R2 Benchmark Film"
+                : "ZMovie Catalog"
+            }}
+          </p>
           <div class="mt-6 flex flex-wrap gap-5">
             <div
-              v-for="person in ['Linh Phạm', 'Minh Anh', 'Đức Thành', 'Hà My']"
+              v-for="person in title.actors
+                ? title.actors
+                    .split(',')
+                    .map((a) => a.trim())
+                    .filter(Boolean)
+                : ['Linh Phạm', 'Minh Anh', 'Đức Thành', 'Hà My']"
               :key="person"
               class="text-center"
             >
@@ -124,7 +142,19 @@ const {
                 class="mx-auto grid size-12 place-items-center rounded-full bg-surface-container-lowest text-primary"
                 ><Star class="size-4 fill-current"
               /></span>
-              <p class="mt-2 text-xs text-foreground">{{ person }}</p>
+              <p class="mt-2 max-w-[100px] truncate text-xs text-foreground">
+                {{ person }}
+              </p>
+              <p class="text-[11px] text-muted-foreground">Diễn viên</p>
+            </div>
+            <div v-if="title.directors" class="text-center">
+              <span
+                class="mx-auto grid size-12 place-items-center rounded-full bg-surface-container-lowest text-amber-400"
+                ><Star class="size-4 fill-current"
+              /></span>
+              <p class="mt-2 max-w-[100px] truncate text-xs text-foreground">
+                {{ title.directors }}
+              </p>
               <p class="text-[11px] text-muted-foreground">
                 {{ copy.director }}
               </p>
@@ -136,9 +166,29 @@ const {
         >
           <h2 class="font-display text-2xl font-semibold">{{ copy.info }}</h2>
           <dl class="mt-5 space-y-4 text-sm">
+            <div v-if="title.directors" class="flex justify-between gap-4">
+              <dt class="text-muted-foreground">{{ copy.director }}</dt>
+              <dd class="text-right font-medium text-foreground">
+                {{ title.directors }}
+              </dd>
+            </div>
             <div class="flex justify-between gap-4">
               <dt class="text-muted-foreground">{{ copy.country }}</dt>
-              <dd>{{ copy.vietnam }}</dd>
+              <dd class="font-medium text-foreground">
+                {{ title.country || copy.vietnam }}
+              </dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-muted-foreground">Máy chủ</dt>
+              <dd
+                :class="
+                  title.isR2Hosted
+                    ? 'text-amber-400 font-semibold'
+                    : 'text-foreground'
+                "
+              >
+                {{ title.isR2Hosted ? "⚡ Cloudflare R2" : "NguonC Stream" }}
+              </dd>
             </div>
             <div class="flex justify-between gap-4">
               <dt class="text-muted-foreground">{{ copy.language }}</dt>
@@ -288,5 +338,12 @@ const {
     >
       {{ error ? "Title not found." : "Loading…" }}
     </p>
+    <TrailerModal
+      v-if="title"
+      :open="isTrailerOpen"
+      :title="title.title"
+      :trailer-url="title.trailerUrl"
+      @close="closeTrailer"
+    />
   </main>
 </template>

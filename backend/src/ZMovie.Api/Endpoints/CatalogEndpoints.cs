@@ -39,9 +39,14 @@ public static class CatalogEndpoints
                 (await sender.Send(new GetTitleReviewsQuery(slug), ct)).ToApiResult())
             .Produces<TitleReviewsResponse>(StatusCodes.Status200OK)
             .ProducesApiErrors();
+        catalog.MapPost("/titles/{slug}/reports", async (ISender sender, string slug, TitleReportRequest request, CancellationToken ct) =>
+                (await sender.Send(new ReportTitleIssueCommand(slug, request.Category, request.Description, request.TimestampSeconds), ct)).ToApiResult())
+            .Produces<bool>(StatusCodes.Status200OK)
+            .ProducesApiErrors();
 
         return endpoints;
     }
 }
 
 public sealed record RecordTitleViewRequest(int? EpisodeNumber);
+public sealed record TitleReportRequest(string Category, string Description, double? TimestampSeconds);

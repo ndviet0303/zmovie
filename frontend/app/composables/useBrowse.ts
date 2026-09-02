@@ -23,6 +23,15 @@ export function useBrowse() {
   const selectedGenre = ref(
     typeof route.query.genre === "string" ? route.query.genre : "all",
   );
+  const selectedCountry = ref(
+    typeof route.query.country === "string" ? route.query.country : "all",
+  );
+  const selectedYear = ref(
+    typeof route.query.year === "string" ? route.query.year : "all",
+  );
+  const selectedFormat = ref(
+    typeof route.query.format === "string" ? route.query.format : "all",
+  );
   const filtersOpen = ref(false);
   const sortOrder = ref<SortOrder>("latest");
 
@@ -109,14 +118,57 @@ export function useBrowse() {
     ),
   ]);
 
+  const countries = computed(() => [
+    "all",
+    ...new Set(
+      data.value?.items
+        .map((title) => title.country?.trim())
+        .filter((c): c is string => Boolean(c)) ?? [],
+    ),
+  ]);
+
+  const years = computed(() => [
+    "all",
+    ...Array.from(
+      new Set(
+        data.value?.items
+          .map((title) => String(title.year))
+          .filter((y) => Boolean(y)) ?? [],
+      ),
+    ).sort((a, b) => Number(b) - Number(a)),
+  ]);
+
   const visibleTitles = computed<TitleSummary[]>(() => {
     const filtered = (data.value?.items ?? []).filter((title) => {
       const matchesGenre =
         selectedGenre.value === "all" ||
         splitGenres(title.genre).includes(selectedGenre.value);
+
       const matchesType =
         selectedType.value === "all" || title.type === selectedType.value;
-      return matchesGenre && matchesType;
+
+      const matchesCountry =
+        selectedCountry.value === "all" ||
+        title.country?.trim().toLowerCase() ===
+          selectedCountry.value.toLowerCase();
+
+      const matchesYear =
+        selectedYear.value === "all" ||
+        String(title.year) === selectedYear.value;
+
+      const matchesFormat =
+        selectedFormat.value === "all" ||
+        (selectedFormat.value === "r2" && title.isR2Hosted) ||
+        (selectedFormat.value === "movie" && title.type === "movie") ||
+        (selectedFormat.value === "series" && title.type === "series");
+
+      return (
+        matchesGenre &&
+        matchesType &&
+        matchesCountry &&
+        matchesYear &&
+        matchesFormat
+      );
     });
 
     if (isRecommended.value) return filtered;
@@ -128,12 +180,20 @@ export function useBrowse() {
     });
   });
 
-  const activeFilterCount = computed(() =>
-    selectedGenre.value === "all" ? 0 : 1,
-  );
+  const activeFilterCount = computed(() => {
+    let count = 0;
+    if (selectedGenre.value !== "all") count++;
+    if (selectedCountry.value !== "all") count++;
+    if (selectedYear.value !== "all") count++;
+    if (selectedFormat.value !== "all") count++;
+    return count;
+  });
 
   function clearFilters() {
     selectedGenre.value = "all";
+    selectedCountry.value = "all";
+    selectedYear.value = "all";
+    selectedFormat.value = "all";
   }
 
   async function changeLocale(nextLocale: "vi" | "en") {
@@ -184,12 +244,17 @@ export function useBrowse() {
     locale,
     query,
     selectedGenre,
+    selectedCountry,
+    selectedYear,
+    selectedFormat,
     filtersOpen,
     sortOrder,
     isRecommended,
     isLoading,
     loadError,
     genres,
+    countries,
+    years,
     visibleTitles,
     activeFilterCount,
     copy,

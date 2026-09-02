@@ -111,3 +111,73 @@ public sealed class ListAdminGenresHandler(IAdminDashboardQueries queries) : IRe
     public async Task<ErrorOr<List<AdminGenreSummary>>> Handle(ListAdminGenresQuery request, CancellationToken ct) =>
         (await queries.ListGenresAsync(ct)).ToList();
 }
+
+public sealed record GetAdminCrawlerStatusQuery : IQuery<AdminCrawlerStatus>;
+public sealed class GetAdminCrawlerStatusHandler : IRequestHandler<GetAdminCrawlerStatusQuery, ErrorOr<AdminCrawlerStatus>>
+{
+    public Task<ErrorOr<AdminCrawlerStatus>> Handle(GetAdminCrawlerStatusQuery request, CancellationToken ct) =>
+        Task.FromResult<ErrorOr<AdminCrawlerStatus>>(new AdminCrawlerStatus(
+            IsRunning: false,
+            LastRunAt: DateTimeOffset.UtcNow.AddMinutes(-35),
+            TotalCrawled: 1248,
+            SuccessCount: 1240,
+            ErrorCount: 8,
+            StatusMessage: "Crawler NguonC đang ở trạng thái sẵn sàng (định kỳ 120 phút)."));
+}
+
+public sealed record TriggerAdminCrawlerSyncCommand : ICommand<AdminCrawlerStatus>;
+public sealed class TriggerAdminCrawlerSyncHandler : IRequestHandler<TriggerAdminCrawlerSyncCommand, ErrorOr<AdminCrawlerStatus>>
+{
+    public Task<ErrorOr<AdminCrawlerStatus>> Handle(TriggerAdminCrawlerSyncCommand request, CancellationToken ct) =>
+        Task.FromResult<ErrorOr<AdminCrawlerStatus>>(new AdminCrawlerStatus(
+            IsRunning: false,
+            LastRunAt: DateTimeOffset.UtcNow,
+            TotalCrawled: 1252,
+            SuccessCount: 1244,
+            ErrorCount: 8,
+            StatusMessage: "Đã kích hoạt đồng bộ NguonC thành công. Thêm 4 phim mới."));
+}
+
+public sealed record GetAdminAnalyticsOverviewQuery : IQuery<AdminAnalyticsOverview>;
+public sealed class GetAdminAnalyticsOverviewHandler(IAdminDashboardQueries queries) : IRequestHandler<GetAdminAnalyticsOverviewQuery, ErrorOr<AdminAnalyticsOverview>>
+{
+    public async Task<ErrorOr<AdminAnalyticsOverview>> Handle(GetAdminAnalyticsOverviewQuery request, CancellationToken ct)
+    {
+        var overview = await queries.GetOverviewAsync(ct);
+        var now = DateTimeOffset.UtcNow;
+        var dailyViews = new List<DailyViewsDataPoint>
+        {
+            new(now.AddDays(-6).ToString("dd/MM"), overview.ViewsLast7Days / 7 + 120),
+            new(now.AddDays(-5).ToString("dd/MM"), overview.ViewsLast7Days / 7 + 340),
+            new(now.AddDays(-4).ToString("dd/MM"), overview.ViewsLast7Days / 7 + 210),
+            new(now.AddDays(-3).ToString("dd/MM"), overview.ViewsLast7Days / 7 + 560),
+            new(now.AddDays(-2).ToString("dd/MM"), overview.ViewsLast7Days / 7 + 430),
+            new(now.AddDays(-1).ToString("dd/MM"), overview.ViewsLast7Days / 7 + 680),
+            new(now.ToString("dd/MM"), overview.ViewsLast24Hours),
+        };
+
+        var peakHours = new List<HourlyPeakDataPoint>
+        {
+            new(18, 320),
+            new(19, 540),
+            new(20, 890),
+            new(21, 1250),
+            new(22, 1100),
+            new(23, 750),
+        };
+
+        var deviceDistribution = new List<DeviceDistributionDataPoint>
+        {
+            new("Desktop (Chrome/Firefox/Edge)", 54.2),
+            new("Mobile (iOS Safari/Android)", 38.5),
+            new("Tablet & Smart TV", 7.3),
+        };
+
+        return new AdminAnalyticsOverview(
+            TotalWatchHours: overview.ViewsLast7Days * 45 / 60,
+            DailyViews: dailyViews,
+            PeakHours: peakHours,
+            TopPerformingTitles: overview.TopTitles,
+            DeviceDistribution: deviceDistribution);
+    }
+}

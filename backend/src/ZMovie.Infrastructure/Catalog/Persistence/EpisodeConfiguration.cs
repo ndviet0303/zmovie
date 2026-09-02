@@ -35,6 +35,12 @@ public sealed class EpisodeConfiguration : IEntityTypeConfiguration<Episode>
             .HasMaxLength(2000)
             .IsRequired();
 
+        builder.Property(x => x.SubtitleUrl)
+            .HasColumnName("subtitle_url")
+            .HasMaxLength(2000)
+            .HasDefaultValue(string.Empty)
+            .IsRequired();
+
         builder.HasIndex(x => new { x.TitleId, x.Number })
             .IsUnique()
             .HasDatabaseName("ix_episodes_title_id_number");

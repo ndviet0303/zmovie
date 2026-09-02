@@ -1,8 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import {
+  clearWatchHistory,
   fetchUserLibrary,
   recordWatchHistory,
   removeTitleFromLibrary,
+  removeWatchHistoryItem,
   saveTitleToLibrary,
   submitTitleReview,
 } from "../app/services/library.service";
@@ -63,14 +65,32 @@ describe("library.service", () => {
 
     await submitTitleReview(
       "my-movie",
-      { rating: 5, comment: "Great film!" },
+      { rating: 5, comment: "Tuyệt phẩm" },
       api,
     );
     expect(lastCall().url).toBe("/v1/me/titles/my-movie/review");
     expect(lastCall().options?.method).toBe("PUT");
     expect(lastCall().options?.body).toEqual({
       rating: 5,
-      comment: "Great film!",
+      comment: "Tuyệt phẩm",
     });
+  });
+
+  it("removeWatchHistoryItem sends DELETE to /v1/me/history/:slug", async () => {
+    const { api, lastCall } = createMockApi(() => Promise.resolve());
+
+    await removeWatchHistoryItem("my-movie", api);
+    expect(lastCall().url).toBe("/v1/me/history/my-movie");
+    expect(lastCall().options?.method).toBe("DELETE");
+    expect(lastCall().options?.credentials).toBe("include");
+  });
+
+  it("clearWatchHistory sends DELETE to /v1/me/history", async () => {
+    const { api, lastCall } = createMockApi(() => Promise.resolve());
+
+    await clearWatchHistory(api);
+    expect(lastCall().url).toBe("/v1/me/history");
+    expect(lastCall().options?.method).toBe("DELETE");
+    expect(lastCall().options?.credentials).toBe("include");
   });
 });

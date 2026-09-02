@@ -6,12 +6,15 @@ import {
   CircleAlert,
   Download,
   Expand,
+  Flag,
   LoaderCircle,
   Pause,
   Play,
   Settings,
   Share2,
   Star,
+  Subtitles,
+  Users,
   Volume2,
   VolumeX,
 } from "@lucide/vue";
@@ -30,6 +33,7 @@ import {
   fetchCatalogPlayback,
   fetchCatalogTitleBySlug,
   recordTitleView,
+  reportTitleIssue,
 } from "~/services/catalog.service";
 import {
   fetchUserLibrary,
@@ -73,11 +77,80 @@ const actionNotice = ref("");
 const viewCount = ref(0);
 const hasRecordedView = ref(false);
 const authState = ref<"unknown" | "authenticated" | "anonymous">("unknown");
-let hls: {
-  destroy: () => void;
-  currentLevel: number;
-  levels: { height: number }[];
-} | null = null;
+const selectedSubtitle = ref(-1);
+const subtitleOptions = ref<{ index: number; label: string }[]>([]);
+const isReportModalOpen = ref(false);
+const reportReason = ref("video");
+const reportDescription = ref("");
+const isSubmittingReport = ref(false);
+
+const isDanmakuEnabled = ref(true);
+const danmakuInput = ref("");
+const danmakus = ref([
+  {
+    timeSeconds: 2,
+    content: "Chào mừng mọi người đến với ZMovie! 🔥",
+    color: "#f59e0b",
+  },
+  {
+    timeSeconds: 6,
+    content: "Âm thanh sống động nghe sướng tai thật sự 🎧",
+    color: "#38bdf8",
+  },
+  {
+    timeSeconds: 12,
+    content: "Hình ảnh cực nét không một chút giật lag! ❤️",
+    color: "#f43f5e",
+  },
+  {
+    timeSeconds: 18,
+    content: "Trải nghiệm xem phim quá mượt mà 👍",
+    color: "#4ade80",
+  },
+]);
+
+function submitDanmaku() {
+  if (!danmakuInput.value.trim()) return;
+  danmakus.value.push({
+    timeSeconds: currentTime.value,
+    content: danmakuInput.value.trim(),
+    color: "#ffffff",
+  });
+  danmakuInput.value = "";
+}
+
+const isEmbedMode = computed(() => {
+  const url = episode.value?.hlsUrl || "";
+  return (
+    url.includes("embed") ||
+    url.includes("streamc.xyz") ||
+    (!url.includes(".m3u8") && !url.includes(".mp4"))
+  );
+});
+
+const { hudNotice } = usePlayerHotkeys({
+  togglePlay: () => togglePlayback(),
+  toggleFullscreen: () => void toggleFullscreen(),
+  toggleMute: () => toggleMute(),
+  seekDelta: (delta) => {
+    if (!video.value) return;
+    video.value.currentTime = Math.max(
+      0,
+      Math.min(duration.value, video.value.currentTime + delta),
+    );
+  },
+  adjustVolume: (delta) => {
+    if (!video.value) return;
+    const next = Math.max(0, Math.min(1, volume.value + delta));
+    volume.value = next;
+    isMuted.value = next === 0;
+    video.value.volume = next;
+  },
+  toggleCaptions: () => toggleSubtitles(),
+  enabled: computed(() => !isEmbedMode.value),
+});
+
+let hls: any = null;
 let lastProgressSaved = 0;
 let isSavingProgress = false;
 let resumeSeconds = 0;
@@ -154,12 +227,22 @@ function showUnavailableDialog() {
 }
 
 async function loadEpisode() {
-  const element = video.value;
   const source = episode.value?.hlsUrl;
-  if (!element || !source) {
+  if (!source) {
     showUnavailableDialog();
     return;
   }
+
+  if (isEmbedMode.value) {
+    isLoading.value = false;
+    playerError.value = "";
+    hls?.destroy();
+    hls = null;
+    return;
+  }
+
+  const element = video.value;
+  if (!element) return;
 
   playerError.value = "";
   isLoading.value = true;
@@ -167,10 +250,16 @@ async function loadEpisode() {
   hls = null;
   qualityOptions.value = [];
   selectedQuality.value = -1;
+  selectedSubtitle.value = -1;
+  subtitleOptions.value = [];
   element.pause();
   element.playbackRate = playbackRate.value;
   element.removeAttribute("src");
   element.load();
+
+  if (episode.value?.subtitleUrl) {
+    subtitleOptions.value = [{ index: 999, label: "Tiếng Việt (R2 WebVTT)" }];
+  }
 
   if (element.canPlayType("application/vnd.apple.mpegurl")) {
     element.src = source;
@@ -196,9 +285,56 @@ async function loadEpisode() {
         )
         .reverse();
     });
+    instance.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => {
+      const tracks = instance.subtitleTracks.map(
+        (track: any, index: number) => ({
+          index,
+          label: track.name || track.lang || `Phụ đề ${index + 1}`,
+        }),
+      );
+      if (
+        episode.value?.subtitleUrl &&
+        !tracks.some((t: any) => t.index === 999)
+      ) {
+        tracks.unshift({ index: 999, label: "Tiếng Việt (R2 WebVTT)" });
+      }
+      subtitleOptions.value = tracks;
+    });
     instance.loadSource(source);
     instance.attachMedia(element);
     hls = instance;
+  }
+}
+
+function selectSubtitle(index: number) {
+  selectedSubtitle.value = index;
+  const element = video.value;
+  if (!element) return;
+
+  const tracks = element.textTracks;
+  for (let i = 0; i < tracks.length; i++) {
+    tracks[i].mode = index === 999 ? "showing" : "disabled";
+  }
+
+  if (hls) {
+    if (index === -1 || index === 999) {
+      hls.subtitleTrack = -1;
+    } else {
+      hls.subtitleTrack = index;
+      hls.subtitleDisplay = true;
+    }
+  }
+}
+
+function toggleSubtitles() {
+  if (selectedSubtitle.value === -1) {
+    if (subtitleOptions.value.length > 0) {
+      selectSubtitle(subtitleOptions.value[0].index);
+    } else if (episode.value?.subtitleUrl) {
+      selectSubtitle(999);
+    }
+  } else {
+    selectSubtitle(-1);
   }
 }
 
@@ -481,6 +617,25 @@ async function shareTitle() {
   }
 }
 
+async function submitReport() {
+  if (!title.value) return;
+  isSubmittingReport.value = true;
+  try {
+    await reportTitleIssue(title.value.slug, {
+      category: reportReason.value,
+      description: reportDescription.value.trim(),
+      timestampSeconds: Math.round(currentTime.value),
+    });
+    actionNotice.value = "Cảm ơn bạn! Báo cáo sự cố đã được ghi nhận.";
+    isReportModalOpen.value = false;
+    reportDescription.value = "";
+  } catch {
+    actionNotice.value = "Không thể gửi báo cáo lúc này. Vui lòng thử lại sau.";
+  } finally {
+    isSubmittingReport.value = false;
+  }
+}
+
 watch(selectedEpisode, () => {
   hasRecordedView.value = false;
   lastProgressSaved = 0;
@@ -554,9 +709,31 @@ onBeforeUnmount(() => {
           <ChevronLeft class="size-4" />{{ copy.back }}
         </NuxtLink>
         <div
-          class="mt-5 overflow-hidden rounded-3xl border border-white/10 bg-black"
+          class="mt-5 overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl"
         >
-          <div ref="playerFrame" class="relative aspect-video group">
+          <!-- Embed Stream Mode (Iframe) -->
+          <div
+            v-if="isEmbedMode"
+            class="relative aspect-video w-full overflow-hidden bg-black"
+          >
+            <iframe
+              :src="episode?.hlsUrl"
+              class="size-full border-0"
+              allow="
+                accelerometer;
+                autoplay;
+                clipboard-write;
+                encrypted-media;
+                gyroscope;
+                picture-in-picture;
+                fullscreen;
+              "
+              allowfullscreen
+            />
+          </div>
+
+          <!-- Native HLS Video Mode -->
+          <div v-else ref="playerFrame" class="relative aspect-video group">
             <video
               ref="video"
               class="size-full bg-black object-contain"
@@ -573,7 +750,33 @@ onBeforeUnmount(() => {
               @pause="onVideoPause"
               @ended="onVideoPause"
               @error="showUnavailableDialog"
+            >
+              <track
+                v-if="episode?.subtitleUrl"
+                kind="subtitles"
+                :src="episode.subtitleUrl"
+                srclang="vi"
+                label="Tiếng Việt (WebVTT)"
+                :default="selectedSubtitle === 999"
+              />
+            </video>
+
+            <!-- Danmaku Canvas Layer -->
+            <DanmakuCanvas
+              :current-time="currentTime"
+              :is-playing="isPlaying"
+              :danmakus="danmakus"
+              :enabled="isDanmakuEnabled"
             />
+
+            <!-- HUD Visual Feedback overlay -->
+            <div
+              v-if="hudNotice"
+              class="pointer-events-none absolute left-1/2 top-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-2xl bg-black/85 px-6 py-3.5 text-base font-bold text-white shadow-2xl backdrop-blur-md"
+            >
+              <span>{{ hudNotice.text }}</span>
+            </div>
+
             <div
               v-if="isLoading"
               class="pointer-events-none absolute inset-0 grid place-items-center bg-black/40"
@@ -649,6 +852,17 @@ onBeforeUnmount(() => {
                 </div>
                 <div class="relative flex items-center gap-2">
                   <button
+                    v-if="subtitleOptions.length > 0"
+                    class="player-control hidden size-9 place-items-center sm:grid transition"
+                    :class="
+                      selectedSubtitle !== -1 ? 'text-primary' : 'text-white/80'
+                    "
+                    aria-label="Subtitles"
+                    @click="toggleSubtitles"
+                  >
+                    <Subtitles class="size-5" />
+                  </button>
+                  <button
                     class="player-control hidden size-9 place-items-center sm:grid"
                     aria-label="Playback settings"
                     @click="isSettingsOpen = !isSettingsOpen"
@@ -657,7 +871,7 @@ onBeforeUnmount(() => {
                   </button>
                   <div
                     v-if="isSettingsOpen"
-                    class="absolute bottom-12 right-0 w-40 overflow-hidden rounded-xl border border-white/10 bg-[#202020] p-1 shadow-2xl"
+                    class="absolute bottom-12 right-0 w-48 overflow-hidden rounded-xl border border-white/10 bg-[#202020] p-1 shadow-2xl"
                   >
                     <p class="px-3 py-2 text-xs font-semibold text-white/55">
                       Chất lượng
@@ -702,6 +916,33 @@ onBeforeUnmount(() => {
                       <span>{{ rate }}x</span
                       ><span v-if="playbackRate === rate">✓</span>
                     </button>
+
+                    <template v-if="subtitleOptions.length > 0">
+                      <div class="mx-2 my-1 border-t border-white/10" />
+                      <p class="px-3 py-2 text-xs font-semibold text-white/55">
+                        Phụ đề
+                      </p>
+                      <button
+                        class="player-control flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-white/10"
+                        :class="selectedSubtitle === -1 ? 'text-primary' : ''"
+                        @click="selectSubtitle(-1)"
+                      >
+                        <span>Tắt phụ đề</span>
+                        <span v-if="selectedSubtitle === -1">✓</span>
+                      </button>
+                      <button
+                        v-for="sub in subtitleOptions"
+                        :key="sub.index"
+                        class="player-control flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-white/10"
+                        :class="
+                          selectedSubtitle === sub.index ? 'text-primary' : ''
+                        "
+                        @click="selectSubtitle(sub.index)"
+                      >
+                        <span class="truncate">{{ sub.label }}</span>
+                        <span v-if="selectedSubtitle === sub.index">✓</span>
+                      </button>
+                    </template>
                   </div>
                   <button
                     class="player-control grid size-9 place-items-center"
@@ -770,6 +1011,43 @@ onBeforeUnmount(() => {
               {{ title.synopsis }}
             </p>
           </div>
+
+          <!-- Danmaku Bar -->
+          <div
+            v-if="!isEmbedMode"
+            class="mt-4 flex items-center gap-3 rounded-2xl border border-white/8 bg-surface-container px-4 py-2.5"
+          >
+            <button
+              class="px-2.5 py-1 rounded-lg text-xs font-semibold border transition"
+              :class="
+                isDanmakuEnabled
+                  ? 'bg-primary/15 text-primary border-primary/40'
+                  : 'bg-surface-container-lowest text-muted-foreground border-white/10'
+              "
+              @click="isDanmakuEnabled = !isDanmakuEnabled"
+            >
+              Đạn mạc (Danmaku)
+            </button>
+            <form
+              class="flex-1 flex items-center gap-2"
+              @submit.prevent="submitDanmaku"
+            >
+              <input
+                v-model="danmakuInput"
+                type="text"
+                placeholder="Bắn bình luận bay ngang màn hình..."
+                class="flex-1 rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary/60 transition"
+              />
+              <button
+                type="submit"
+                :disabled="!danmakuInput.trim()"
+                class="rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-primary-container-foreground transition hover:opacity-90 disabled:opacity-40"
+              >
+                Bắn
+              </button>
+            </form>
+          </div>
+
           <div
             class="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-4 border-b border-white/7 pb-5"
           >
@@ -787,6 +1065,14 @@ onBeforeUnmount(() => {
               ><span>{{ title.year }}</span>
             </div>
             <div class="flex items-center gap-2">
+              <NuxtLink
+                :to="`/party/${title.slug}-party?movie=${title.slug}&episode=${episode?.number || 1}`"
+                class="inline-flex h-10 items-center gap-2 rounded-full border border-rose-500/40 bg-rose-500/15 px-4 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/25"
+                title="Tạo phòng xem chung"
+              >
+                <Users class="size-4" />
+                <span>Xem chung</span>
+              </NuxtLink>
               <button
                 class="inline-flex h-10 items-center gap-2 rounded-full border border-primary/45 bg-primary/10 px-5 text-xs font-semibold text-primary transition hover:bg-primary-container hover:text-primary-container-foreground"
                 @click="toggleMyList"
@@ -802,6 +1088,14 @@ onBeforeUnmount(() => {
                 @click="shareTitle"
               >
                 <Share2 class="size-4" />
+              </button>
+              <button
+                class="inline-flex size-10 items-center justify-center rounded-full bg-surface-container-high text-muted-foreground transition hover:bg-surface-container-highest hover:text-amber-400"
+                aria-label="Báo lỗi"
+                title="Báo lỗi phim"
+                @click="isReportModalOpen = true"
+              >
+                <Flag class="size-4" />
               </button>
             </div>
           </div>
@@ -903,6 +1197,80 @@ onBeforeUnmount(() => {
         </p>
       </footer>
     </template>
+
+    <AlertDialogRoot v-model:open="isReportModalOpen">
+      <AlertDialogPortal>
+        <AlertDialogOverlay
+          class="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm"
+        />
+        <AlertDialogContent
+          class="fixed left-1/2 top-1/2 z-[101] w-[calc(100%-2.5rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-white/10 bg-surface-container p-6 shadow-2xl outline-none"
+        >
+          <div class="flex items-center gap-3">
+            <div
+              class="flex size-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400"
+            >
+              <Flag class="size-5" />
+            </div>
+            <div>
+              <AlertDialogTitle class="font-display text-xl font-semibold"
+                >Báo lỗi phim</AlertDialogTitle
+              >
+              <p class="text-xs text-muted-foreground">{{ title?.title }}</p>
+            </div>
+          </div>
+
+          <div class="mt-5 space-y-4 text-sm">
+            <div>
+              <label
+                class="mb-1.5 block text-xs font-semibold text-muted-foreground"
+                >Loại sự cố</label
+              >
+              <select
+                v-model="reportReason"
+                class="w-full rounded-xl border border-white/10 bg-surface-container-high px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+              >
+                <option value="video">Video không phát được / giật lag</option>
+                <option value="audio">Âm thanh bị mất hoặc lệch tiếng</option>
+                <option value="subtitle">Phụ đề sai hoặc không hiển thị</option>
+                <option value="content">
+                  Nội dung tập bị sai hoặc nhầm phim
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                class="mb-1.5 block text-xs font-semibold text-muted-foreground"
+                >Chi tiết sự cố</label
+              >
+              <textarea
+                v-model="reportDescription"
+                rows="3"
+                placeholder="Mô tả cụ thể sự cố để đội ngũ kỹ thuật xử lý nhanh chóng..."
+                class="w-full rounded-xl border border-white/10 bg-surface-container-high px-3 py-2 text-sm text-foreground placeholder:text-white/30 focus:border-primary focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div class="mt-6 flex justify-end gap-3">
+            <button
+              class="rounded-xl border border-white/15 px-4 py-2 text-xs font-semibold text-foreground hover:bg-white/5"
+              @click="isReportModalOpen = false"
+            >
+              Hủy
+            </button>
+            <button
+              class="rounded-xl bg-primary px-5 py-2 text-xs font-semibold text-primary-container-foreground transition hover:opacity-90 disabled:opacity-50"
+              :disabled="isSubmittingReport"
+              @click="submitReport"
+            >
+              {{ isSubmittingReport ? "Đang gửi..." : "Gửi báo lỗi" }}
+            </button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialogPortal>
+    </AlertDialogRoot>
   </main>
 </template>
 

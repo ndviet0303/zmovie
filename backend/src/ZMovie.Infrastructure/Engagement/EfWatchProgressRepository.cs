@@ -14,6 +14,18 @@ public sealed class EfWatchProgressRepository(EngagementDbContext db) : IWatchPr
 
     public void Add(WatchProgress progress) => WatchHistory.Add(progress);
 
+    public async Task RemoveByTitleAsync(UserId userId, TitleId titleId, CancellationToken ct)
+    {
+        var items = await WatchHistory.Where(x => x.UserId == userId && x.TitleId == titleId).ToListAsync(ct);
+        WatchHistory.RemoveRange(items);
+    }
+
+    public async Task ClearAllAsync(UserId userId, CancellationToken ct)
+    {
+        var items = await WatchHistory.Where(x => x.UserId == userId).ToListAsync(ct);
+        WatchHistory.RemoveRange(items);
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct) =>
         await db.SaveChangesAsync(ct);
 }

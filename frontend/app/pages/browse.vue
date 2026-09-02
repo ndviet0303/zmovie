@@ -6,12 +6,17 @@ const {
   locale,
   query,
   selectedGenre,
+  selectedCountry,
+  selectedYear,
+  selectedFormat,
   filtersOpen,
   sortOrder,
   isRecommended,
   isLoading,
   loadError,
   genres,
+  countries,
+  years,
   visibleTitles,
   activeFilterCount,
   copy,
@@ -19,6 +24,8 @@ const {
   clearFilters,
   changeLocale,
 } = useBrowse();
+
+const activeFilterTab = ref<"genre" | "format" | "country" | "year">("genre");
 </script>
 
 <template>
@@ -63,14 +70,47 @@ const {
             {{ activeFilterCount }}
           </span>
         </button>
+
+        <!-- Active filter chips -->
         <button
           v-if="selectedGenre !== 'all'"
           class="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-xs text-primary"
-          @click="clearFilters"
+          @click="selectedGenre = 'all'"
         >
           {{ genreLabel(selectedGenre) }}
           <X class="size-3.5" />
         </button>
+        <button
+          v-if="selectedFormat !== 'all'"
+          class="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-400"
+          @click="selectedFormat = 'all'"
+        >
+          {{
+            selectedFormat === "r2"
+              ? "⚡ Cloudflare R2"
+              : selectedFormat === "series"
+                ? "Phim bộ"
+                : "Phim lẻ"
+          }}
+          <X class="size-3.5" />
+        </button>
+        <button
+          v-if="selectedCountry !== 'all'"
+          class="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-xs text-primary"
+          @click="selectedCountry = 'all'"
+        >
+          {{ selectedCountry }}
+          <X class="size-3.5" />
+        </button>
+        <button
+          v-if="selectedYear !== 'all'"
+          class="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-xs text-primary"
+          @click="selectedYear = 'all'"
+        >
+          Năm {{ selectedYear }}
+          <X class="size-3.5" />
+        </button>
+
         <span class="text-xs text-muted-foreground">
           {{ visibleTitles.length }} {{ copy.titlesCount }}
         </span>
@@ -110,7 +150,7 @@ const {
                 {{ copy.filters }}
               </h2>
               <p class="mt-1 text-xs text-muted-foreground">
-                {{ copy.chooseGenre }}
+                Tùy chỉnh tiêu chí tìm kiếm nội dung
               </p>
             </div>
             <button
@@ -122,8 +162,62 @@ const {
             </button>
           </div>
 
-          <div class="max-h-[55vh] overflow-y-auto p-5 sm:p-6">
-            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <!-- Filter Category Tabs -->
+          <div
+            class="flex border-b border-white/10 bg-surface-container px-5 text-xs font-semibold sm:px-6"
+          >
+            <button
+              class="border-b-2 px-4 py-3 transition"
+              :class="
+                activeFilterTab === 'genre'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              "
+              @click="activeFilterTab = 'genre'"
+            >
+              Thể loại
+            </button>
+            <button
+              class="border-b-2 px-4 py-3 transition"
+              :class="
+                activeFilterTab === 'format'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              "
+              @click="activeFilterTab = 'format'"
+            >
+              Nguồn & Định dạng
+            </button>
+            <button
+              class="border-b-2 px-4 py-3 transition"
+              :class="
+                activeFilterTab === 'country'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              "
+              @click="activeFilterTab = 'country'"
+            >
+              Quốc gia
+            </button>
+            <button
+              class="border-b-2 px-4 py-3 transition"
+              :class="
+                activeFilterTab === 'year'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              "
+              @click="activeFilterTab = 'year'"
+            >
+              Năm phát hành
+            </button>
+          </div>
+
+          <div class="max-h-[50vh] overflow-y-auto p-5 sm:p-6">
+            <!-- Genre Tab -->
+            <div
+              v-if="activeFilterTab === 'genre'"
+              class="grid grid-cols-2 gap-2 sm:grid-cols-3"
+            >
               <button
                 v-for="genre in genres"
                 :key="genre"
@@ -138,6 +232,85 @@ const {
                 <span>{{ genreLabel(genre) }}</span>
                 <Check
                   v-if="selectedGenre === genre"
+                  class="ml-2 size-4 shrink-0"
+                />
+              </button>
+            </div>
+
+            <!-- Format & Source Tab -->
+            <div
+              v-else-if="activeFilterTab === 'format'"
+              class="grid grid-cols-2 gap-2 sm:grid-cols-2"
+            >
+              <button
+                v-for="fmt in [
+                  { id: 'all', label: 'Tất cả định dạng' },
+                  { id: 'r2', label: '⚡ Cloudflare R2 (Ultra HD)' },
+                  { id: 'movie', label: 'Phim lẻ' },
+                  { id: 'series', label: 'Phim bộ' },
+                ]"
+                :key="fmt.id"
+                class="flex min-h-11 items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition"
+                :class="
+                  selectedFormat === fmt.id
+                    ? 'border-amber-500/60 bg-amber-500/15 text-amber-400 font-semibold'
+                    : 'border-white/10 bg-surface-container text-muted-foreground hover:border-white/30 hover:text-foreground'
+                "
+                @click="selectedFormat = fmt.id"
+              >
+                <span>{{ fmt.label }}</span>
+                <Check
+                  v-if="selectedFormat === fmt.id"
+                  class="ml-2 size-4 shrink-0"
+                />
+              </button>
+            </div>
+
+            <!-- Country Tab -->
+            <div
+              v-else-if="activeFilterTab === 'country'"
+              class="grid grid-cols-2 gap-2 sm:grid-cols-3"
+            >
+              <button
+                v-for="country in countries"
+                :key="country"
+                class="flex min-h-11 items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition"
+                :class="
+                  selectedCountry === country
+                    ? 'border-primary/60 bg-primary/15 text-primary'
+                    : 'border-white/10 bg-surface-container text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                "
+                @click="selectedCountry = country"
+              >
+                <span>{{
+                  country === "all" ? "Tất cả quốc gia" : country
+                }}</span>
+                <Check
+                  v-if="selectedCountry === country"
+                  class="ml-2 size-4 shrink-0"
+                />
+              </button>
+            </div>
+
+            <!-- Year Tab -->
+            <div
+              v-else-if="activeFilterTab === 'year'"
+              class="grid grid-cols-2 gap-2 sm:grid-cols-4"
+            >
+              <button
+                v-for="year in years"
+                :key="year"
+                class="flex min-h-11 items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition"
+                :class="
+                  selectedYear === year
+                    ? 'border-primary/60 bg-primary/15 text-primary'
+                    : 'border-white/10 bg-surface-container text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                "
+                @click="selectedYear = year"
+              >
+                <span>{{ year === "all" ? "Tất cả năm" : year }}</span>
+                <Check
+                  v-if="selectedYear === year"
                   class="ml-2 size-4 shrink-0"
                 />
               </button>

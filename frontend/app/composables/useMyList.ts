@@ -1,5 +1,9 @@
 import { computed, onMounted, ref } from "vue";
-import { fetchUserLibrary } from "~/services/library.service";
+import {
+  clearWatchHistory,
+  fetchUserLibrary,
+  removeWatchHistoryItem,
+} from "~/services/library.service";
 import type {
   HistoryItem,
   Library,
@@ -59,17 +63,27 @@ export function useMyList() {
     }
   }
 
-  function retryLoad() {
-    void loadData();
+  async function removeFromHistory(slug: string) {
+    if (!library.value) return;
+    try {
+      await removeWatchHistoryItem(slug);
+      library.value.history = library.value.history.filter(
+        (item) => item.title.slug !== slug,
+      );
+    } catch {
+      // ignore
+    }
   }
 
-  onMounted(() => {
-    void loadData();
-  });
-
-  useHead({
-    title: computed(() => `${messages.value.myList.title} — ZMovie`),
-  });
+  async function clearAllHistory() {
+    if (!library.value) return;
+    try {
+      await clearWatchHistory();
+      library.value.history = [];
+    } catch {
+      // ignore
+    }
+  }
 
   return {
     locale,
@@ -80,6 +94,8 @@ export function useMyList() {
     items,
     messages,
     progress,
-    retryLoad,
+    retryLoad: loadData,
+    removeFromHistory,
+    clearAllHistory,
   };
 }

@@ -203,6 +203,18 @@ public sealed class ApplicationTests
 
         public void Add(WatchProgress progress) => StoredWatchProgress = progress;
 
+        public Task RemoveByTitleAsync(EngagementUserId userId, EngagementTitleId titleId, CancellationToken ct)
+        {
+            StoredWatchProgress = null;
+            return Task.CompletedTask;
+        }
+
+        public Task ClearAllAsync(EngagementUserId userId, CancellationToken ct)
+        {
+            StoredWatchProgress = null;
+            return Task.CompletedTask;
+        }
+
         public Task SaveChangesAsync(CancellationToken ct) => Task.CompletedTask;
     }
 

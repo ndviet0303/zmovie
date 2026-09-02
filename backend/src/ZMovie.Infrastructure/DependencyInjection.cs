@@ -53,6 +53,7 @@ public static class DependencyInjection
         services.AddAdministrationModule(configuration);
         services.AddAssistantModule(configuration);
         services.AddSearchModule();
+        services.AddStorageModule(configuration);
 
         return services;
     }
@@ -173,6 +174,13 @@ public static class DependencyInjection
     public static IServiceCollection AddSearchModule(this IServiceCollection services)
     {
         services.AddHttpClient<ISearchCatalogStore, SearchCatalogStore>();
+        return services;
+    }
+
+    public static IServiceCollection AddStorageModule(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<ZMovie.Infrastructure.Storage.CloudflareR2Options>(configuration.GetSection(ZMovie.Infrastructure.Storage.CloudflareR2Options.SectionName));
+        services.AddSingleton<ZMovie.Infrastructure.Storage.ICloudflareR2Storage, ZMovie.Infrastructure.Storage.CloudflareR2Storage>();
         return services;
     }
 }

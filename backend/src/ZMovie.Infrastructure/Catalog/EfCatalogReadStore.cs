@@ -49,7 +49,7 @@ public sealed class EfCatalogReadStore(CatalogDbContext db, IViewAnalyticsQuerie
         if (!TitleSlug.TryCreate(slug, out var titleSlug)) return null;
         var title = await db.Titles.AsNoTracking().FirstOrDefaultAsync(x => x.Slug == titleSlug, ct);
         if (title is null) return null;
-        var episodes = await db.Episodes.AsNoTracking().Where(x => x.TitleId == title.Id).OrderBy(x => x.Number).Select(x => new PlaybackEpisode(x.Number, x.Name, x.HlsUrl)).ToListAsync(ct);
+        var episodes = await db.Episodes.AsNoTracking().Where(x => x.TitleId == title.Id).OrderBy(x => x.Number).Select(x => new PlaybackEpisode(x.Number, x.Name, x.HlsUrl, x.SubtitleUrl)).ToListAsync(ct);
         return new(title.Slug.Value, title.LocalizedTitle(locale), title.Type.IsSeries, episodes);
     }
 
@@ -71,6 +71,6 @@ public sealed class EfCatalogReadStore(CatalogDbContext db, IViewAnalyticsQuerie
         return new(heroSummary, titles.Select(x => Summary(x, locale)).ToList());
     }
 
-    private static TitleSummary Summary(Title x, string locale) => new(x.Slug.Value, x.LocalizedTitle(locale), x.Genre, x.Year.Value, x.Type.Value, x.PosterUrl);
-    private static TitleDetail Detail(Title x, string locale, long viewCount) => new(x.Slug.Value, x.LocalizedTitle(locale), x.LocalizedSynopsis(locale), x.Genre, x.Year.Value, x.Type.Value, x.PosterUrl, x.Runtime.Minutes, viewCount);
+    private static TitleSummary Summary(Title x, string locale) => new(x.Slug.Value, x.LocalizedTitle(locale), x.Genre, x.Year.Value, x.Type.Value, x.PosterUrl, x.IsR2Hosted, x.Country);
+    private static TitleDetail Detail(Title x, string locale, long viewCount) => new(x.Slug.Value, x.LocalizedTitle(locale), x.LocalizedSynopsis(locale), x.Genre, x.Year.Value, x.Type.Value, x.PosterUrl, x.Runtime.Minutes, viewCount, x.Actors, x.Directors, x.Country, x.TrailerUrl, x.IsR2Hosted);
 }

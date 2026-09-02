@@ -19,6 +19,21 @@ public static class AdminEndpoints
             .Produces<AdminOverview>(StatusCodes.Status200OK)
             .ProducesApiErrors();
 
+        admin.MapGet("/analytics/overview", async (ISender sender, CancellationToken ct) =>
+                (await sender.Send(new GetAdminAnalyticsOverviewQuery(), ct)).ToApiResult())
+            .Produces<AdminAnalyticsOverview>(StatusCodes.Status200OK)
+            .ProducesApiErrors();
+
+        admin.MapGet("/crawler/status", async (ISender sender, CancellationToken ct) =>
+                (await sender.Send(new GetAdminCrawlerStatusQuery(), ct)).ToApiResult())
+            .Produces<AdminCrawlerStatus>(StatusCodes.Status200OK)
+            .ProducesApiErrors();
+
+        admin.MapPost("/crawler/sync", async (ISender sender, CancellationToken ct) =>
+                (await sender.Send(new TriggerAdminCrawlerSyncCommand(), ct)).ToApiResult())
+            .Produces<AdminCrawlerStatus>(StatusCodes.Status200OK)
+            .ProducesApiErrors();
+
         MapTitles(admin);
         MapUsers(admin);
         MapReviews(admin);

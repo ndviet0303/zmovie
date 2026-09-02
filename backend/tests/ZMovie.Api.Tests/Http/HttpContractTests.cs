@@ -24,6 +24,7 @@ public sealed class HttpContractTests(ZMovieWebApplicationFactory factory) : ICl
         "GET /v1/catalog/titles/{slug}/playback|Anonymous",
         "POST /v1/catalog/titles/{slug}/views|Anonymous",
         "GET /v1/catalog/titles/{slug}/reviews|Anonymous",
+        "POST /v1/catalog/titles/{slug}/reports|Anonymous",
         "GET /v1/discovery/home|Anonymous",
         "GET /v1/discovery/top/{period}|Anonymous",
         "GET /v1/discovery/for-you|Authenticated",
@@ -35,14 +36,22 @@ public sealed class HttpContractTests(ZMovieWebApplicationFactory factory) : ICl
         "PUT /v1/me/saved/{slug}|Authenticated",
         "DELETE /v1/me/saved/{slug}|Authenticated",
         "POST /v1/me/history/{slug}|Authenticated",
+        "DELETE /v1/me/history/{slug}|Authenticated",
+        "DELETE /v1/me/history|Authenticated",
         "PUT /v1/me/titles/{slug}/review|Authenticated",
         "DELETE /v1/me/titles/{slug}/review|Authenticated",
         "POST /v1/assistant/context|Authenticated",
         "GET /v1/assistant/context|Authenticated",
         "POST /v1/assistant/chat|Authenticated",
         "GET /v1/assistant/chat|Authenticated",
+        "GET /v1/assistant/chat/stream|Authenticated",
         "POST /v1/assistant/feedback|Authenticated",
+        "POST /v1/billing/checkout|Authenticated",
+        "POST /v1/billing/webhook|Anonymous",
         "GET /v1/admin/overview|Admin",
+        "GET /v1/admin/analytics/overview|Admin",
+        "GET /v1/admin/crawler/status|Admin",
+        "POST /v1/admin/crawler/sync|Admin",
         "GET /v1/admin/titles|Admin",
         "GET /v1/admin/titles/{slug}|Admin",
         "PUT /v1/admin/titles/{slug}|Admin",
@@ -78,9 +87,9 @@ public sealed class HttpContractTests(ZMovieWebApplicationFactory factory) : ICl
         }).Order().ToArray();
 
         Assert.Equal(ExpectedRoutes.Order().ToArray(), actual);
-        Assert.Equal(12, actual.Count(route => route.EndsWith("|Anonymous", StringComparison.Ordinal)));
-        Assert.Equal(14, actual.Count(route => route.EndsWith("|Authenticated", StringComparison.Ordinal)));
-        Assert.Equal(14, actual.Count(route => route.EndsWith("|Admin", StringComparison.Ordinal)));
+        Assert.Equal(14, actual.Count(route => route.EndsWith("|Anonymous", StringComparison.Ordinal)));
+        Assert.Equal(18, actual.Count(route => route.EndsWith("|Authenticated", StringComparison.Ordinal)));
+        Assert.Equal(17, actual.Count(route => route.EndsWith("|Admin", StringComparison.Ordinal)));
     }
 
     [Fact]
@@ -95,7 +104,7 @@ public sealed class HttpContractTests(ZMovieWebApplicationFactory factory) : ICl
         var catalog = await client.GetAsync("/v1/catalog/titles?locale=en");
         Assert.Equal(HttpStatusCode.OK, catalog.StatusCode);
         await AssertJsonAsync(catalog, """
-            {"items":[{"slug":"baseline-title","title":"Baseline Title","genre":"Drama","year":2026,"type":"movie","posterUrl":"https://example.test/poster.jpg"}],"total":1}
+            {"items":[{"slug":"baseline-title","title":"Baseline Title","genre":"Drama","year":2026,"type":"movie","posterUrl":"https://example.test/poster.jpg","isR2Hosted":false,"country":""}],"total":1}
             """);
 
         var missing = await client.GetAsync("/v1/catalog/titles/missing?locale=en");
@@ -121,7 +130,7 @@ public sealed class HttpContractTests(ZMovieWebApplicationFactory factory) : ICl
         var search = await client.GetAsync("/v1/search?q=baseline&locale=en");
         Assert.Equal(HttpStatusCode.OK, search.StatusCode);
         await AssertJsonAsync(search, """
-            {"items":[{"slug":"baseline-title","title":"Baseline Title","genre":"Drama","year":2026,"type":"movie","posterUrl":"https://example.test/poster.jpg"}],"total":1}
+            {"items":[{"slug":"baseline-title","title":"Baseline Title","genre":"Drama","year":2026,"type":"movie","posterUrl":"https://example.test/poster.jpg","isR2Hosted":false,"country":""}],"total":1}
             """);
 
         var view = await client.PostAsJsonAsync("/v1/catalog/titles/baseline-title/views", new { episodeNumber = (int?)null });

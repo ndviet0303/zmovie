@@ -146,3 +146,31 @@ public sealed class RecordWatchProgressHandler(
         return true;
     }
 }
+
+public sealed record RemoveWatchHistoryCommand(Guid UserId, string Slug) : ICommand<bool>;
+public sealed class RemoveWatchHistoryHandler(
+    IWatchProgressRepository repository,
+    ILibraryCatalogReader catalog) : IRequestHandler<RemoveWatchHistoryCommand, ErrorOr<bool>>
+{
+    public async Task<ErrorOr<bool>> Handle(RemoveWatchHistoryCommand request, CancellationToken ct)
+    {
+        var titleId = await catalog.FindTitleIdAsync(request.Slug, ct);
+        if (titleId is null) return Error.NotFound("catalog.title.not_found", "Catalog title not found.");
+
+        await repository.RemoveByTitleAsync(new UserId(request.UserId), new TitleId(titleId.Value), ct);
+        await repository.SaveChangesAsync(ct);
+        return true;
+    }
+}
+
+public sealed record ClearWatchHistoryCommand(Guid UserId) : ICommand<bool>;
+public sealed class ClearWatchHistoryHandler(
+    IWatchProgressRepository repository) : IRequestHandler<ClearWatchHistoryCommand, ErrorOr<bool>>
+{
+    public async Task<ErrorOr<bool>> Handle(ClearWatchHistoryCommand request, CancellationToken ct)
+    {
+        await repository.ClearAllAsync(new UserId(request.UserId), ct);
+        await repository.SaveChangesAsync(ct);
+        return true;
+    }
+}

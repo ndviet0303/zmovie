@@ -37,6 +37,10 @@ public sealed class User : AggregateRoot, IEntity<UserId>
     public Role Role { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset LastSignedInAt { get; private set; }
+    public DateTimeOffset? VipExpiresAt { get; private set; }
+    public string SubscriptionTier { get; private set; } = "Free";
+
+    public bool IsVipActive(DateTimeOffset now) => VipExpiresAt.HasValue && VipExpiresAt.Value > now;
 
     public static User Create(
         UserId id,
@@ -82,5 +86,12 @@ public sealed class User : AggregateRoot, IEntity<UserId>
         {
             RaiseDomainEvent(new UserRoleChangedDomainEvent(Id, oldRole, newRole, LastSignedInAt));
         }
+    }
+
+    public void ExtendVip(string tier, int months, DateTimeOffset occurredAt)
+    {
+        SubscriptionTier = tier;
+        var baseline = VipExpiresAt.HasValue && VipExpiresAt.Value > occurredAt ? VipExpiresAt.Value : occurredAt;
+        VipExpiresAt = baseline.AddMonths(months);
     }
 }

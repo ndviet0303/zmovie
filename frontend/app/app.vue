@@ -15,4 +15,5 @@
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>
+  <FloatingAssistantWidget />
 </template>

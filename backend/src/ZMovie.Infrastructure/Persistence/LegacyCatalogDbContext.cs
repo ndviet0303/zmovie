@@ -39,5 +39,13 @@ public sealed class LegacyCatalogDbContext(DbContextOptions<LegacyCatalogDbConte
         modelBuilder.ApplyConfiguration(new ReviewConfiguration());
         modelBuilder.ApplyConfiguration(new UserConfiguration());
         modelBuilder.ApplyConfiguration(new AssistantLearningEventConfiguration());
+
+        // The legacy database schema up to 202608310001 does not include modern enriched columns
+        modelBuilder.Entity<Title>().Ignore(x => x.Actors);
+        modelBuilder.Entity<Title>().Ignore(x => x.Directors);
+        modelBuilder.Entity<Title>().Ignore(x => x.Country);
+        modelBuilder.Entity<Title>().Ignore(x => x.TrailerUrl);
+        modelBuilder.Entity<Title>().Ignore(x => x.IsR2Hosted);
+        modelBuilder.Entity<Episode>().Ignore(x => x.SubtitleUrl);
     }
 }

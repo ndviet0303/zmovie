@@ -91,6 +91,25 @@ public sealed record AdminReviewSummary(
 
 public sealed record AdminGenreSummary(Guid Id, string Slug, string Name, int TitleCount, DateTimeOffset UpdatedAt);
 
+public sealed record AdminCrawlerStatus(
+    bool IsRunning,
+    DateTimeOffset? LastRunAt,
+    int TotalCrawled,
+    int SuccessCount,
+    int ErrorCount,
+    string StatusMessage);
+
+public sealed record AdminAnalyticsOverview(
+    long TotalWatchHours,
+    IReadOnlyList<DailyViewsDataPoint> DailyViews,
+    IReadOnlyList<HourlyPeakDataPoint> PeakHours,
+    IReadOnlyList<AdminTopTitle> TopPerformingTitles,
+    IReadOnlyList<DeviceDistributionDataPoint> DeviceDistribution);
+
+public sealed record DailyViewsDataPoint(string Date, long Views);
+public sealed record HourlyPeakDataPoint(int Hour, long Views);
+public sealed record DeviceDistributionDataPoint(string Device, double Percentage);
+
 
 
 

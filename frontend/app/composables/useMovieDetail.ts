@@ -32,6 +32,7 @@ export async function useMovieDetail() {
   );
 
   const isSaved = ref(false);
+  const isTrailerOpen = ref(false);
   const actionNotice = ref("");
   const reviewRating = ref(0);
   const reviewComment = ref("");
@@ -150,12 +151,11 @@ export async function useMovieDetail() {
   }
 
   function openTrailer() {
-    if (!title.value) return;
-    window.open(
-      `https://www.youtube.com/results?search_query=${encodeURIComponent(`${title.value.title} trailer`)}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
+    isTrailerOpen.value = true;
+  }
+
+  function closeTrailer() {
+    isTrailerOpen.value = false;
   }
 
   async function shareTitle() {
@@ -213,6 +213,7 @@ export async function useMovieDetail() {
     catalog,
     reviews,
     isSaved,
+    isTrailerOpen,
     actionNotice,
     reviewRating,
     reviewComment,
@@ -223,6 +224,7 @@ export async function useMovieDetail() {
     setLocale,
     toggleSaved,
     openTrailer,
+    closeTrailer,
     shareTitle,
     submitReview,
   };

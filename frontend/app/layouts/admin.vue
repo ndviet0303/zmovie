@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import {
   ArrowLeft,
+  BarChart3,
+  Bot,
   Film,
   Gauge,
   LogOut,
@@ -14,6 +16,8 @@ const { user, signOut } = useAuthSession();
 
 const navItems = [
   { label: "Tổng quan", to: "/admin", icon: Gauge },
+  { label: "Phân tích", to: "/admin/analytics", icon: BarChart3 },
+  { label: "Auto Crawler", to: "/admin/crawler", icon: Bot },
   { label: "Phim", to: "/admin/titles", icon: Film },
   { label: "Người dùng", to: "/admin/users", icon: Users },
   { label: "Đánh giá", to: "/admin/reviews", icon: MessageSquare },

@@ -75,3 +75,17 @@ export function recordTitleView(
     },
   );
 }
+
+export function reportTitleIssue(
+  slug: string,
+  payload: { category: string; description: string; timestampSeconds?: number },
+  api?: ApiFetch,
+): Promise<void> {
+  return resolveApi(api)(
+    `/v1/catalog/titles/${encodeURIComponent(slug)}/reports`,
+    {
+      method: "POST",
+      body: payload,
+    },
+  ).then(() => undefined);
+}

@@ -18,6 +18,7 @@ using ZMovie.Infrastructure.Engagement.Persistence;
 using ZMovie.Infrastructure.Identity.Persistence;
 using ZMovie.Infrastructure.Personalization.Persistence;
 using ZMovie.Infrastructure.Seed;
+using ZMovie.Infrastructure.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 var exposeDetailedErrors = builder.Configuration.GetValue<bool>("ExposeDetailedErrors");
@@ -45,6 +46,7 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(ApiAuthorizationPolicies.AdminPolicy, policy => policy.RequireAuthenticatedUser().RequireRole(Role.AdminName));
 builder.Services.AddZMovieApplication();
 builder.Services.AddZMovieInfrastructure(builder.Configuration);
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -82,6 +84,40 @@ if (args.Contains("--import-ophim-catalog", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+if (args.Contains("--import-nguonc-catalog", StringComparer.OrdinalIgnoreCase))
+{
+    var maxPages = ReadIntegerOption(args, "--max-pages");
+    var startPage = ReadIntegerOption(args, "--start-page") ?? 1;
+    var importAll = args.Contains("--all", StringComparer.OrdinalIgnoreCase);
+    var includeEpisodes = !args.Contains("--without-episodes", StringComparer.OrdinalIgnoreCase);
+    var detailConcurrency = ReadIntegerOption(args, "--concurrency") ?? 3;
+    if (detailConcurrency is < 1 or > 8) throw new ArgumentOutOfRangeException("--concurrency", "Use a value from 1 to 8.");
+    if (!importAll && maxPages is null) maxPages = 1;
+
+    await using var importScope = app.Services.CreateAsyncScope();
+    var importDb = importScope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+    var httpClient = importScope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient();
+    await importDb.Database.MigrateAsync();
+    var options = new NguonCCatalogImportOptions(maxPages, startPage, includeEpisodes, TimeSpan.FromMilliseconds(300))
+    {
+        DetailConcurrency = detailConcurrency,
+    };
+    var imported = await NguonCCatalogImporter.ImportAsync(importDb, httpClient, options, Console.WriteLine, CancellationToken.None);
+    Console.WriteLine($"Imported {imported.TitlesImported} NguonC titles from {imported.PagesImported} pages (source total: {imported.TotalItems}; episodes: {imported.EpisodesImported}).");
+    return;
+}
+
+if (args.Contains("--seed-r2-demo", StringComparer.OrdinalIgnoreCase))
+{
+    await using var seedScope = app.Services.CreateAsyncScope();
+    var seedDb = seedScope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+    var r2Storage = seedScope.ServiceProvider.GetRequiredService<ICloudflareR2Storage>();
+    await seedDb.Database.MigrateAsync();
+    var count = await R2DemoCatalogSeed.SeedAsync(seedDb, r2Storage.GetPublicStreamUrl);
+    Console.WriteLine($"Seeded {count} Cloudflare R2 benchmark demo titles successfully.");
+    return;
+}
+
 if (app.Environment.IsDevelopment())
 {
     await using var scope = app.Services.CreateAsyncScope();
@@ -100,6 +136,8 @@ if (app.Environment.IsDevelopment())
         await personalizationDb.Database.MigrateAsync();
 
         await CatalogSeed.SeedAsync(catalogDb);
+        var r2Storage = scope.ServiceProvider.GetRequiredService<ICloudflareR2Storage>();
+        await R2DemoCatalogSeed.SeedAsync(catalogDb, r2Storage.GetPublicStreamUrl);
     }
 }
 
@@ -145,6 +183,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapApiEndpoints();
+app.MapHub<ZMovie.Infrastructure.Realtime.WatchPartyHub>("/hubs/watch-party");
 
 app.Run();
 

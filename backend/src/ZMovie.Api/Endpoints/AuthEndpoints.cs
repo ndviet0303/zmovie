@@ -57,6 +57,12 @@ public static class AuthEndpoints
         endpoints.MapPost("/v1/me/history/{slug}", async (ISender sender, HttpContext context, string slug, WatchProgressRequest request, CancellationToken ct) =>
                 (await sender.Send(new RecordWatchProgressCommand(UserIdentityAdapter.GetRequiredUserId(context.User), slug, request.EpisodeNumber, request.ProgressSeconds), ct)).ToApiResult())
             .RequireAuthorization().Produces<bool>(StatusCodes.Status200OK).ProducesApiErrors();
+        endpoints.MapDelete("/v1/me/history/{slug}", async (ISender sender, HttpContext context, string slug, CancellationToken ct) =>
+                (await sender.Send(new RemoveWatchHistoryCommand(UserIdentityAdapter.GetRequiredUserId(context.User), slug), ct)).ToApiResult())
+            .RequireAuthorization().Produces<bool>(StatusCodes.Status200OK).ProducesApiErrors();
+        endpoints.MapDelete("/v1/me/history", async (ISender sender, HttpContext context, CancellationToken ct) =>
+                (await sender.Send(new ClearWatchHistoryCommand(UserIdentityAdapter.GetRequiredUserId(context.User)), ct)).ToApiResult())
+            .RequireAuthorization().Produces<bool>(StatusCodes.Status200OK).ProducesApiErrors();
         endpoints.MapPut("/v1/me/titles/{slug}/review", async (ISender sender, HttpContext context, string slug, SubmitTitleReviewRequest request, CancellationToken ct) =>
                 (await sender.Send(new SubmitTitleReviewCommand(UserIdentityAdapter.GetRequiredUserId(context.User), UserIdentityAdapter.GetAuthorName(context.User), slug, request.Rating, request.Comment), ct)).ToApiResult())
             .RequireAuthorization().Produces<bool>(StatusCodes.Status200OK).ProducesApiErrors();

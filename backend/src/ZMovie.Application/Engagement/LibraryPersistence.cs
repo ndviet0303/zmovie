@@ -14,6 +14,8 @@ public interface IWatchProgressRepository
 {
     Task<WatchProgress?> FindAsync(UserId userId, PlayableId playableId, CancellationToken ct);
     void Add(WatchProgress progress);
+    Task RemoveByTitleAsync(UserId userId, TitleId titleId, CancellationToken ct);
+    Task ClearAllAsync(UserId userId, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
 

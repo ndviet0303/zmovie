@@ -73,6 +73,35 @@ public sealed class TitleConfiguration : IEntityTypeConfiguration<Title>
             .HasColumnName("featured")
             .IsRequired();
 
+        builder.Property(x => x.Actors)
+            .HasColumnName("actors")
+            .HasMaxLength(2000)
+            .HasDefaultValue(string.Empty)
+            .IsRequired();
+
+        builder.Property(x => x.Directors)
+            .HasColumnName("directors")
+            .HasMaxLength(1000)
+            .HasDefaultValue(string.Empty)
+            .IsRequired();
+
+        builder.Property(x => x.Country)
+            .HasColumnName("country")
+            .HasMaxLength(100)
+            .HasDefaultValue(string.Empty)
+            .IsRequired();
+
+        builder.Property(x => x.TrailerUrl)
+            .HasColumnName("trailer_url")
+            .HasMaxLength(2000)
+            .HasDefaultValue(string.Empty)
+            .IsRequired();
+
+        builder.Property(x => x.IsR2Hosted)
+            .HasColumnName("is_r2_hosted")
+            .HasDefaultValue(false)
+            .IsRequired();
+
         builder.Property(x => x.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();

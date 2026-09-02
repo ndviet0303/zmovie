@@ -3,12 +3,12 @@ using ZMovie.Domain.Catalog;
 
 namespace ZMovie.Application.Catalog;
 
-public sealed record TitleSummary(string Slug, string Title, string Genre, int Year, string Type, string PosterUrl);
-public sealed record TitleDetail(string Slug, string Title, string Synopsis, string Genre, int Year, string Type, string PosterUrl, int RuntimeMinutes, long ViewCount);
+public sealed record TitleSummary(string Slug, string Title, string Genre, int Year, string Type, string PosterUrl, bool IsR2Hosted = false, string Country = "");
+public sealed record TitleDetail(string Slug, string Title, string Synopsis, string Genre, int Year, string Type, string PosterUrl, int RuntimeMinutes, long ViewCount, string Actors = "", string Directors = "", string Country = "", string TrailerUrl = "", bool IsR2Hosted = false);
 public sealed record TitleListResponse(IReadOnlyList<TitleSummary> Items, int Total);
 public sealed record HomeResponse(TitleSummary Hero, IReadOnlyList<TitleSummary> Trending);
 public sealed record PlaybackResponse(string Slug, string Title, bool IsSeries, IReadOnlyList<PlaybackEpisode> Episodes);
-public sealed record PlaybackEpisode(int Number, string Name, string HlsUrl);
+public sealed record PlaybackEpisode(int Number, string Name, string HlsUrl, string SubtitleUrl = "");
 
 public interface ICatalogReadStore
 {

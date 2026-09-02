@@ -6,6 +6,7 @@ import {
   fetchCatalogTitles,
   fetchTitleReviews,
   recordTitleView,
+  reportTitleIssue,
 } from "../app/services/catalog.service";
 import { createMockApi } from "./test-utils";
 
@@ -98,5 +99,26 @@ describe("catalog.service", () => {
     expect(lastCall().options?.credentials).toBe("include");
     expect(lastCall().options?.body).toEqual({ episodeNumber: 3 });
     expect(res.viewCount).toBe(42);
+  });
+
+  it("reportTitleIssue posts issue payload to /v1/catalog/titles/:slug/reports", async () => {
+    const { api, lastCall } = createMockApi(() => Promise.resolve());
+
+    await reportTitleIssue(
+      "my-movie",
+      {
+        category: "audio",
+        description: "Mất tiếng phút thứ 5",
+        timestampSeconds: 300,
+      },
+      api,
+    );
+    expect(lastCall().url).toBe("/v1/catalog/titles/my-movie/reports");
+    expect(lastCall().options?.method).toBe("POST");
+    expect(lastCall().options?.body).toEqual({
+      category: "audio",
+      description: "Mất tiếng phút thứ 5",
+      timestampSeconds: 300,
+    });
   });
 });

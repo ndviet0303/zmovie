@@ -18,6 +18,11 @@ public sealed class Title : AggregateRoot, IEntity<TitleId>
     public string PosterUrl { get; private set; } = string.Empty;
     public Runtime Runtime { get; private set; }
     public bool Featured { get; private set; }
+    public string Actors { get; private set; } = string.Empty;
+    public string Directors { get; private set; } = string.Empty;
+    public string Country { get; private set; } = string.Empty;
+    public string TrailerUrl { get; private set; } = string.Empty;
+    public bool IsR2Hosted { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
@@ -52,7 +57,12 @@ public sealed class Title : AggregateRoot, IEntity<TitleId>
         string posterUrl,
         Runtime runtime,
         bool featured,
-        DateTimeOffset occurredAt)
+        DateTimeOffset occurredAt,
+        string actors = "",
+        string directors = "",
+        string country = "",
+        string trailerUrl = "",
+        bool isR2Hosted = false)
     {
         var title = new Title
         {
@@ -66,6 +76,11 @@ public sealed class Title : AggregateRoot, IEntity<TitleId>
             PosterUrl = posterUrl?.Trim() ?? string.Empty,
             Runtime = runtime,
             Featured = featured,
+            Actors = actors?.Trim() ?? string.Empty,
+            Directors = directors?.Trim() ?? string.Empty,
+            Country = country?.Trim() ?? string.Empty,
+            TrailerUrl = trailerUrl?.Trim() ?? string.Empty,
+            IsR2Hosted = isR2Hosted,
             CreatedAt = occurredAt,
             UpdatedAt = occurredAt,
         };
@@ -83,7 +98,12 @@ public sealed class Title : AggregateRoot, IEntity<TitleId>
         string posterUrl,
         Runtime runtime,
         bool featured,
-        DateTimeOffset occurredAt)
+        DateTimeOffset occurredAt,
+        string? actors = null,
+        string? directors = null,
+        string? country = null,
+        string? trailerUrl = null,
+        bool? isR2Hosted = null)
     {
         TitleName = titleName;
         Synopsis = synopsis;
@@ -93,6 +113,11 @@ public sealed class Title : AggregateRoot, IEntity<TitleId>
         PosterUrl = posterUrl?.Trim() ?? string.Empty;
         Runtime = runtime;
         Featured = featured;
+        if (actors is not null) Actors = actors.Trim();
+        if (directors is not null) Directors = directors.Trim();
+        if (country is not null) Country = country.Trim();
+        if (trailerUrl is not null) TrailerUrl = trailerUrl.Trim();
+        if (isR2Hosted.HasValue) IsR2Hosted = isR2Hosted.Value;
         UpdatedAt = occurredAt;
 
         RaiseDomainEvent(new TitleMetadataUpdatedDomainEvent(Id, Slug, occurredAt));

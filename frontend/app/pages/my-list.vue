@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookmarkPlus, Clock3, Plus, Play } from "@lucide/vue";
+import { BookmarkPlus, Clock3, Play, Plus, Trash2, X } from "@lucide/vue";
 import type { HistoryItem, LibraryTitle } from "~/types/library";
 
 const {
@@ -12,6 +12,8 @@ const {
   messages,
   progress,
   retryLoad,
+  removeFromHistory,
+  clearAllHistory,
 } = useMyList();
 
 const copy = computed(() => messages.value.myList);
@@ -64,6 +66,15 @@ const copy = computed(() => messages.value.myList);
             v-if="activeTab === 'history'"
             class="absolute inset-x-0 -bottom-px h-px bg-primary"
           />
+        </button>
+
+        <button
+          v-if="activeTab === 'history' && library?.history.length"
+          class="ml-auto inline-flex items-center gap-1.5 pb-4 text-xs font-semibold text-rose-400/80 transition hover:text-rose-400"
+          @click="clearAllHistory"
+        >
+          <Trash2 class="size-3.5" />
+          Xóa toàn bộ
         </button>
       </div>
 
@@ -143,6 +154,17 @@ const copy = computed(() => messages.value.myList);
               class="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-primary-container text-primary-container-foreground"
               ><Play class="size-3 fill-current"
             /></span>
+            <button
+              v-if="activeTab === 'history'"
+              class="absolute left-2 top-2 z-10 grid size-6 place-items-center rounded-full bg-black/70 text-white/70 opacity-0 backdrop-blur-sm transition hover:bg-rose-600 hover:text-white group-hover:opacity-100"
+              title="Xóa khỏi lịch sử"
+              aria-label="Remove from history"
+              @click.prevent.stop="
+                removeFromHistory((item as HistoryItem).title.slug)
+              "
+            >
+              <X class="size-3.5" />
+            </button>
             <span class="absolute inset-x-0 bottom-0 p-2.5"
               ><b class="block truncate text-[11px] font-semibold text-white">{{
                 activeTab === "saved"
