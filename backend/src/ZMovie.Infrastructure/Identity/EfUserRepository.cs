@@ -62,9 +62,24 @@ public sealed class EfUserRepository(IdentityDbContext db) : IUserRepository
         }
 
         user.ChangeRole(newRole);
-        await db.SaveChangesAsync(ct);
-        if (transaction is not null) await transaction.CommitAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            if (transaction is not null) await transaction.CommitAsync(ct);
+            return SetRoleOutcome.Updated;
+        }
+        catch (Exception ex) when (IsSerializationFailure(ex))
+        {
+            return SetRoleOutcome.LastAdmin;
+        }
+    }
 
-        return SetRoleOutcome.Updated;
+    private static bool IsSerializationFailure(Exception ex)
+    {
+        for (var current = ex; current is not null; current = current.InnerException)
+        {
+            if (current is Npgsql.PostgresException pe && pe.SqlState == "40001") return true;
+        }
+        return false;
     }
 }

@@ -112,6 +112,15 @@ public sealed class UserPersistenceTests(PostgreSqlFixture fixture)
         }
 
         // Run two concurrent demotions
+        static bool IsSerializationFailure(Exception ex)
+        {
+            for (var current = ex; current is not null; current = current.InnerException)
+            {
+                if (current is PostgresException pe && pe.SqlState == "40001") return true;
+            }
+            return false;
+        }
+
         var task1 = Task.Run(async () =>
         {
             try
@@ -120,7 +129,7 @@ public sealed class UserPersistenceTests(PostgreSqlFixture fixture)
                 var repo = new EfUserRepository(context);
                 return await repo.ChangeRoleWithLastAdminGuardAsync(admin1Id, Role.Member, true, default);
             }
-            catch (PostgresException ex) when (ex.SqlState == "40001") // serialization failure
+            catch (Exception ex) when (IsSerializationFailure(ex))
             {
                 return SetRoleOutcome.LastAdmin;
             }
@@ -134,7 +143,7 @@ public sealed class UserPersistenceTests(PostgreSqlFixture fixture)
                 var repo = new EfUserRepository(context);
                 return await repo.ChangeRoleWithLastAdminGuardAsync(admin2Id, Role.Member, true, default);
             }
-            catch (PostgresException ex) when (ex.SqlState == "40001") // serialization failure
+            catch (Exception ex) when (IsSerializationFailure(ex))
             {
                 return SetRoleOutcome.LastAdmin;
             }
