@@ -383,11 +383,46 @@ public static partial class NguonCCatalogImporter
         return fallback;
     }
 
+    private static readonly string[] CinematicPosters =
+    [
+        "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1514533450685-4493e01d1fdc?auto=format&fit=crop&w=1200&q=80"
+    ];
+
+    private static bool IsValidImageUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri))
+            return false;
+
+        var path = uri.AbsolutePath.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(path) || path == "/" || path == "/public/images/post" || path == "/public/images/film")
+            return false;
+
+        return path.EndsWith(".jpg") ||
+               path.EndsWith(".jpeg") ||
+               path.EndsWith(".png") ||
+               path.EndsWith(".webp") ||
+               path.EndsWith(".gif") ||
+               path.EndsWith(".avif") ||
+               path.Contains("/images/") ||
+               path.Contains("/img/") ||
+               uri.Host.Contains("unsplash.com") ||
+               uri.Host.Contains("usheru.com");
+    }
+
     private static string PickPoster(string? poster, string? thumb)
     {
-        if (!string.IsNullOrWhiteSpace(poster) && Uri.IsWellFormedUriString(poster, UriKind.Absolute)) return poster;
-        if (!string.IsNullOrWhiteSpace(thumb) && Uri.IsWellFormedUriString(thumb, UriKind.Absolute)) return thumb;
-        return "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1200&q=80";
+        if (IsValidImageUrl(poster)) return poster!.Trim();
+        if (IsValidImageUrl(thumb)) return thumb!.Trim();
+        var seed = !string.IsNullOrWhiteSpace(poster) ? poster : (thumb ?? Guid.NewGuid().ToString("N"));
+        var idx = Math.Abs(seed.GetHashCode()) % CinematicPosters.Length;
+        return CinematicPosters[idx];
     }
 
     private static string Clean(string? raw)

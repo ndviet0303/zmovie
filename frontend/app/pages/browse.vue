@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { Check, ChevronDown, Search, SlidersHorizontal, X } from "@lucide/vue";
-import { InputField } from "~/components/ui/input";
+import { Filter, Search, X } from "@lucide/vue";
 
 const {
   locale,
@@ -10,403 +9,350 @@ const {
   selectedYear,
   selectedFormat,
   filtersOpen,
-  sortOrder,
-  isRecommended,
   isLoading,
-  loadError,
-  genres,
-  countries,
-  years,
   visibleTitles,
-  activeFilterCount,
-  copy,
-  genreLabel,
-  clearFilters,
   changeLocale,
+  genreLabel,
 } = useBrowse();
 
-const activeFilterTab = ref<"genre" | "format" | "country" | "year">("genre");
+// Search mode tab: 'phim' vs 'dien-vien'
+const searchTab = ref<"phim" | "dien-vien">("phim");
+
+// Filter options matching CôBéPhim
+const countryOptions = [
+  "Tất cả",
+  "Trung Quốc",
+  "Âu Mỹ",
+  "Hàn Quốc",
+  "Nhật Bản",
+  "Thái Lan",
+  "Hồng Kông",
+  "Việt Nam",
+  "Đài Loan",
+  "Anh",
+  "Pháp",
+  "Canada",
+  "Ấn Độ",
+  "Nga",
+  "Singapore",
+  "Indonesia",
+  "Philippines",
+];
+
+const formatOptions = [
+  { label: "Tất cả", value: "all" },
+  { label: "Phim lẻ", value: "movie" },
+  { label: "Phim bộ", value: "series" },
+];
+
+const ratingOptions = [
+  "Tất cả",
+  "P (Mọi lứa tuổi)",
+  "K (Dưới 13 tuổi)",
+  "T13 (13 tuổi trở lên)",
+  "T16 (16 tuổi trở lên)",
+  "T18 (18 tuổi trở lên)",
+];
+const selectedRating = ref("Tất cả");
+
+const genreOptions = [
+  "Tất cả",
+  "Hài Hước",
+  "Gia Đình",
+  "Hành Động",
+  "Hình Sự",
+  "Kinh Dị",
+  "Cổ Trang",
+  "Võ Thuật",
+  "Short Drama",
+  "Tình Cảm",
+  "Tài Liệu",
+  "Tâm Lý",
+  "Chiến Tranh",
+  "Thần Thoại",
+  "Học Đường",
+  "Hoạt hình",
+  "Chiếu rạp",
+  "Khoa Học Viễn Tưởng",
+  "Lãng Mạn",
+  "Phiêu Lưu",
+  "Song Ngữ",
+];
+
+// Page Heading
+const pageTitle = computed(() => {
+  if (query.value) return `Kết quả tìm kiếm "${query.value}"`;
+  if (selectedGenre.value !== "all")
+    return `Phim ${genreLabel(selectedGenre.value)}`;
+  if (selectedFormat.value === "series") return "Phim Bộ";
+  if (selectedFormat.value === "movie") return "Phim Lẻ";
+  if (selectedCountry.value !== "all") return `Phim ${selectedCountry.value}`;
+  return "Kho Phim Tổng Hợp";
+});
+
+// Auto open filters if user selected filter
+onMounted(() => {
+  if (selectedGenre.value !== "all" || selectedCountry.value !== "all") {
+    filtersOpen.value = true;
+  }
+});
 </script>
 
 <template>
-  <main class="min-h-screen bg-background text-foreground">
+  <div class="min-h-screen bg-[#0f111a] text-white flex flex-col">
     <AppNavbar :locale="locale" @locale-change="changeLocale" />
 
-    <section class="mx-auto max-w-360 px-5 pb-24 pt-12 lg:px-12 lg:pt-16">
-      <h1 class="font-display text-4xl font-bold tracking-tight sm:text-5xl">
-        {{ copy.title }}
-      </h1>
-      <InputField
-        v-model="query"
-        :placeholder="copy.placeholder"
-        class="mt-7 max-w-2xl"
+    <main class="mx-auto w-full max-w-360 flex-1 px-4 sm:px-6 lg:px-10 py-8">
+      <!-- Title & Search Input Header -->
+      <div
+        class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"
       >
-        <template #leading>
-          <Search class="size-5 shrink-0 text-muted-foreground" />
-        </template>
-        <template #trailing>
+        <div>
+          <h1
+            class="text-2xl sm:text-3xl font-black tracking-tight text-white font-display"
+          >
+            {{ pageTitle }}
+          </h1>
+        </div>
+
+        <!-- Search Input Form -->
+        <div class="relative w-full max-w-md">
+          <div
+            class="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-white/50"
+          >
+            <Search class="size-4.5" />
+          </div>
+          <input
+            v-model="query"
+            type="text"
+            placeholder="Tìm kiếm phim, diễn viên, đạo diễn..."
+            class="h-11 w-full rounded-full border border-white/10 bg-[#191b24] pl-10 pr-10 text-sm text-white placeholder-white/40 outline-none transition focus:border-primary focus:bg-white/10"
+          />
           <button
             v-if="query"
-            class="shrink-0 text-muted-foreground transition-colors hover:text-primary"
-            aria-label="Clear search"
+            type="button"
+            class="absolute inset-y-0 right-3.5 flex items-center text-white/50 hover:text-white"
             @click="query = ''"
           >
-            <X class="size-5" />
+            <X class="size-4" />
           </button>
-        </template>
-      </InputField>
+        </div>
+      </div>
 
-      <div id="filters" class="mt-8 flex flex-wrap items-center gap-3">
+      <!-- Search Tabs (Phim vs Diễn viên) when searching -->
+      <div v-if="query" class="mt-5 flex items-center gap-2">
         <button
-          class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-surface-container px-4 py-3 text-xs font-semibold text-foreground transition hover:border-primary/60"
-          @click="filtersOpen = true"
+          type="button"
+          class="rounded-full px-5 py-2 text-xs font-bold transition"
+          :class="
+            searchTab === 'phim'
+              ? 'bg-white text-black shadow-md'
+              : 'bg-white/10 text-white/80 hover:bg-white/15'
+          "
+          @click="searchTab = 'phim'"
         >
-          <SlidersHorizontal class="size-4 text-primary" />
-          {{ copy.filters }}
-          <span
-            v-if="activeFilterCount"
-            class="inline-flex size-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-container-foreground"
-          >
-            {{ activeFilterCount }}
-          </span>
+          Phim
+        </button>
+        <button
+          type="button"
+          class="rounded-full px-5 py-2 text-xs font-bold transition"
+          :class="
+            searchTab === 'dien-vien'
+              ? 'bg-white text-black shadow-md'
+              : 'bg-white/10 text-white/80 hover:bg-white/15'
+          "
+          @click="searchTab = 'dien-vien'"
+        >
+          Diễn viên
+        </button>
+      </div>
+
+      <!-- Filter Toggle Trigger Button -->
+      <div class="mt-6 flex items-center gap-3">
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-[#191b24] px-4 py-2.5 text-xs font-bold text-white transition hover:border-primary/50 hover:text-primary active:scale-95"
+          @click="filtersOpen = !filtersOpen"
+        >
+          <Filter class="size-3.5 text-primary" />
+          <span>Bộ lọc</span>
         </button>
 
-        <!-- Active filter chips -->
-        <button
+        <!-- Active Filter Quick Chips -->
+        <span
           v-if="selectedGenre !== 'all'"
-          class="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-xs text-primary"
-          @click="selectedGenre = 'all'"
+          class="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
         >
           {{ genreLabel(selectedGenre) }}
-          <X class="size-3.5" />
-        </button>
-        <button
-          v-if="selectedFormat !== 'all'"
-          class="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-400"
-          @click="selectedFormat = 'all'"
-        >
-          {{
-            selectedFormat === "r2"
-              ? "⚡ Cloudflare R2"
-              : selectedFormat === "series"
-                ? "Phim bộ"
-                : "Phim lẻ"
-          }}
-          <X class="size-3.5" />
-        </button>
-        <button
+          <button type="button" @click="selectedGenre = 'all'">
+            <X class="size-3" />
+          </button>
+        </span>
+        <span
           v-if="selectedCountry !== 'all'"
-          class="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-xs text-primary"
-          @click="selectedCountry = 'all'"
+          class="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
         >
           {{ selectedCountry }}
-          <X class="size-3.5" />
-        </button>
-        <button
-          v-if="selectedYear !== 'all'"
-          class="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-xs text-primary"
-          @click="selectedYear = 'all'"
-        >
-          Năm {{ selectedYear }}
-          <X class="size-3.5" />
-        </button>
-
-        <span class="text-xs text-muted-foreground">
-          {{ visibleTitles.length }} {{ copy.titlesCount }}
+          <button type="button" @click="selectedCountry = 'all'">
+            <X class="size-3" />
+          </button>
         </span>
-        <label
-          v-if="!isRecommended"
-          class="ml-auto inline-flex items-center gap-2 rounded-xl border border-white/10 bg-surface-container px-3 text-xs text-muted-foreground"
-        >
-          <span class="sr-only">{{ copy.latest }}</span>
-          <select
-            v-model="sortOrder"
-            class="h-10 cursor-pointer appearance-none bg-transparent pr-5 text-xs text-foreground outline-none"
-          >
-            <option value="latest">{{ copy.latest }}</option>
-            <option value="oldest">{{ copy.oldest }}</option>
-            <option value="title">{{ copy.titleAZ }}</option>
-          </select>
-          <ChevronDown class="pointer-events-none -ml-5 size-4" />
-        </label>
       </div>
 
-      <div
-        v-if="filtersOpen"
-        class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-5"
-        @click.self="filtersOpen = false"
+      <!-- Expandable CôBéPhim Multi-Tier Filter Matrix -->
+      <transition
+        enter-active-class="transition duration-300 ease-out"
+        enter-from-class="opacity-0 -translate-y-2"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition duration-200 ease-in"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 -translate-y-2"
       >
-        <section
-          class="max-h-[85vh] w-full overflow-hidden rounded-t-3xl border border-white/10 bg-surface-container-lowest shadow-2xl sm:max-w-2xl sm:rounded-3xl"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="filter-title"
+        <div
+          v-if="filtersOpen"
+          class="mt-4 rounded-3xl border border-white/10 bg-[#141622] p-5 sm:p-7 shadow-2xl flex flex-col gap-5 text-xs"
+        >
+          <!-- Row 1: Quốc gia -->
+          <div
+            class="grid grid-cols-1 sm:grid-cols-[100px_1fr] items-start gap-2 sm:gap-4 pb-4 border-b border-white/5"
+          >
+            <span class="font-bold text-white/70 pt-1.5">Quốc gia:</span>
+            <div class="flex flex-wrap gap-1.5">
+              <button
+                v-for="c in countryOptions"
+                :key="c"
+                type="button"
+                class="rounded-lg px-3 py-1.5 font-semibold transition"
+                :class="
+                  (c === 'Tất cả' && selectedCountry === 'all') ||
+                  selectedCountry === c
+                    ? 'bg-primary text-black font-bold shadow-sm'
+                    : 'bg-white/5 text-white/80 hover:bg-white/10 hover:text-white'
+                "
+                @click="selectedCountry = c === 'Tất cả' ? 'all' : c"
+              >
+                {{ c }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Row 2: Loại phim -->
+          <div
+            class="grid grid-cols-1 sm:grid-cols-[100px_1fr] items-start gap-2 sm:gap-4 pb-4 border-b border-white/5"
+          >
+            <span class="font-bold text-white/70 pt-1.5">Loại phim:</span>
+            <div class="flex flex-wrap gap-1.5">
+              <button
+                v-for="fmt in formatOptions"
+                :key="fmt.value"
+                type="button"
+                class="rounded-lg px-3 py-1.5 font-semibold transition"
+                :class="
+                  selectedFormat === fmt.value
+                    ? 'bg-primary text-black font-bold shadow-sm'
+                    : 'bg-white/5 text-white/80 hover:bg-white/10 hover:text-white'
+                "
+                @click="selectedFormat = fmt.value"
+              >
+                {{ fmt.label }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Row 3: Xếp hạng -->
+          <div
+            class="grid grid-cols-1 sm:grid-cols-[100px_1fr] items-start gap-2 sm:gap-4 pb-4 border-b border-white/5"
+          >
+            <span class="font-bold text-white/70 pt-1.5">Xếp hạng:</span>
+            <div class="flex flex-wrap gap-1.5">
+              <button
+                v-for="r in ratingOptions"
+                :key="r"
+                type="button"
+                class="rounded-lg px-3 py-1.5 font-semibold transition"
+                :class="
+                  selectedRating === r
+                    ? 'bg-primary text-black font-bold shadow-sm'
+                    : 'bg-white/5 text-white/80 hover:bg-white/10 hover:text-white'
+                "
+                @click="selectedRating = r"
+              >
+                {{ r }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Row 4: Thể loại -->
+          <div
+            class="grid grid-cols-1 sm:grid-cols-[100px_1fr] items-start gap-2 sm:gap-4"
+          >
+            <span class="font-bold text-white/70 pt-1.5">Thể loại:</span>
+            <div class="flex flex-wrap gap-1.5">
+              <button
+                v-for="g in genreOptions"
+                :key="g"
+                type="button"
+                class="rounded-lg px-3 py-1.5 font-semibold transition"
+                :class="
+                  (g === 'Tất cả' && selectedGenre === 'all') ||
+                  selectedGenre === g
+                    ? 'bg-primary text-black font-bold shadow-sm'
+                    : 'bg-white/5 text-white/80 hover:bg-white/10 hover:text-white'
+                "
+                @click="selectedGenre = g === 'Tất cả' ? 'all' : g"
+              >
+                {{ g }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+
+      <!-- Movie Card Grid (6 Columns on Desktop, 2 on Mobile) -->
+      <section class="mt-8">
+        <div
+          v-if="isLoading"
+          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5"
         >
           <div
-            class="flex items-center justify-between border-b border-white/10 px-5 py-4 sm:px-6"
-          >
-            <div>
-              <h2 id="filter-title" class="font-display text-xl font-semibold">
-                {{ copy.filters }}
-              </h2>
-              <p class="mt-1 text-xs text-muted-foreground">
-                Tùy chỉnh tiêu chí tìm kiếm nội dung
-              </p>
-            </div>
-            <button
-              class="rounded-full p-2 text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
-              aria-label="Close filters"
-              @click="filtersOpen = false"
-            >
-              <X class="size-5" />
-            </button>
-          </div>
-
-          <!-- Filter Category Tabs -->
-          <div
-            class="flex border-b border-white/10 bg-surface-container px-5 text-xs font-semibold sm:px-6"
-          >
-            <button
-              class="border-b-2 px-4 py-3 transition"
-              :class="
-                activeFilterTab === 'genre'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              "
-              @click="activeFilterTab = 'genre'"
-            >
-              Thể loại
-            </button>
-            <button
-              class="border-b-2 px-4 py-3 transition"
-              :class="
-                activeFilterTab === 'format'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              "
-              @click="activeFilterTab = 'format'"
-            >
-              Nguồn & Định dạng
-            </button>
-            <button
-              class="border-b-2 px-4 py-3 transition"
-              :class="
-                activeFilterTab === 'country'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              "
-              @click="activeFilterTab = 'country'"
-            >
-              Quốc gia
-            </button>
-            <button
-              class="border-b-2 px-4 py-3 transition"
-              :class="
-                activeFilterTab === 'year'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              "
-              @click="activeFilterTab = 'year'"
-            >
-              Năm phát hành
-            </button>
-          </div>
-
-          <div class="max-h-[50vh] overflow-y-auto p-5 sm:p-6">
-            <!-- Genre Tab -->
-            <div
-              v-if="activeFilterTab === 'genre'"
-              class="grid grid-cols-2 gap-2 sm:grid-cols-3"
-            >
-              <button
-                v-for="genre in genres"
-                :key="genre"
-                class="flex min-h-11 items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition"
-                :class="
-                  selectedGenre === genre
-                    ? 'border-primary/60 bg-primary/15 text-primary'
-                    : 'border-white/10 bg-surface-container text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                "
-                @click="selectedGenre = genre"
-              >
-                <span>{{ genreLabel(genre) }}</span>
-                <Check
-                  v-if="selectedGenre === genre"
-                  class="ml-2 size-4 shrink-0"
-                />
-              </button>
-            </div>
-
-            <!-- Format & Source Tab -->
-            <div
-              v-else-if="activeFilterTab === 'format'"
-              class="grid grid-cols-2 gap-2 sm:grid-cols-2"
-            >
-              <button
-                v-for="fmt in [
-                  { id: 'all', label: 'Tất cả định dạng' },
-                  { id: 'r2', label: '⚡ Cloudflare R2 (Ultra HD)' },
-                  { id: 'movie', label: 'Phim lẻ' },
-                  { id: 'series', label: 'Phim bộ' },
-                ]"
-                :key="fmt.id"
-                class="flex min-h-11 items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition"
-                :class="
-                  selectedFormat === fmt.id
-                    ? 'border-amber-500/60 bg-amber-500/15 text-amber-400 font-semibold'
-                    : 'border-white/10 bg-surface-container text-muted-foreground hover:border-white/30 hover:text-foreground'
-                "
-                @click="selectedFormat = fmt.id"
-              >
-                <span>{{ fmt.label }}</span>
-                <Check
-                  v-if="selectedFormat === fmt.id"
-                  class="ml-2 size-4 shrink-0"
-                />
-              </button>
-            </div>
-
-            <!-- Country Tab -->
-            <div
-              v-else-if="activeFilterTab === 'country'"
-              class="grid grid-cols-2 gap-2 sm:grid-cols-3"
-            >
-              <button
-                v-for="country in countries"
-                :key="country"
-                class="flex min-h-11 items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition"
-                :class="
-                  selectedCountry === country
-                    ? 'border-primary/60 bg-primary/15 text-primary'
-                    : 'border-white/10 bg-surface-container text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                "
-                @click="selectedCountry = country"
-              >
-                <span>{{
-                  country === "all" ? "Tất cả quốc gia" : country
-                }}</span>
-                <Check
-                  v-if="selectedCountry === country"
-                  class="ml-2 size-4 shrink-0"
-                />
-              </button>
-            </div>
-
-            <!-- Year Tab -->
-            <div
-              v-else-if="activeFilterTab === 'year'"
-              class="grid grid-cols-2 gap-2 sm:grid-cols-4"
-            >
-              <button
-                v-for="year in years"
-                :key="year"
-                class="flex min-h-11 items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition"
-                :class="
-                  selectedYear === year
-                    ? 'border-primary/60 bg-primary/15 text-primary'
-                    : 'border-white/10 bg-surface-container text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                "
-                @click="selectedYear = year"
-              >
-                <span>{{ year === "all" ? "Tất cả năm" : year }}</span>
-                <Check
-                  v-if="selectedYear === year"
-                  class="ml-2 size-4 shrink-0"
-                />
-              </button>
-            </div>
-          </div>
-
-          <div
-            class="flex items-center justify-between border-t border-white/10 px-5 py-4 sm:px-6"
-          >
-            <button
-              class="text-xs font-medium text-muted-foreground transition hover:text-foreground"
-              @click="clearFilters"
-            >
-              {{ copy.clearFilters }}
-            </button>
-            <button
-              class="rounded-xl bg-primary px-5 py-3 text-xs font-semibold text-primary-container-foreground transition hover:opacity-90"
-              @click="filtersOpen = false"
-            >
-              {{ copy.showResults }}
-            </button>
-          </div>
-        </section>
-      </div>
-
-      <p
-        v-if="isLoading"
-        class="mt-10 rounded-3xl border border-white/10 bg-surface-container p-10 text-center text-muted-foreground"
-      >
-        {{ copy.loading }}
-      </p>
-      <p
-        v-else-if="loadError"
-        class="mt-10 rounded-3xl border border-white/10 bg-surface-container p-10 text-center text-muted-foreground"
-      >
-        {{ copy.error }}
-      </p>
-      <div
-        v-else-if="visibleTitles.length"
-        class="mt-10 grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
-      >
-        <NuxtLink
-          v-for="(title, index) in visibleTitles"
-          :key="title.slug"
-          :to="`/movies/${title.slug}`"
-          class="group relative aspect-[2/3] overflow-hidden rounded-3xl bg-surface-container shadow-[inset_0_1px_0_rgba(235,225,214,.1)] transition duration-300 hover:scale-[1.02] hover:shadow-[0_16px_40px_rgba(217,131,103,.16)]"
-        >
-          <img
-            :src="title.posterUrl"
-            :alt="title.title"
-            class="absolute inset-0 size-full object-cover opacity-80 transition duration-500 group-hover:opacity-100"
-            loading="lazy"
+            v-for="i in 12"
+            :key="i"
+            class="aspect-[2/3] rounded-2xl bg-[#191b24] animate-pulse"
           />
-          <div
-            class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent"
-          />
-          <span
-            class="absolute left-4 top-4 rounded-md px-2 py-1 text-[10px] font-bold tracking-wider"
-            :class="
-              index % 2 === 0
-                ? 'bg-primary text-primary-container-foreground'
-                : 'border border-white/20 bg-background/60 text-foreground backdrop-blur-sm'
-            "
-            >{{ index % 2 === 0 ? "4K" : "HD" }}</span
-          >
-          <div class="absolute inset-x-0 bottom-0 p-5">
-            <h2 class="font-display truncate text-xl font-medium">
-              {{ title.title }}
-            </h2>
-            <p class="mt-1 text-xs text-tertiary">
-              {{ title.year }} · {{ title.genre }}
-            </p>
-          </div>
-        </NuxtLink>
-      </div>
-      <p
-        v-else-if="!isLoading && !loadError"
-        class="mt-10 rounded-3xl border border-white/10 bg-surface-container p-10 text-center text-muted-foreground"
-      >
-        {{ copy.empty }}
-      </p>
-      <button
-        v-if="visibleTitles.length"
-        class="mx-auto mt-12 block rounded-full border border-white/10 bg-surface-container px-6 py-3 text-xs font-medium text-foreground transition hover:border-primary/60 hover:text-primary"
-      >
-        {{ copy.showMore }}
-      </button>
-    </section>
+        </div>
 
-    <footer
-      class="border-t border-white/5 bg-surface-container-lowest px-5 py-10 text-center text-xs text-tertiary"
-    >
-      <NuxtLink to="/" class="font-display text-xl font-semibold text-primary"
-        >ZMovie</NuxtLink
-      >
-      <p class="mt-5">© 2026 ZMovie Premium. All rights reserved.</p>
-    </footer>
-  </main>
+        <div
+          v-else-if="visibleTitles.length"
+          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5"
+        >
+          <MovieCard
+            v-for="item in visibleTitles"
+            :key="item.slug"
+            :title="item"
+            variant="vertical"
+          />
+        </div>
+
+        <!-- Empty State -->
+        <div
+          v-else
+          class="flex flex-col items-center justify-center py-24 text-center"
+        >
+          <div
+            class="size-16 rounded-full bg-white/5 grid place-items-center text-white/40 mb-4"
+          >
+            <Search class="size-8" />
+          </div>
+          <h3 class="text-lg font-bold text-white">
+            Không tìm thấy phim phù hợp
+          </h3>
+          <p class="text-sm text-muted-foreground mt-1">
+            Hãy thử tìm bằng từ khóa khác hoặc xóa bớt bộ lọc
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <AppFooter />
+  </div>
 </template>
