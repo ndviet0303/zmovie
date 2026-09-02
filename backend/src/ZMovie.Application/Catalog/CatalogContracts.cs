@@ -7,8 +7,17 @@ public sealed record TitleSummary(string Slug, string Title, string Genre, int Y
 public sealed record TitleDetail(string Slug, string Title, string Synopsis, string Genre, int Year, string Type, string PosterUrl, int RuntimeMinutes, long ViewCount, string Actors = "", string Directors = "", string Country = "", string TrailerUrl = "", bool IsR2Hosted = false);
 public sealed record TitleListResponse(IReadOnlyList<TitleSummary> Items, int Total);
 public sealed record HomeResponse(TitleSummary Hero, IReadOnlyList<TitleSummary> Trending);
+public sealed record PlaybackSource(string Provider, string Url, string Format, int Priority, string? SubtitleUrl = null, string? AudioTrack = null);
+public sealed record PlaybackMilestonesDto(int? IntroStart, int? IntroEnd, int? OutroStart, int? OutroEnd);
+
 public sealed record PlaybackResponse(string Slug, string Title, bool IsSeries, IReadOnlyList<PlaybackEpisode> Episodes);
-public sealed record PlaybackEpisode(int Number, string Name, string HlsUrl, string SubtitleUrl = "");
+public sealed record PlaybackEpisode(
+    int Number,
+    string Name,
+    string HlsUrl,
+    string SubtitleUrl = "",
+    IReadOnlyList<PlaybackSource>? Sources = null,
+    PlaybackMilestonesDto? Milestones = null);
 
 public interface ICatalogReadStore
 {

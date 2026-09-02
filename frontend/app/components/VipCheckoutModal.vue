@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Copy,
   Crown,
-  QrCode,
   ShieldCheck,
   Sparkles,
   Zap,
@@ -12,7 +11,7 @@ import {
 } from "@lucide/vue";
 import { onBeforeUnmount, ref } from "vue";
 
-const props = defineProps<{
+defineProps<{
   isOpen: boolean;
 }>();
 

@@ -35,6 +35,14 @@ namespace ZMovie.Infrastructure.Catalog.Persistence.Migrations
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("hls_url");
 
+                    b.Property<int?>("IntroEnd")
+                        .HasColumnType("integer")
+                        .HasColumnName("intro_end");
+
+                    b.Property<int?>("IntroStart")
+                        .HasColumnType("integer")
+                        .HasColumnName("intro_start");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -44,6 +52,14 @@ namespace ZMovie.Infrastructure.Catalog.Persistence.Migrations
                     b.Property<int>("Number")
                         .HasColumnType("integer")
                         .HasColumnName("number");
+
+                    b.Property<int?>("OutroEnd")
+                        .HasColumnType("integer")
+                        .HasColumnName("outro_end");
+
+                    b.Property<int?>("OutroStart")
+                        .HasColumnType("integer")
+                        .HasColumnName("outro_start");
 
                     b.Property<string>("SubtitleUrl")
                         .IsRequired()
@@ -65,6 +81,67 @@ namespace ZMovie.Infrastructure.Catalog.Persistence.Migrations
                         .HasDatabaseName("ix_episodes_title_id_number");
 
                     b.ToTable("episodes", "public");
+                });
+
+            modelBuilder.Entity("ZMovie.Domain.Catalog.EpisodeStreamSource", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AudioTrack")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("audio_track");
+
+                    b.Property<Guid>("EpisodeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("episode_id");
+
+                    b.Property<string>("Format")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("hls")
+                        .HasColumnName("format");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<int>("Priority")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("priority");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("SubtitleUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("subtitle_url");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("url");
+
+                    b.HasKey("Id")
+                        .HasName("pk_episode_stream_sources");
+
+                    b.HasIndex("EpisodeId", "Priority")
+                        .HasDatabaseName("ix_episode_stream_sources_episode_priority");
+
+                    b.ToTable("episode_stream_sources", "public");
                 });
 
             modelBuilder.Entity("ZMovie.Domain.Catalog.Genre", b =>
@@ -252,6 +329,21 @@ namespace ZMovie.Infrastructure.Catalog.Persistence.Migrations
                         .HasDatabaseName("ix_title_genres_genre_id");
 
                     b.ToTable("title_genres", "public");
+                });
+
+            modelBuilder.Entity("ZMovie.Domain.Catalog.EpisodeStreamSource", b =>
+                {
+                    b.HasOne("ZMovie.Domain.Catalog.Episode", null)
+                        .WithMany("Sources")
+                        .HasForeignKey("EpisodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_episode_stream_sources_episodes_episode_id");
+                });
+
+            modelBuilder.Entity("ZMovie.Domain.Catalog.Episode", b =>
+                {
+                    b.Navigation("Sources");
                 });
 #pragma warning restore 612, 618
         }

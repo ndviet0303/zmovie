@@ -47,5 +47,15 @@ public sealed class LegacyCatalogDbContext(DbContextOptions<LegacyCatalogDbConte
         modelBuilder.Entity<Title>().Ignore(x => x.TrailerUrl);
         modelBuilder.Entity<Title>().Ignore(x => x.IsR2Hosted);
         modelBuilder.Entity<Episode>().Ignore(x => x.SubtitleUrl);
+        modelBuilder.Ignore<EpisodeStreamSource>();
+        modelBuilder.Entity<Episode>().Ignore(x => x.IntroStart);
+        modelBuilder.Entity<Episode>().Ignore(x => x.IntroEnd);
+        modelBuilder.Entity<Episode>().Ignore(x => x.OutroStart);
+        modelBuilder.Entity<Episode>().Ignore(x => x.OutroEnd);
+        modelBuilder.Entity<User>().Ignore(x => x.VipExpiresAt);
+        modelBuilder.Entity<User>().Ignore(x => x.SubscriptionTier);
     }
 }
+
+
+

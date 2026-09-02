@@ -7,6 +7,7 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
 {
     public DbSet<Title> Titles => Set<Title>();
     public DbSet<Episode> Episodes => Set<Episode>();
+    public DbSet<EpisodeStreamSource> EpisodeStreamSources => Set<EpisodeStreamSource>();
     public DbSet<Genre> Genres => Set<Genre>();
     public DbSet<TitleGenreAssignment> TitleGenres => Set<TitleGenreAssignment>();
 
@@ -16,7 +17,9 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
 
         modelBuilder.ApplyConfiguration(new TitleConfiguration());
         modelBuilder.ApplyConfiguration(new EpisodeConfiguration());
+        modelBuilder.ApplyConfiguration(new EpisodeStreamSourceConfiguration());
         modelBuilder.ApplyConfiguration(new GenreConfiguration());
         modelBuilder.ApplyConfiguration(new TitleGenreAssignmentConfiguration());
     }
 }
+

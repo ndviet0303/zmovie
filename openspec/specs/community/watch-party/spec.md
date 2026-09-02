@@ -1,6 +1,6 @@
 ## Purpose
 
-Enables synchronized realtime group video watching with shared playback controls, participant presence, and room chat via SignalR.
+Enables synchronized realtime group video watching with shared playback controls, participant presence, room chat, and realtime Danmaku flying comments via SignalR.
 
 ## Requirements
 
@@ -32,3 +32,14 @@ The watch party interface SHALL provide an integrated realtime chat channel for 
 #### Scenario: Participant sends a chat message
 - **WHEN** a connected participant types and sends a text message
 - **THEN** the message SHALL appear instantly in the chat panel of all active members in the room
+
+### Requirement: Realtime Danmaku Broadcasting and Synchronized Persistence
+The system SHALL provide high-throughput, low-latency Danmaku comment broadcasting using SignalR and persist comments indexed by video playback seconds for on-demand playback synchronization.
+
+#### Scenario: User submits Danmaku during active playback
+- **WHEN** an authenticated user enters a Danmaku comment and submits
+- **THEN** the system SHALL validate the text against content filters, persist the comment with video second offset, and immediately broadcast the message over SignalR to all active viewers watching the same title
+
+#### Scenario: Fetching timed Danmaku comments during video buffering
+- **WHEN** a viewer loads an episode or seeks to a new video timestamp
+- **THEN** the client SHALL fetch time-bucketed Danmaku comment segments corresponding to the active playback window to ensure zero UI stutter

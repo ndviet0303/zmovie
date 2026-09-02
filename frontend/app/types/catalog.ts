@@ -19,8 +19,26 @@ export type TitleListResponse = {
   total: number | string;
 };
 
+export type PlaybackSource = {
+  provider: string;
+  url: string;
+  format: "hls" | "embed";
+  priority: number;
+  subtitleUrl?: string;
+  audioTrack?: string;
+};
+
+export type PlaybackMilestones = {
+  introStart?: number;
+  introEnd?: number;
+  outroStart?: number;
+  outroEnd?: number;
+};
+
 export type PlaybackEpisode = components["schemas"]["PlaybackEpisode"] & {
   subtitleUrl?: string;
+  sources?: PlaybackSource[];
+  milestones?: PlaybackMilestones;
 };
 
 export type PlaybackResponse = {

@@ -23,3 +23,11 @@ public readonly record struct GenreId(Guid Value) : IComparable<GenreId>, ICompa
     public int CompareTo(GenreId other) => Value.CompareTo(other.Value);
     public int CompareTo(object? obj) => obj is GenreId other ? CompareTo(other) : 1;
 }
+
+public readonly record struct EpisodeSourceId(Guid Value) : IComparable<EpisodeSourceId>, IComparable
+{
+    public static EpisodeSourceId New() => new(Guid.CreateVersion7());
+    public override string ToString() => Value.ToString();
+    public int CompareTo(EpisodeSourceId other) => Value.CompareTo(other.Value);
+    public int CompareTo(object? obj) => obj is EpisodeSourceId other ? CompareTo(other) : 1;
+}
