@@ -141,19 +141,26 @@ public static partial class NguonCCatalogImporter
             if (title.IsR2Hosted) continue;
 
             // Enrich title metadata using the rich detail data from NguonC
-            var vietnameseName = !string.IsNullOrWhiteSpace(detail.Movie.Name) ? detail.Movie.Name.Trim() : title.TitleName.Vietnamese;
-            var englishName = !string.IsNullOrWhiteSpace(detail.Movie.OriginalName) ? detail.Movie.OriginalName.Trim() : (!string.IsNullOrWhiteSpace(title.TitleName.English) ? title.TitleName.English : vietnameseName);
+            var rawVietnameseName = !string.IsNullOrWhiteSpace(detail.Movie.Name) ? detail.Movie.Name.Trim() : title.TitleName.Vietnamese;
+            var rawEnglishName = !string.IsNullOrWhiteSpace(detail.Movie.OriginalName) ? detail.Movie.OriginalName.Trim() : (!string.IsNullOrWhiteSpace(title.TitleName.English) ? title.TitleName.English : rawVietnameseName);
+            var vietnameseName = Limit(rawVietnameseName, 290, title.Slug.Value);
+            var englishName = Limit(rawEnglishName, 290, vietnameseName);
+
             var synopsis = Clean(detail.Movie.Description);
             if (synopsis == "Thông tin đang được cập nhật." && !string.IsNullOrWhiteSpace(title.Synopsis.Vietnamese))
             {
                 synopsis = title.Synopsis.Vietnamese;
             }
-            var poster = PickPoster(detail.Movie.PosterUrl, detail.Movie.ThumbUrl);
+            var poster = Limit(PickPoster(detail.Movie.PosterUrl, detail.Movie.ThumbUrl), 1900);
             var runtime = ParseRuntime(detail.Movie.Time);
             var detailCategory = detail.Movie.Category;
-            var (type, genre, country, year) = detailCategory is not null && detailCategory.Count > 0
+            var (type, parsedGenre, parsedCountry, year) = detailCategory is not null && detailCategory.Count > 0
                 ? ParseCategories(detailCategory, title.Year.Value)
                 : (title.Type.Value, title.Genre, title.Country, title.Year.Value);
+            var genre = Limit(parsedGenre, 90, title.Genre);
+            var country = Limit(parsedCountry, 90, title.Country);
+            var actors = Limit(!string.IsNullOrWhiteSpace(detail.Movie.Casts) ? detail.Movie.Casts : title.Actors, 1900);
+            var directors = Limit(!string.IsNullOrWhiteSpace(detail.Movie.Director) ? detail.Movie.Director : title.Directors, 900);
             var now = timeProvider.GetUtcNow();
 
             title.UpdateMetadata(
@@ -166,8 +173,8 @@ public static partial class NguonCCatalogImporter
                 Runtime.FromMinutes(runtime),
                 featured: title.Featured,
                 now,
-                actors: !string.IsNullOrWhiteSpace(detail.Movie.Casts) ? detail.Movie.Casts : title.Actors,
-                directors: !string.IsNullOrWhiteSpace(detail.Movie.Director) ? detail.Movie.Director : title.Directors,
+                actors: actors,
+                directors: directors,
                 country: country,
                 trailerUrl: title.TrailerUrl,
                 isR2Hosted: title.IsR2Hosted);
@@ -199,9 +206,11 @@ public static partial class NguonCCatalogImporter
                 }
                 usedNumbers.Add(episodeNum);
 
+                var episodeTitle = Limit(item.Name, 190, $"Tập {episodeNum}");
+
                 if (byNumber.TryGetValue(episodeNum, out var existing))
                 {
-                    existing.Update(item.Name ?? $"Tập {episodeNum}", streamUrl, existing.SubtitleUrl);
+                    existing.Update(episodeTitle, streamUrl, existing.SubtitleUrl);
                 }
                 else
                 {
@@ -209,7 +218,7 @@ public static partial class NguonCCatalogImporter
                         EpisodeId.New(),
                         title.Id,
                         episodeNum,
-                        item.Name ?? $"Tập {episodeNum}",
+                        episodeTitle,
                         streamUrl,
                         string.Empty);
                     db.Episodes.Add(created);
@@ -231,13 +240,17 @@ public static partial class NguonCCatalogImporter
         DateTimeOffset now)
     {
         var slug = TitleSlug.Parse(movie.Slug);
-        var vietnameseName = (movie.Name ?? string.Empty).Trim();
-        var englishName = string.IsNullOrWhiteSpace(movie.OriginalName) ? vietnameseName : movie.OriginalName.Trim();
+        var rawVietnameseName = (movie.Name ?? string.Empty).Trim();
+        var rawEnglishName = string.IsNullOrWhiteSpace(movie.OriginalName) ? rawVietnameseName : movie.OriginalName.Trim();
+        var vietnameseName = Limit(rawVietnameseName, 290, movie.Slug);
+        var englishName = Limit(rawEnglishName, 290, vietnameseName);
         var synopsis = Clean(movie.Description);
-        var poster = PickPoster(movie.PosterUrl, movie.ThumbUrl);
+        var poster = Limit(PickPoster(movie.PosterUrl, movie.ThumbUrl), 1900);
         var runtime = ParseRuntime(movie.Time);
         var year = ParseYear(movie);
-        var (type, genre, country, parsedYear) = ParseCategories(movie.Category, year);
+        var (type, parsedGenre, parsedCountry, parsedYear) = ParseCategories(movie.Category, year);
+        var genre = Limit(parsedGenre, 90, "Hành Động");
+        var country = Limit(parsedCountry, 90, "Việt Nam");
         year = parsedYear;
 
         if (existingTitles.TryGetValue(movie.Slug, out var existing))
@@ -383,6 +396,13 @@ public static partial class NguonCCatalogImporter
         var withoutTags = Html.Replace(raw, string.Empty);
         var decoded = System.Net.WebUtility.HtmlDecode(withoutTags);
         return string.IsNullOrWhiteSpace(decoded) ? "Thông tin đang được cập nhật." : decoded.Trim();
+    }
+
+    private static string Limit(string? value, int max, string fallback = "")
+    {
+        if (string.IsNullOrWhiteSpace(value)) return fallback;
+        var trimmed = value.Trim();
+        return trimmed.Length <= max ? trimmed : trimmed[..max];
     }
 
     private static async Task<NguonCListResponse?> GetListPageAsync(HttpClient http, int page, CancellationToken ct)
