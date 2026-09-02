@@ -109,58 +109,20 @@ public static partial class NguonCCatalogImporter
             .GroupBy(x => x.TitleId)
             .ToDictionary(g => g.Key, g => g.ToDictionary(e => e.Number));
 
-        var episodesCount = 0;
         using var throttle = new SemaphoreSlim(Math.Clamp(options.DetailConcurrency, 1, 8));
 
-        var detailTasks = movies.Select(async movie =>
+        var fetchTasks = movies.Select(async movie =>
         {
-            if (!titlesBySlug.TryGetValue(movie.Slug, out var title)) return 0;
+            if (!titlesBySlug.ContainsKey(movie.Slug)) return (movie.Slug, Detail: (NguonCDetailResponse?)null);
             await throttle.WaitAsync(ct);
             try
             {
                 var detail = await GetDetailAsync(http, movie.Slug, ct);
-                if (detail?.Movie?.Episodes is null || detail.Movie.Episodes.Count == 0) return 0;
-
-                // Pick the first server or preferred server
-                var server = detail.Movie.Episodes.FirstOrDefault();
-                if (server?.Items is null) return 0;
-
-                var serverEpisodes = 0;
-                var episodeIndex = 1;
-                foreach (var item in server.Items)
-                {
-                    var streamUrl = !string.IsNullOrWhiteSpace(item.M3u8) ? item.M3u8 : item.Embed;
-                    if (string.IsNullOrWhiteSpace(streamUrl)) continue;
-
-                    var episodeNum = ExtractEpisodeNumber(item.Slug, item.Name, episodeIndex);
-                    existingEpisodes.TryGetValue(title.Id, out var byNumber);
-
-                    if (byNumber is not null && byNumber.TryGetValue(episodeNum, out var existing))
-                    {
-                        existing.Update(item.Name ?? $"Tập {episodeNum}", streamUrl, existing.SubtitleUrl);
-                    }
-                    else
-                    {
-                        var created = Episode.Create(
-                            EpisodeId.New(),
-                            title.Id,
-                            episodeNum,
-                            item.Name ?? $"Tập {episodeNum}",
-                            streamUrl,
-                            string.Empty);
-                        db.Episodes.Add(created);
-                    }
-
-                    serverEpisodes++;
-                    episodeIndex++;
-                }
-
-                return serverEpisodes;
+                return (movie.Slug, Detail: detail);
             }
             catch
             {
-                // Detail request failures should not abort overall import
-                return 0;
+                return (movie.Slug, Detail: (NguonCDetailResponse?)null);
             }
             finally
             {
@@ -168,8 +130,96 @@ public static partial class NguonCCatalogImporter
             }
         });
 
-        var results = await Task.WhenAll(detailTasks);
-        episodesCount = results.Sum();
+        var fetchedDetails = await Task.WhenAll(fetchTasks);
+
+        var episodesCount = 0;
+
+        foreach (var (movieSlug, detail) in fetchedDetails)
+        {
+            if (detail?.Movie is null) continue;
+            if (!titlesBySlug.TryGetValue(movieSlug, out var title)) continue;
+
+            // Enrich title metadata using the rich detail data from NguonC
+            var vietnameseName = !string.IsNullOrWhiteSpace(detail.Movie.Name) ? detail.Movie.Name.Trim() : title.TitleName.Vietnamese;
+            var englishName = !string.IsNullOrWhiteSpace(detail.Movie.OriginalName) ? detail.Movie.OriginalName.Trim() : (!string.IsNullOrWhiteSpace(title.TitleName.English) ? title.TitleName.English : vietnameseName);
+            var synopsis = Clean(detail.Movie.Description);
+            if (synopsis == "Thông tin đang được cập nhật." && !string.IsNullOrWhiteSpace(title.Synopsis.Vietnamese))
+            {
+                synopsis = title.Synopsis.Vietnamese;
+            }
+            var poster = PickPoster(detail.Movie.PosterUrl, detail.Movie.ThumbUrl);
+            var runtime = ParseRuntime(detail.Movie.Time);
+            var detailCategory = detail.Movie.Category;
+            var (type, genre, country, year) = detailCategory is not null && detailCategory.Count > 0
+                ? ParseCategories(detailCategory, title.Year.Value)
+                : (title.Type.Value, title.Genre, title.Country, title.Year.Value);
+            var now = timeProvider.GetUtcNow();
+
+            title.UpdateMetadata(
+                new LocalizedText(vietnameseName, englishName),
+                new LocalizedText(synopsis, synopsis),
+                genre,
+                ReleaseYear.FromInt(year),
+                TitleType.Normalize(type),
+                poster,
+                Runtime.FromMinutes(runtime),
+                featured: title.Featured,
+                now,
+                actors: !string.IsNullOrWhiteSpace(detail.Movie.Casts) ? detail.Movie.Casts : title.Actors,
+                directors: !string.IsNullOrWhiteSpace(detail.Movie.Director) ? detail.Movie.Director : title.Directors,
+                country: country,
+                trailerUrl: title.TrailerUrl,
+                isR2Hosted: title.IsR2Hosted);
+
+            if (detail.Movie.Episodes is null || detail.Movie.Episodes.Count == 0) continue;
+
+            var server = detail.Movie.Episodes.FirstOrDefault();
+            if (server?.Items is null || server.Items.Count == 0) continue;
+
+            if (!existingEpisodes.TryGetValue(title.Id, out var byNumber))
+            {
+                byNumber = new Dictionary<int, Episode>();
+                existingEpisodes[title.Id] = byNumber;
+            }
+
+            var usedNumbers = new HashSet<int>(byNumber.Keys);
+            var episodeIndex = 1;
+
+            foreach (var item in server.Items)
+            {
+                var streamUrl = !string.IsNullOrWhiteSpace(item.M3u8) ? item.M3u8 : item.Embed;
+                if (string.IsNullOrWhiteSpace(streamUrl)) continue;
+
+                var rawNum = ExtractEpisodeNumber(item.Slug, item.Name, episodeIndex);
+                var episodeNum = rawNum;
+                while (usedNumbers.Contains(episodeNum) && !byNumber.ContainsKey(episodeNum))
+                {
+                    episodeNum++;
+                }
+                usedNumbers.Add(episodeNum);
+
+                if (byNumber.TryGetValue(episodeNum, out var existing))
+                {
+                    existing.Update(item.Name ?? $"Tập {episodeNum}", streamUrl, existing.SubtitleUrl);
+                }
+                else
+                {
+                    var created = Episode.Create(
+                        EpisodeId.New(),
+                        title.Id,
+                        episodeNum,
+                        item.Name ?? $"Tập {episodeNum}",
+                        streamUrl,
+                        string.Empty);
+                    db.Episodes.Add(created);
+                    byNumber[episodeNum] = created;
+                }
+
+                episodesCount++;
+                episodeIndex++;
+            }
+        }
+
         return episodesCount;
     }
 
@@ -186,7 +236,8 @@ public static partial class NguonCCatalogImporter
         var poster = PickPoster(movie.PosterUrl, movie.ThumbUrl);
         var runtime = ParseRuntime(movie.Time);
         var year = ParseYear(movie);
-        var (type, genre, country) = ParseCategories(movie.Category);
+        var (type, genre, country, parsedYear) = ParseCategories(movie.Category, year);
+        year = parsedYear;
 
         if (existingTitles.TryGetValue(movie.Slug, out var existing))
         {
@@ -231,33 +282,50 @@ public static partial class NguonCCatalogImporter
         return created;
     }
 
-    private static (string Type, string Genre, string Country) ParseCategories(Dictionary<string, NguonCCategoryGroup>? categories)
+    private static (string Type, string Genre, string Country, int Year) ParseCategories(
+        Dictionary<string, NguonCCategoryGroup>? categories,
+        int fallbackYear)
     {
         var type = "movie";
         var genreList = new List<string>();
-        var country = "Việt Nam";
+        var country = "Châu Á";
+        var year = fallbackYear;
 
-        if (categories is null) return (type, "Phim", country);
+        if (categories is null) return (type, "Hành Động, Kịch Tính", country, year);
 
-        if (categories.TryGetValue("1", out var formatGroup) && formatGroup.List is not null)
+        foreach (var entry in categories.Values)
         {
-            var isSeries = formatGroup.List.Any(x => x.Name?.Contains("bộ", StringComparison.OrdinalIgnoreCase) == true);
-            if (isSeries) type = "series";
-        }
+            var groupName = entry.Group?.Name ?? string.Empty;
+            var items = entry.List ?? [];
 
-        if (categories.TryGetValue("2", out var genreGroup) && genreGroup.List is not null)
-        {
-            genreList.AddRange(genreGroup.List.Select(x => x.Name).Where(x => !string.IsNullOrWhiteSpace(x))!);
-        }
-
-        if (categories.TryGetValue("3", out var countryGroup) && countryGroup.List is not null)
-        {
-            var firstCountry = countryGroup.List.FirstOrDefault()?.Name;
-            if (!string.IsNullOrWhiteSpace(firstCountry)) country = firstCountry;
+            if (groupName.Contains("định dạng", StringComparison.OrdinalIgnoreCase))
+            {
+                if (items.Any(x => x.Name?.Contains("bộ", StringComparison.OrdinalIgnoreCase) == true))
+                {
+                    type = "series";
+                }
+            }
+            else if (groupName.Contains("thể loại", StringComparison.OrdinalIgnoreCase))
+            {
+                genreList.AddRange(items.Select(x => x.Name).Where(x => !string.IsNullOrWhiteSpace(x))!);
+            }
+            else if (groupName.Contains("quốc gia", StringComparison.OrdinalIgnoreCase))
+            {
+                var firstCountry = items.FirstOrDefault()?.Name;
+                if (!string.IsNullOrWhiteSpace(firstCountry)) country = firstCountry;
+            }
+            else if (groupName.Contains("năm", StringComparison.OrdinalIgnoreCase))
+            {
+                var yearText = items.FirstOrDefault()?.Name;
+                if (int.TryParse(yearText, out var parsedYear) && parsedYear is >= 1900 and <= 2100)
+                {
+                    year = parsedYear;
+                }
+            }
         }
 
         var genre = genreList.Count > 0 ? string.Join(", ", genreList) : "Hành Động, Kịch Tính";
-        return (type, genre, country);
+        return (type, genre, country, year);
     }
 
     private static int ParseYear(NguonCMovieSummary movie)
@@ -382,10 +450,18 @@ public sealed record NguonCDetailResponse(
 );
 
 public sealed record NguonCDetailMovie(
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("name")] string Name,
-    [property: JsonPropertyName("slug")] string Slug,
-    [property: JsonPropertyName("episodes")] List<NguonCServerGroup> Episodes
+    [property: JsonPropertyName("id")] string? Id,
+    [property: JsonPropertyName("name")] string? Name,
+    [property: JsonPropertyName("slug")] string? Slug,
+    [property: JsonPropertyName("original_name")] string? OriginalName,
+    [property: JsonPropertyName("thumb_url")] string? ThumbUrl,
+    [property: JsonPropertyName("poster_url")] string? PosterUrl,
+    [property: JsonPropertyName("description")] string? Description,
+    [property: JsonPropertyName("time")] string? Time,
+    [property: JsonPropertyName("director")] string? Director,
+    [property: JsonPropertyName("casts")] string? Casts,
+    [property: JsonPropertyName("category")] Dictionary<string, NguonCCategoryGroup>? Category,
+    [property: JsonPropertyName("episodes")] List<NguonCServerGroup>? Episodes
 );
 
 public sealed record NguonCServerGroup(
