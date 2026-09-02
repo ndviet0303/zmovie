@@ -16,20 +16,35 @@ export async function useMovieDetail() {
   const { locale, setLocale: setGlobalLocale } = useLocale();
   const slug = computed(() => String(route.params.slug));
 
-  const { data: title, error } = await useAsyncData(
+  const titleAsync = useAsyncData(
     () => `movie-${slug.value}-${locale.value}`,
     () => fetchCatalogTitleBySlug(slug.value, locale.value),
   );
-
-  const { data: catalog } = await useAsyncData(
+  const catalogAsync = useAsyncData(
     () => `movie-recommendations-${locale.value}`,
     () => fetchCatalogTitles({ locale: locale.value }),
   );
-
-  const { data: reviews, refresh: refreshReviews } = await useAsyncData(
+  const reviewsAsync = useAsyncData(
     () => `movie-reviews-${slug.value}`,
     () => fetchTitleReviews(slug.value),
   );
+
+  useZMovieSeo({
+    title: computed(() => titleAsync.data.value?.title ?? "Chi tiết phim"),
+    description: computed(
+      () =>
+        titleAsync.data.value?.synopsis ??
+        "Xem thông tin, trailer và đánh giá phim trên ZMovie.",
+    ),
+    image: computed(() => titleAsync.data.value?.posterUrl),
+    type: "video.movie",
+  });
+
+  const [
+    { data: title, error },
+    { data: catalog },
+    { data: reviews, refresh: refreshReviews },
+  ] = await Promise.all([titleAsync, catalogAsync, reviewsAsync]);
 
   const isSaved = ref(false);
   const isTrailerOpen = ref(false);
@@ -95,17 +110,6 @@ export async function useMovieDetail() {
           submitted: "Your review has been saved.",
         },
   );
-
-  useZMovieSeo({
-    title: computed(() => title.value?.title ?? "Chi tiết phim"),
-    description: computed(
-      () =>
-        title.value?.synopsis ??
-        "Xem thông tin, trailer và đánh giá phim trên ZMovie.",
-    ),
-    image: computed(() => title.value?.posterUrl),
-    type: "video.movie",
-  });
 
   const related = computed(() =>
     (catalog.value?.items ?? [])

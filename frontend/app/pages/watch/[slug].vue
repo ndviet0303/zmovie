@@ -261,6 +261,13 @@ async function loadEpisode() {
     subtitleOptions.value = [{ index: 999, label: "Tiếng Việt (R2 WebVTT)" }];
   }
 
+  const isDirectMp4 = source.endsWith(".mp4") || source.includes(".mp4");
+  if (isDirectMp4) {
+    element.src = source;
+    element.play().catch(() => {});
+    return;
+  }
+
   if (element.canPlayType("application/vnd.apple.mpegurl")) {
     element.src = source;
   } else {

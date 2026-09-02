@@ -1,5 +1,5 @@
 import {
-  HubConnection,
+  type HubConnection,
   HubConnectionBuilder,
   LogLevel,
 } from "@microsoft/signalr";

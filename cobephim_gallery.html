@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoBePhim / RoPhim — Thư Viện Ảnh Chụp Màn Hình UI Gốc</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f111a;
+      --card-bg: #191b24;
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary: #ffd875;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      padding-bottom: 4rem;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15, 17, 26, 0.92);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .brand h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .brand span { color: var(--primary); }
+    .badge {
+      background: rgba(255, 216, 117, 0.15);
+      color: var(--primary);
+      border: 1px solid rgba(255, 216, 117, 0.3);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .filters {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+    .btn-filter {
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-size: 12.5px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-filter:hover, .btn-filter.active {
+      background: var(--primary);
+      color: #0f111a;
+      border-color: var(--primary);
+      font-weight: 700;
+    }
+    .gallery-container {
+      max-width: 1440px;
+      margin: 2rem auto;
+      padding: 0 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+      gap: 1.75rem;
+    }
+    .photo-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .photo-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+      border-color: rgba(255, 216, 117, 0.3);
+    }
+    .photo-img-wrap {
+      position: relative;
+      height: 320px;
+      overflow: hidden;
+      background: #000;
+      cursor: pointer;
+    }
+    .photo-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+      transition: transform 0.3s ease;
+    }
+    .photo-card:hover .photo-img-wrap img {
+      transform: scale(1.03);
+    }
+    .photo-badge-top {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .photo-info {
+      padding: 1rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      flex-grow: 1;
+      justify-content: space-between;
+    }
+    .photo-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .photo-desc {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .photo-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .btn-view-full {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .btn-view-full:hover { text-decoration: underline; }
+    .file-size {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.4);
+    }
+    /* Modal Zoom */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: rgba(0, 0, 0, 0.92);
+      backdrop-filter: blur(15px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .lightbox.active { display: flex; }
+    .lightbox-content {
+      max-width: 95vw;
+      max-height: 92vh;
+      overflow: auto;
+      border-radius: 8px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+    }
+    .lightbox-content img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .lightbox-close {
+      position: absolute;
+      top: 20px;
+      right: 25px;
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      border: none;
+      font-size: 24px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <h1>CôBe<span>Phim</span></h1>
+      <span class="badge">18 Ảnh Gốc (Desktop & Mobile)</span>
+    </div>
+
+    <div class="filters">
+      <button class="btn-filter active" onclick="filterPhotos('all')">Tất cả (18)</button>
+      <button class="btn-filter" onclick="filterPhotos('home')">Trang Chủ</button>
+      <button class="btn-filter" onclick="filterPhotos('detail')">Chi Tiết Phim</button>
+      <button class="btn-filter" onclick="filterPhotos('player')">Xem Phim (Player)</button>
+      <button class="btn-filter" onclick="filterPhotos('catalog')">Bộ Lọc & Thể Loại</button>
+      <button class="btn-filter" onclick="filterPhotos('mobile')">Mobile (Di Động)</button>
+    </div>
+  </header>
+
+  <div class="gallery-container">
+    <!-- 1. Home Hero -->
+    <div class="photo-card" data-category="home">
+      <div class="photo-img-wrap" onclick="openLightbox('cobephim_screenshots/01_home_hero.webp')">
+        <span class="photo-badge-top">Desktop 1440px</span>
+        <img src="cobephim_screenshots/01_home_hero.webp" alt="Trang Chủ - Hero Viewport">
+      </div>
+      <div class="photo-info">
+        <div>
+          <div class="photo-title">01. Trang Chủ - Hero Banner & Header</div>
+          <div class="photo-desc">Thanh menu trên cùng, logo CôBePhim, ô tìm kiếm, slider nổi bật "Vợ Tôi Là Sát Thủ", điểm IMDb 10.0 và nút Xem Ngay.</div>
+        </div>
+        <div class="photo-actions">
+          <a href="cobephim_screenshots/01_home_hero.webp" target="_blank" class="btn-view-full">Xem kích thước gốc ↗</a>
+          <span class="file-size">577 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Home Fullpage -->
+    <div class="photo-card" data-category="home">
+      <div class="photo-img-wrap" onclick="openLightbox('cobephim_screenshots/01_home_fullpage.webp')">
+        <span class="photo-badge-top">Full Page Scroll</span>
+        <img src="cobephim_screenshots/01_home_fullpage.webp" alt="Trang Chủ - Toàn Trang">
+      </div>
+      <div class="photo-info">
+        <div>
+          <div class="photo-title">02. Trang Chủ - Toàn Trang Cuộn</div>
+          <div class="photo-desc">Toàn bộ trang chủ cuộn dài gồm: Chủ đề nổi bật, Phim điện ảnh mới, Top 10 phim bộ, Phim sắp chiếu, Footer.</div>
+        </div>
+        <div class="photo-actions">
+          <a href="cobephim_screenshots/01_home_fullpage.webp" target="_blank" class="btn-view-full">Xem kích thước gốc ↗</a>
+          <span class="file-size">708 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Search Results -->
+    <div class="photo-card" data-category="catalog">
+      <div class="photo-img-wrap" onclick="openLightbox('cobephim_screenshots/02_search_results.webp')">
+        <span class="photo-badge-top">Search UI</span>
+        <img src="cobephim_screenshots/02_search_results.webp" alt="Kết Quả Tìm Kiếm">
+      </div>
+      <div class="photo-info">
+        <div>
+          <div class="photo-title">03. Giao Diện Tìm Kiếm Phim</div>
+          <div class="photo-desc">Trang kết quả tìm kiếm với lưới thẻ phim, huy hiệu chất lượng, năm sản xuất và thẻ lọc.</div>
+        </div>
+        <div class="photo-actions">
+          <a href="cobephim_screenshots/02_search_results.webp" target="_blank" class="btn-view-full">Xem kích thước gốc ↗</a>
+          <span class="file-size">438 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Movie Detail Hero -->
+    <div class="photo-card" data-category="detail">
+      <div class="photo-img-wrap" onclick="openLightbox('cobephim_screenshots/03_movie_detail_hero.webp')">
+        <span class="photo-badge-top">Chi Tiết Phim</span>
+        <img src="cobephim_screenshots/03_movie_detail_hero.webp" alt="Chi Tiết Phim - Hero">
+      </div>
+      <div class="photo-info">
+        <div>
+          <div class="photo-title">04. Chi Tiết Phim - Poster & Action Bar</div>
+          <div class="photo-desc">Backdrop mờ, poster bên trái, thanh action bar mờ (Xem Ngay, Yêu Thích, Playlist), chọn Server viền LED và lưới chọn tập.</div>
+        </div>
+        <div class="photo-actions">
+          <a href="cobephim_screenshots/03_movie_detail_hero.webp" target="_blank" class="btn-view-full">Xem kích thước gốc ↗</a>
+          <span class="file-size">239 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Movie Detail Fullpage -->
+    <div class="photo-card" data-category="detail">
+      <div class="photo-img-wrap" onclick="openLightbox('cobephim_screenshots/03_movie_detail_fullpage.webp')">
+        <span class="photo-badge-top">Chi Tiết Toàn Trang</span>
+        <img src="cobephim_screenshots/03_movie_detail_fullpage.webp" alt="Chi Tiết Phim - Toàn Trang">
+      </div>
+      <div class="photo-info">
+        <div>
+          <div class="photo-title">05. Chi Tiết Phim - Toàn Bộ Trang Cuộn</div>
+          <div class="photo-desc">Kèm nội dung tóm tắt chi tiết, danh sách diễn viên đạo diễn dạng hình tròn và các phim đề xuất liên quan.</div>
+        </div>
+        <div class="photo-actions">
+          <a href="cobephim_screenshots/03_movie_detail_fullpage.webp" target="_blank" class="btn-view-full">Xem kích thước gốc ↗</a>
+          <span class="file-size">352 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. Watch Player Viewport -->
+    <div class="photo-card" data-category="player">
+      <div class="photo-img-wrap" onclick="openLightbox('cobephim_screenshots/04_watch_player.webp')">
+        <span class="photo-badge-top">Trình Phát Video</span>
+        <img src="cobephim_screenshots/04_watch_player.webp" alt="Xem Phim - Trình Phát">
+      </div>
+      <div class="photo-info">
+        <div>
+          <div class="photo-title">06. Trình Phát Video 16:9 & Toolbar</div>
+          <div class="photo-desc">Khung player tỉ lệ 16:9, thanh breadcrumbs, thanh điều khiển tắt đèn / rạp chiếu và nút chọn server phụ đề.</div>
+        </div>
+        <div class="photo-actions">
+          <a href="cobephim_screenshots/04_watch_player.webp" target="_blank" class="btn-view-full">Xem kích thước gốc ↗</a>
+          <span class="file-size">155 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. Watch Fullpage -->
+    <div class="photo-card" data-category="player">
+      <div class="photo-img-wrap" onclick="openLightbox('cobephim_screenshots/04_watch_fullpage.webp')">
+        <span class="photo-badge-top">Xem Phim Toàn Trang</span>
+        <img src="cobephim_screenshots/04_watch_fullpage.webp" alt="Xem Phim - Toàn Trang">
+      </div>
+      <div class="photo-info">
+        <div>
+          <div class="photo-title">07. Trang Xem Phim - Toàn Trang Cuộn</div>
+          <div class="photo-desc">Toàn bộ màn hình xem phim bao gồm khu vực bình luận thảo luận và danh sách tập phim phía dưới.</div>
+        </div>
+        <div class="photo-actions">
+          <a href="cobephim_screenshots/04_watch_fullpage.webp" target="_blank" class="btn-view-full">Xem kích thước gốc ↗</a>
+          <span class="file-size">361 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. Filter Drawer Expanded -->
+    <div class="photo-card" data-category="catalog">
+      <div class="photo-img-wrap" onclick="openLightbox('cobephim_screenshots/05_catalog_filter_expanded.webp')">
+        <span class="photo-badge-top">Bộ Lọc Mở Rộng</span>
+        <img src="cobephim_screenshots/05_catalog_filter_expanded.webp" alt="Bộ Lọc Phim Mở Rộng">
+      </div>
+      <div class="photo-info">
+        <div>
+          <div class="photo-title">08. Bộ Lọc Phim Mở Rộng (Filter Drawer)</div>
+          <div class="photo-desc">Chi tiết các tiêu chí lọc: Quốc gia (Hàn Quốc, Trung Quốc, Âu Mỹ...), Thể loại, Năm phát hành và Sắp xếp.</div>
+        </div>
+        <div class="photo-actions">
+          <a href="cobephim_screenshots/05_catalog_filter_expanded.webp" target="_blank" class="btn-view-full">Xem kích thước gốc ↗</a>
+          <span class="file-size">203 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9. Catalog Fullpage -->
+    <div class="photo-card" data-category="catalog">
+      <div class="photo-img-wrap" onclick="openLightbox('cobephim_screenshots/05_catalog_fullpage.webp')">
+        <span class="photo-badge-top">Danh Mục Toàn Trang</span>
+        <img src="cobephim_screenshots/05_catalog_fullpage.webp" alt="Danh Mục Phim Toàn Trang">
+      </div>
+      <div class="photo-info">
+        <div>
+          <div class="photo-title">09. Danh Mục Phim Hành Động (Full Grid)</div>
+          <div class="photo-desc">Lưới phim chuẩn với hàng chục bộ phim, huy hiệu P.Đề / T.Minh và thanh phân trang có ô nhập số trang.</div>
+        </div>
+        <div class="photo-actions">
+          <a href="cobephim_screenshots/05_catalog_fullpage.webp" target="_blank" class="btn-view-full">Xem kích thước gốc ↗</a>
+          <span class="file-size">1.5 MB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 10. Dropdown Menu -->
+    <div class="photo-card" data-category="home">
+      <div class="photo-img-wrap" onclick="openLightbox('cobephim_screenshots/06_dropdown_menu_theloai.webp')">
+        <span class="photo-badge-top">Dropdown Navigation</span>
+        <img src="cobephim_screenshots/06_dropdown_menu_theloai.webp" alt="Menu Thể Loại Dropdown">
+      </div>
+      <div class="photo-info">
+        <div>
+          <div class="photo-title">10. Dropdown Menu Thể Loại Mở Rộng</div>
+          <div class="photo-desc">Menu thả xuống trên thanh Header hiển thị danh sách các thể loại phim với nền mờ cao cấp.</div>
+        </div>
+        <div class="photo-actions">
+          <a href="cobephim_screenshots/06_dropdown_menu_theloai.webp" target="_blank" class="btn-view-full">Xem kích thước gốc ↗</a>
+          <span class="file-size">203 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 11. Phim Le Hero -->
+    <div class="photo-card" data-category="catalog">
+      <div class="photo-img-wrap" onclick="openLightbox('cobephim_screenshots/07_phim_le_hero.webp')">
+        <span class="photo-badge-top">Trang Phim Lẻ</span>
+        <img src="cobephim_screenshots/07_phim_le_hero.webp" alt="Trang Phim Lẻ">
+      </div>
+      <div class="photo-info">
+        <div>
+          <div class="photo-title">11. Trang Danh Mục Phim Lẻ (Movies)</div>
+          <div class="photo-desc">Giao diện danh mục phim lẻ chiếu rạp, phim ngắn mới cập nhật trên CôBePhim.</div>
+        </div>
+        <div class="photo-actions">
+          <a href="cobephim_screenshots/07_phim_le_hero.webp" target="_blank" class="btn-view-full">Xem kích thước gốc ↗</a>
+          <span class="file-size">614 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 12. Phim Bo Hero -->
+    <div class="photo-card" data-category="catalog">
+      <div class="photo-img-wrap" onclick="openLightbox('cobephim_screenshots/08_phim_bo_hero.webp')">
+        <span class="photo-badge-top">Trang Phim Bộ</span>
+        <img src="cobephim_screenshots/08_phim_bo_hero.webp" alt="Trang Phim Bộ">
+      </div>
+      <div class="photo-info">
+        <div>
+          <div class="photo-title">12. Trang Danh Mục Phim Bộ (Series)</div>
+          <div class="photo-desc">Giao diện danh mục phim dài tập, phim truyền hình Trung Quốc, Hàn Quốc, Âu Mỹ hot nhất.</div>
+        </div>
+        <div class="photo-actions">
+          <a href="cobephim_screenshots/08_phim_bo_hero.webp" target="_blank" class="btn-view-full">Xem kích thước gốc ↗</a>
+          <span class="file-size">503 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 13. Mobile Home -->
+    <div class="photo-card" data-category="mobile">
+      <div class="photo-img-wrap" onclick="openLightbox('cobephim_screenshots/09_mobile_home.webp')">
+        <span class="photo-badge-top">Mobile 390px</span>
+        <img src="cobephim_screenshots/09_mobile_home.webp" alt="Mobile Trang Chủ">
+      </div>
+      <div class="photo-info">
+        <div>
+          <div class="photo-title">13. Giao Diện Di Động - Trang Chủ</div>
+          <div class="photo-desc">Thanh điều hướng di động, dải pill danh mục ngang, slider banner và các thẻ phim thu gọn cho điện thoại.</div>
+        </div>
+        <div class="photo-actions">
+          <a href="cobephim_screenshots/09_mobile_home.webp" target="_blank" class="btn-view-full">Xem kích thước gốc ↗</a>
+          <span class="file-size">341 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 14. Mobile Drawer Menu -->
+    <div class="photo-card" data-category="mobile">
+      <div class="photo-img-wrap" onclick="openLightbox('cobephim_screenshots/09_mobile_menu_drawer.webp')">
+        <span class="photo-badge-top">Mobile Menu</span>
+        <img src="cobephim_screenshots/09_mobile_menu_drawer.webp" alt="Mobile Menu Drawer">
+      </div>
+      <div class="photo-info">
+        <div>
+          <div class="photo-title">14. Giao Diện Di Động - Menu Trượt (Drawer)</div>
+          <div class="photo-desc">Menu bên hông xuất hiện khi bấm nút hamburger ba gạch, hiển thị đầy đủ danh mục và liên kết tài khoản.</div>
+        </div>
+        <div class="photo-actions">
+          <a href="cobephim_screenshots/09_mobile_menu_drawer.webp" target="_blank" class="btn-view-full">Xem kích thước gốc ↗</a>
+          <span class="file-size">332 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 15. Mobile Detail -->
+    <div class="photo-card" data-category="mobile">
+      <div class="photo-img-wrap" onclick="openLightbox('cobephim_screenshots/10_mobile_detail.webp')">
+        <span class="photo-badge-top">Mobile Detail</span>
+        <img src="cobephim_screenshots/10_mobile_detail.webp" alt="Mobile Chi Tiết Phim">
+      </div>
+      <div class="photo-info">
+        <div>
+          <div class="photo-title">15. Giao Diện Di Động - Chi Tiết Phim</div>
+          <div class="photo-desc">Poster phim cỡ vừa, các nút thao tác nhanh trên màn hình nhỏ và lưới chọn tập phim cảm ứng.</div>
+        </div>
+        <div class="photo-actions">
+          <a href="cobephim_screenshots/10_mobile_detail.webp" target="_blank" class="btn-view-full">Xem kích thước gốc ↗</a>
+          <span class="file-size">239 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 16. Mobile Watch -->
+    <div class="photo-card" data-category="mobile">
+      <div class="photo-img-wrap" onclick="openLightbox('cobephim_screenshots/11_mobile_watch.webp')">
+        <span class="photo-badge-top">Mobile Player</span>
+        <img src="cobephim_screenshots/11_mobile_watch.webp" alt="Mobile Xem Phim">
+      </div>
+      <div class="photo-info">
+        <div>
+          <div class="photo-title">16. Giao Diện Di Động - Trình Phát Phim</div>
+          <div class="photo-desc">Trình phát video tỷ lệ 16:9 tối ưu cho màn hình cảm ứng di động và danh sách tập phim đặt phía dưới.</div>
+        </div>
+        <div class="photo-actions">
+          <a href="cobephim_screenshots/11_mobile_watch.webp" target="_blank" class="btn-view-full">Xem kích thước gốc ↗</a>
+          <span class="file-size">159 KB</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightbox Modal for Fullscreen Zoom -->
+  <div id="lightboxModal" class="lightbox" onclick="closeLightbox()">
+    <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+    <div class="lightbox-content" onclick="event.stopPropagation()">
+      <img id="lightboxImg" src="" alt="Ảnh Phóng To">
+    </div>
+  </div>
+
+  <script>
+    function filterPhotos(category) {
+      document.querySelectorAll('.btn-filter').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+
+      document.querySelectorAll('.photo-card').forEach(card => {
+        if (category === 'all' || card.getAttribute('data-category') === category) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    function openLightbox(imgSrc) {
+      const modal = document.getElementById('lightboxModal');
+      const img = document.getElementById('lightboxImg');
+      img.src = imgSrc;
+      modal.classList.add('active');
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightboxModal').classList.remove('active');
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox();
+    });
+  </script>
+</body>
+</html>

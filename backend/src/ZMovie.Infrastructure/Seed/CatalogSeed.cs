@@ -12,7 +12,7 @@ public static class CatalogSeed
     public static async Task SeedAsync(CatalogDbContext db, TimeProvider timeProvider, CancellationToken ct = default)
     {
         var now = timeProvider.GetUtcNow();
-        var natra = await EnsureTitle(db, Create("natra-2-ma-dong-nao-hai", "Ne Zha 2: Demon Child Rages the Sea", "Natra 2: Ma Đồng Náo Hải", "Ne Zha faces a new trial across the sea.", "Natra đối diện thử thách mới giữa biển khơi.", "Animation", 2025, "movie", "https://upload.wikimedia.org/wikipedia/en/b/b6/Ne_Zha_2_poster.jpg", 144, true, now), now, ct);
+        var natra = await EnsureTitle(db, Create("natra-2-ma-dong-nao-hai", "Ne Zha 2: Demon Child Rages the Sea", "Natra 2: Ma Đồng Náo Hải", "Ne Zha faces a new trial across the sea.", "Natra đối diện thử thách mới giữa biển khơi.", "Animation", 2025, "movie", "https://upload.wikimedia.org/wikipedia/en/b/b6/Ne_Zha_2_poster.jpg", 144, true, now, isR2Hosted: true), now, ct);
         var mushoku = await EnsureTitle(db, Create("that-nghiep-chuyen-sinh-phan-3", "Mushoku Tensei Season 3", "Thất nghiệp chuyển sinh phần 3", "Rudeus continues his journey in a new chapter.", "Rudeus tiếp tục hành trình của mình trong chương mới.", "Animation", 2026, "series", "https://static.animecorner.me/2026/05/1779187746-6b497063174d0afdd8395904b6919d82.jpg", 24, true, now), now, ct);
         var translateLove = await EnsureTitle(db, Create("tieng-yeu-nay-anh-dich-duoc-khong", "Can This Love Be Translated?", "Tiếng yêu này, anh dịch được không?", "A celebrity and her interpreter struggle to make sense of their feelings while traveling the world to film a television show.", "Cảm xúc của một ngôi sao và phiên dịch viên của cô dễ lạc mất ý nghĩa khi họ cùng đi khắp thế giới để quay một chương trình truyền hình. Liệu tình yêu có tự tìm được ngôn ngữ riêng?", "Romance", 2026, "series", "https://occ-0-325-395.1.nflxso.net/dnm/api/v6/6AYY37jfdO6hpXcMjf9Yu5cnmO0/AAAABb3rnuwKYw2K1nEKI24J2BZCyTcttUmJkw9EXzIDUyH7wAqOU_WgR6nfWzXIaZOQADepqvSIZ_r0cu6ruYLasOwCCJrOf_jDLCai.jpg?r=605", 60, false, now), now, ct);
         var heavyKnight = await EnsureTitle(db, Create("trong-giap-hiep-si-chuyen-sinh", "The Exiled Heavy Knight Knows How to Game the System", "Trọng Giáp Hiệp Sĩ Chuyển Sinh Bị Lưu Đày Trở Nên Vô Địch Nhờ Kiến Thức Về Game", "Born into a famous swordsman family, Elymas is disowned after awakening as a supposedly defective Heavy Knight. Memories of a past life reveal that this world is the VR game he once mastered, giving him the knowledge to rewrite his fate.", "Sinh ra trong gia tộc kiếm sĩ danh giá, Elymas bị ruồng bỏ khi thức tỉnh thành Trọng Giáp Hiệp Sĩ bị cho là vô dụng. Ký ức kiếp trước cho cậu biết đây chính là thế giới VR game từng chinh phục, giúp cậu viết lại số phận.", "Animation", 2026, "series", "https://sh-anime.shochiku.co.jp/jukishi-anime/img/ju_ogp_1.jpg", 24, false, now), now, ct);
@@ -25,7 +25,7 @@ public static class CatalogSeed
         await EnsureTitle(db, Create("mua-he-cuoi-hem", "Summer on the Corner", "Mùa Hè Cuối Hẻm", "Old friends return to a small neighborhood and discover that growing up does not mean leaving everything behind.", "Những người bạn cũ trở về khu phố nhỏ và nhận ra trưởng thành không có nghĩa là phải bỏ lại mọi thứ phía sau.", "Romance, Family", 2025, "series", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80", 48, true, now), now, ct);
         await EnsureTitle(db, Create("ve-binh-ngan-ha", "Guardians of the Starlight", "Vệ Binh Ngân Hà", "A mismatched crew races across the stars to protect a world that has no idea it is in danger.", "Một đội phi hành đoàn bất đắc dĩ chạy đua giữa các vì sao để bảo vệ một thế giới chưa hề biết mình đang gặp nguy hiểm.", "Action, Science Fiction, Adventure", 2026, "series", "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=1200&q=80", 46, true, now), now, ct);
 
-        await EnsureEpisodes(db, natra, ["https://vip.opstream90.com/20250731/9896_dd1970fb/index.m3u8"], ct);
+        await EnsureEpisodes(db, natra, ["https://pub-a6d16eb1790945d6a27f6e7a28c2660b.r2.dev/phim.mp4"], ct);
         await EnsureEpisodes(db, mushoku, ["https://vip.opstream90.com/20260705/36184_705dd9f9/index.m3u8", "https://vip.opstream90.com/20260705/36185_f0260654/index.m3u8", "https://vip.opstream10.com/20260720/34407_ee79d5e1/index.m3u8", "https://vip.opstream10.com/20260720/34408_8f8f6380/index.m3u8"], ct);
         await EnsureEpisodes(db, translateLove, ["https://vip.opstream90.com/20260116/22574_4eb9407d/index.m3u8", "https://vip.opstream90.com/20260116/22575_026947ba/index.m3u8", "https://vip.opstream90.com/20260116/22576_a5311ea2/index.m3u8", "https://vip.opstream90.com/20260116/22577_3d5ac5d0/index.m3u8", "https://vip.opstream90.com/20260116/22578_8e6a4217/index.m3u8", "https://vip.opstream90.com/20260116/22579_599b61ce/index.m3u8", "https://vip.opstream90.com/20260116/22580_972a8c3b/index.m3u8", "https://vip.opstream90.com/20260116/22581_2393d7a6/index.m3u8", "https://vip.opstream90.com/20260116/22582_3e30c0a4/index.m3u8", "https://vip.opstream90.com/20260116/22583_94d231f1/index.m3u8", "https://vip.opstream90.com/20260116/22584_266e3c74/index.m3u8", "https://vip.opstream90.com/20260116/22585_b6d7a951/index.m3u8"], ct);
         await EnsureEpisodes(db, heavyKnight, ["https://vip.opstream10.com/20260718/34307_57990ea7/index.m3u8", "https://vip.opstream10.com/20260718/34308_c4f7cfb1/index.m3u8", "https://vip.opstream10.com/20260718/34309_b05ed73e/index.m3u8"], ct);
@@ -47,24 +47,30 @@ public static class CatalogSeed
             candidate.PosterUrl,
             candidate.Runtime,
             candidate.Featured,
-            now);
+            now,
+            isR2Hosted: candidate.IsR2Hosted);
         return existing;
     }
 
     private static async Task EnsureEpisodes(CatalogDbContext db, Title title, IReadOnlyList<string> urls, CancellationToken ct)
     {
-        var existingNumbers = await db.Episodes.Where(x => x.TitleId == title.Id).Select(x => x.Number).ToListAsync(ct);
+        var existingEpisodes = await db.Episodes.Where(x => x.TitleId == title.Id).ToListAsync(ct);
         for (var index = 0; index < urls.Count; index++)
         {
             var number = index + 1;
-            if (!existingNumbers.Contains(number))
+            var existing = existingEpisodes.FirstOrDefault(x => x.Number == number);
+            if (existing is null)
             {
                 db.Episodes.Add(Episode.Create(EpisodeId.New(), title.Id, number, $"Episode {number}", urls[index]));
+            }
+            else
+            {
+                existing.Update(existing.Name, urls[index], existing.SubtitleUrl);
             }
         }
     }
 
-    private static Title Create(string slug, string englishTitle, string vietnameseTitle, string englishSynopsis, string vietnameseSynopsis, string genre, int year, string type, string posterUrl, int runtimeMinutes, bool featured, DateTimeOffset now) =>
+    private static Title Create(string slug, string englishTitle, string vietnameseTitle, string englishSynopsis, string vietnameseSynopsis, string genre, int year, string type, string posterUrl, int runtimeMinutes, bool featured, DateTimeOffset now, bool isR2Hosted = false) =>
         Title.Create(
             TitleId.New(),
             TitleSlug.Parse(slug),
@@ -76,5 +82,6 @@ public static class CatalogSeed
             posterUrl,
             Runtime.FromMinutes(runtimeMinutes),
             featured,
-            now);
+            now,
+            isR2Hosted: isR2Hosted);
 }
