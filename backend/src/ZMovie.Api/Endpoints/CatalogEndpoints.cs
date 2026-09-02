@@ -44,9 +44,22 @@ public static class CatalogEndpoints
             .Produces<bool>(StatusCodes.Status200OK)
             .ProducesApiErrors();
 
+        catalog.MapGet("/titles/{slug}/episodes/{episodeNumber}/danmaku", async (ISender sender, string slug, int episodeNumber, int? from, int? to, CancellationToken ct) =>
+                (await sender.Send(new GetTimedDanmakuQuery(slug, episodeNumber, from, to), ct)).ToApiResult())
+            .WithName("GetTimedDanmaku")
+            .Produces<IReadOnlyList<DanmakuItemDto>>(StatusCodes.Status200OK)
+            .ProducesApiErrors();
+
+        catalog.MapPost("/titles/{slug}/episodes/{episodeNumber}/danmaku", async (ISender sender, HttpContext context, string slug, int episodeNumber, SendDanmakuRequest request, CancellationToken ct) =>
+                (await sender.Send(new SendDanmakuCommand(slug, episodeNumber, request.TimeSeconds, request.Content, request.Color, UserIdentityAdapter.GetUserIdOrNull(context.User), request.AuthorName ?? "Anonymous"), ct)).ToApiResult())
+            .WithName("SendDanmaku")
+            .Produces<DanmakuItemDto>(StatusCodes.Status200OK)
+            .ProducesApiErrors();
+
         return endpoints;
     }
 }
 
 public sealed record RecordTitleViewRequest(int? EpisodeNumber);
-public sealed record TitleReportRequest(string Category, string Description, double? TimestampSeconds);
+public sealed record TitleReportRequest(string Category, string Description, int? TimestampSeconds);
+public sealed record SendDanmakuRequest(int TimeSeconds, string Content, string Color, string? AuthorName);

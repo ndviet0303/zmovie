@@ -73,6 +73,8 @@ public static class DependencyInjection
         services.AddScoped<ICatalogTitleCleanupPort, EfCatalogTitleCleanupPort>();
         services.AddScoped<ICatalogAdministrationService, EfCatalogAdministrationService>();
         services.AddScoped<ILibraryCatalogReader, CatalogLibraryReader>();
+        services.AddHttpClient<ITmdbClient, TmdbClient>();
+
         services.AddScoped<ICatalogAssistantStore, CatalogAssistantStore>();
 
         return services;
@@ -88,7 +90,9 @@ public static class DependencyInjection
 
         services.AddScoped<IUserRepository, EfUserRepository>();
         services.AddScoped<IUserQueries, EfUserQueries>();
+        services.AddScoped<IVipSubscriptionRepository, EfVipSubscriptionRepository>();
         services.AddScoped<IGoogleIdentityVerifier, GoogleIdentityVerifier>();
+
 
         return services;
     }
@@ -106,7 +110,12 @@ public static class DependencyInjection
         services.AddScoped<IUserLibraryQueries, EfUserLibraryQueries>();
         services.AddScoped<IReviewRepository, EfReviewRepository>();
         services.AddScoped<IReviewQueries, EfReviewQueries>();
+        services.AddScoped<IDanmakuRepository, EfDanmakuRepository>();
         services.AddScoped<IEngagementTitleCleanupPort, EfEngagementTitleCleanupPort>();
+        services.AddSingleton<IShortClipRepository, InMemoryShortClipRepository>();
+        services.AddSingleton<IUserExpRepository, InMemoryUserExpRepository>();
+
+
         services.AddSingleton<ITopTitlesResponseCache, TopTitlesResponseCache>();
         services.AddSingleton<IRecommendationEngine, TinyContentRecommendationEngine>();
 

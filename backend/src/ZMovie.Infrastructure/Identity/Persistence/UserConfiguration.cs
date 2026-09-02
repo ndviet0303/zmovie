@@ -63,7 +63,14 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasIndex(user => new { user.Role, user.CreatedAt })
             .HasDatabaseName("ix_users_role_created_at");
 
-        builder.Ignore(user => user.VipExpiresAt);
-        builder.Ignore(user => user.SubscriptionTier);
+        builder.Property(user => user.VipExpiresAt)
+            .HasColumnName("vip_expires_at");
+
+        builder.Property(user => user.SubscriptionTier)
+            .HasColumnName("subscription_tier")
+            .HasMaxLength(50)
+            .HasDefaultValue("Free")
+            .IsRequired();
     }
 }
+

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   Bookmark,
-  Check,
   Clock,
   Heart,
   MessageSquare,
@@ -12,7 +11,9 @@ import {
   Star,
   ThumbsDown,
   ThumbsUp,
+  X,
 } from "@lucide/vue";
+import { useMovieSeo } from "~/composables/useMovieSeo";
 
 const {
   locale,
@@ -20,8 +21,6 @@ const {
   error,
   reviews,
   isSaved,
-  actionNotice,
-  reviewRating,
   reviewComment,
   isSubmittingReview,
   related,
@@ -31,6 +30,35 @@ const {
   shareTitle,
   submitReview,
 } = await useMovieDetail();
+
+const isTrailerModalOpen = ref(false);
+
+function getEmbedTrailerUrl(url: string): string {
+  if (!url) return "";
+  if (url.includes("youtube.com/watch?v=")) {
+    return url.replace("watch?v=", "embed/");
+  }
+  if (url.includes("youtu.be/")) {
+    return url.replace("youtu.be/", "www.youtube.com/embed/");
+  }
+  return url;
+}
+
+useMovieSeo({
+  title: computed(() => title.value?.title || ""),
+  description: computed(() => title.value?.synopsis || ""),
+  image: computed(() => title.value?.posterUrl),
+  type: computed(() => title.value?.type || "movie"),
+  year: computed(() => title.value?.year),
+  director: computed(() => title.value?.directors),
+  actors: computed(() =>
+    Array.isArray(title.value?.actors)
+      ? title.value?.actors.join(", ")
+      : title.value?.actors,
+  ),
+  trailerUrl: computed(() => title.value?.trailerUrl),
+  genre: computed(() => title.value?.genre),
+});
 
 // Active tab in right column
 const activeTab = ref<"episodes" | "gallery" | "actors" | "recommendations">(
@@ -292,6 +320,17 @@ const genreList = computed(() => {
                 <Play class="size-4.5 fill-current" />
                 <span>Xem Ngay</span>
               </NuxtLink>
+
+              <!-- Xem Trailer Button -->
+              <button
+                v-if="title.trailerUrl"
+                type="button"
+                class="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-6 py-3.5 text-xs sm:text-sm font-bold text-amber-400 backdrop-blur-sm transition hover:bg-amber-500/20 active:scale-95"
+                @click="isTrailerModalOpen = true"
+              >
+                <Play class="size-4" />
+                <span>Xem Trailer</span>
+              </button>
 
               <!-- Yêu thích -->
               <button
@@ -750,6 +789,46 @@ const genreList = computed(() => {
       <NuxtLink to="/" class="mt-4 inline-block text-sm text-primary underline"
         >Quay lại trang chủ</NuxtLink
       >
+    </div>
+
+    <!-- YouTube Trailer Modal -->
+    <div
+      v-if="isTrailerModalOpen && title?.trailerUrl"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+    >
+      <div
+        class="relative w-full max-w-4xl overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl"
+      >
+        <div
+          class="flex items-center justify-between border-b border-zinc-800 px-4 py-3"
+        >
+          <h3 class="text-sm font-semibold text-white">
+            Trailer: {{ title.title }}
+          </h3>
+          <button
+            type="button"
+            class="rounded p-1 text-zinc-400 hover:text-white"
+            @click="isTrailerModalOpen = false"
+          >
+            <X class="size-5" />
+          </button>
+        </div>
+        <div class="aspect-video w-full bg-black">
+          <iframe
+            :src="getEmbedTrailerUrl(title.trailerUrl)"
+            class="h-full w-full border-0"
+            allow="
+              accelerometer;
+              autoplay;
+              clipboard-write;
+              encrypted-media;
+              gyroscope;
+              picture-in-picture;
+            "
+            allowfullscreen
+          />
+        </div>
+      </div>
     </div>
 
     <AppFooter />

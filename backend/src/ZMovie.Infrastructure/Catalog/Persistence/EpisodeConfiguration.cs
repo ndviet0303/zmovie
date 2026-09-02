@@ -44,5 +44,25 @@ public sealed class EpisodeConfiguration : IEntityTypeConfiguration<Episode>
         builder.HasIndex(x => new { x.TitleId, x.Number })
             .IsUnique()
             .HasDatabaseName("ix_episodes_title_id_number");
+
+        builder.Ignore(x => x.Milestones);
+
+        builder.Property(x => x.IntroStart)
+            .HasColumnName("intro_start");
+
+        builder.Property(x => x.IntroEnd)
+            .HasColumnName("intro_end");
+
+        builder.Property(x => x.OutroStart)
+            .HasColumnName("outro_start");
+
+        builder.Property(x => x.OutroEnd)
+            .HasColumnName("outro_end");
+
+        builder.HasMany(x => x.Sources)
+            .WithOne()
+            .HasForeignKey(x => x.EpisodeId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
+

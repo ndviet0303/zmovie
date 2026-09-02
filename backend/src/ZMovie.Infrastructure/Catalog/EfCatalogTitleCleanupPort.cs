@@ -18,6 +18,13 @@ public sealed class EfCatalogTitleCleanupPort(CatalogDbContext db) : ICatalogTit
     public async Task DeleteTitleAggregateAsync(TitleId titleId, CancellationToken ct)
     {
         await DeleteInBatchesAsync(db.TitleGenres.Where(x => x.TitleId == titleId), db, ct);
+
+        var episodeIds = await db.Episodes.Where(x => x.TitleId == titleId).Select(x => x.Id).ToListAsync(ct);
+        if (episodeIds.Count > 0)
+        {
+            await DeleteInBatchesAsync(db.EpisodeStreamSources.Where(x => episodeIds.Contains(x.EpisodeId)), db, ct);
+        }
+
         await DeleteInBatchesAsync(db.Episodes.Where(x => x.TitleId == titleId), db, ct);
 
         var title = await db.Titles.FirstOrDefaultAsync(x => x.Id == titleId, ct);
@@ -27,6 +34,7 @@ public sealed class EfCatalogTitleCleanupPort(CatalogDbContext db) : ICatalogTit
             await db.SaveChangesAsync(ct);
         }
     }
+
 
     private static async Task DeleteInBatchesAsync<TEntity>(IQueryable<TEntity> source, DbContext context, CancellationToken ct) where TEntity : class
     {

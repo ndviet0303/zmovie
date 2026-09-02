@@ -49,8 +49,41 @@ public sealed class EfCatalogReadStore(CatalogDbContext db, IViewAnalyticsQuerie
         if (!TitleSlug.TryCreate(slug, out var titleSlug)) return null;
         var title = await db.Titles.AsNoTracking().FirstOrDefaultAsync(x => x.Slug == titleSlug, ct);
         if (title is null) return null;
-        var episodes = await db.Episodes.AsNoTracking().Where(x => x.TitleId == title.Id).OrderBy(x => x.Number).Select(x => new PlaybackEpisode(x.Number, x.Name, x.HlsUrl, x.SubtitleUrl)).ToListAsync(ct);
-        return new(title.Slug.Value, title.LocalizedTitle(locale), title.Type.IsSeries, episodes);
+
+        var episodes = await db.Episodes.AsNoTracking()
+            .Include(x => x.Sources)
+            .Where(x => x.TitleId == title.Id)
+            .OrderBy(x => x.Number)
+            .ToListAsync(ct);
+
+        var episodeDtos = episodes.Select(x =>
+        {
+            var sources = x.Sources
+                .Where(s => s.IsActive)
+                .OrderBy(s => s.Priority)
+                .Select(s => new PlaybackSource(s.Provider, s.Url, s.Format, s.Priority, s.SubtitleUrl, s.AudioTrack))
+                .ToList();
+
+            if (sources.Count == 0 && !string.IsNullOrWhiteSpace(x.HlsUrl))
+            {
+                sources.Add(new PlaybackSource(
+                    "Primary",
+                    x.HlsUrl,
+                    x.HlsUrl.Contains(".m3u8", StringComparison.OrdinalIgnoreCase) ? "hls" : "embed",
+                    1,
+                    x.SubtitleUrl));
+            }
+
+            var milestones = x.Milestones.HasIntro || x.Milestones.HasOutro
+                ? new PlaybackMilestonesDto(x.Milestones.IntroStart, x.Milestones.IntroEnd, x.Milestones.OutroStart, x.Milestones.OutroEnd)
+                : null;
+
+            var primaryHls = sources.FirstOrDefault(s => s.Format == "hls")?.Url ?? x.HlsUrl;
+
+            return new PlaybackEpisode(x.Number, x.Name, primaryHls, x.SubtitleUrl, sources, milestones);
+        }).ToList();
+
+        return new(title.Slug.Value, title.LocalizedTitle(locale), title.Type.IsSeries, episodeDtos);
     }
 
     public async Task<HomeResponse?> GetHomeAsync(string locale, CancellationToken ct)

@@ -188,9 +188,84 @@ public sealed class CatalogDomainTests
     }
 
     [Fact]
+    public void EpisodeStreamSource_creation_and_mutation()
+    {
+        var sourceId = EpisodeSourceId.New();
+        var episodeId = EpisodeId.New();
+        var source = EpisodeStreamSource.Create(
+            sourceId,
+            episodeId,
+            "R2-VIP",
+            "https://cdn.example.com/stream.m3u8",
+            "HLS",
+            1,
+            true,
+            "https://cdn.example.com/sub.vtt",
+            "vi-sub");
+
+        source.Id.Should().Be(sourceId);
+        source.EpisodeId.Should().Be(episodeId);
+        source.Provider.Should().Be("R2-VIP");
+        source.Url.Should().Be("https://cdn.example.com/stream.m3u8");
+        source.Format.Should().Be("hls");
+        source.Priority.Should().Be(1);
+        source.IsActive.Should().BeTrue();
+        source.SubtitleUrl.Should().Be("https://cdn.example.com/sub.vtt");
+        source.AudioTrack.Should().Be("vi-sub");
+
+        source.UpdateStatus(false);
+        source.IsActive.Should().BeFalse();
+
+        source.UpdateDetails("https://cdn.example.com/stream2.m3u8", "embed", 2, "https://cdn.example.com/sub2.vtt", "vi-dub");
+        source.Url.Should().Be("https://cdn.example.com/stream2.m3u8");
+        source.Format.Should().Be("embed");
+        source.Priority.Should().Be(2);
+        source.SubtitleUrl.Should().Be("https://cdn.example.com/sub2.vtt");
+        source.AudioTrack.Should().Be("vi-dub");
+    }
+
+    [Fact]
+    public void PlaybackMilestones_detects_intro_and_outro()
+    {
+        var valid = new PlaybackMilestones(90, 180, 1400, 1500);
+        valid.HasIntro.Should().BeTrue();
+        valid.HasOutro.Should().BeTrue();
+
+        var none = PlaybackMilestones.None;
+        none.HasIntro.Should().BeFalse();
+        none.HasOutro.Should().BeFalse();
+
+        var invalid = new PlaybackMilestones(180, 90, null, null);
+        invalid.HasIntro.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Episode_manages_sources_and_milestones()
+    {
+        var episodeId = EpisodeId.New();
+        var titleId = TitleId.New();
+        var episode = Episode.Create(episodeId, titleId, 1, "Tập 1", "https://cdn.example.com/ep1.m3u8");
+
+        episode.Sources.Should().HaveCount(1);
+        episode.Sources.First().Url.Should().Be("https://cdn.example.com/ep1.m3u8");
+        episode.Milestones.Should().Be(PlaybackMilestones.None);
+
+        var milestones = new PlaybackMilestones(60, 120, null, null);
+        episode.SetMilestones(milestones);
+        episode.Milestones.Should().Be(milestones);
+
+        var backupSource = EpisodeStreamSource.Create(EpisodeSourceId.New(), episodeId, "OPhim", "https://ophim.example.com/ep1.m3u8", "hls", 2);
+        episode.AddSource(backupSource);
+        episode.Sources.Should().HaveCount(2);
+
+        episode.RemoveSource(backupSource.Id);
+        episode.Sources.Should().HaveCount(1);
+    }
+
+    [Fact]
     public void Aggregate_roots_have_private_parameterless_constructors_and_private_setters()
     {
-        foreach (var type in new[] { typeof(Title), typeof(Episode), typeof(Genre), typeof(TitleGenreAssignment) })
+        foreach (var type in new[] { typeof(Title), typeof(Episode), typeof(Genre), typeof(TitleGenreAssignment), typeof(EpisodeStreamSource) })
         {
             var constructor = type.GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
             Assert.NotNull(constructor);
@@ -206,3 +281,4 @@ public sealed class CatalogDomainTests
         }
     }
 }
+
