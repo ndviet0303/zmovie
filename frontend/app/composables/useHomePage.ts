@@ -34,18 +34,6 @@ export async function useHomePage() {
   } = useLocale();
   const activeLocale = ref(locale.value);
 
-  useZMovieSeo({
-    title: computed(() =>
-      isVietnamese.value ? "Xem phim hay online" : "Watch great movies online",
-    ),
-    description: computed(() => messages.value.home.description),
-    image: computed(() => home.value?.hero.posterUrl),
-  });
-
-  onMounted(() => {
-    void loadPersonalized(activeLocale.value);
-  });
-
   const topPeriod = ref<TopPeriod>("week");
   const topPeriods: TopPeriod[] = ["day", "week", "month"];
 
@@ -58,6 +46,18 @@ export async function useHomePage() {
       limit: 10,
     }),
   );
+
+  useZMovieSeo({
+    title: computed(() =>
+      isVietnamese.value ? "Xem phim hay online" : "Watch great movies online",
+    ),
+    description: computed(() => messages.value.home.description),
+    image: computed(() => homePromise.data.value?.hero.posterUrl),
+  });
+
+  onMounted(() => {
+    void loadPersonalized(activeLocale.value);
+  });
 
   const [
     { data: home, error },
