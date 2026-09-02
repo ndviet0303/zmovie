@@ -15,7 +15,7 @@ export default defineNuxtConfig({
         { rel: 'apple-touch-icon', href: '/favicon.svg' },
       ],
       meta: [
-        { name: 'referrer', content: 'no-referrer-when-downgrade' },
+        { name: 'referrer', content: 'no-referrer' },
         { name: 'theme-color', content: '#181A20' },
         { property: 'og:site_name', content: 'ZMovie' },
         { property: 'og:type', content: 'website' },

@@ -1,235 +1,315 @@
 <script setup lang="ts">
 import {
-  Bell,
-  Bot,
-  ChevronRight,
-  CircleUserRound,
-  Crown,
-  LogOut,
+  Menu,
   Search,
-  ShieldCheck,
-  UserRound,
+  ChevronDown,
+  User as UserIcon,
+  LogOut,
 } from "@lucide/vue";
 
-const props = defineProps<{ locale: "vi" | "en" }>();
+const props = defineProps<{ locale?: "vi" | "en" }>();
 const emit = defineEmits<{ localeChange: [locale: "vi" | "en"] }>();
-const route = useRoute();
-const isLanguageOpen = ref(false);
-const isAccountOpen = ref(false);
-const isVipModalOpen = ref(false);
-// Shared across routes, so navigating no longer re-fetches the session on every
-// page mount and the account chip stops flickering back to "Đăng nhập".
-const { user, isAdmin, fetchSession, signOut } = useAuthSession();
-const languages = [
-  {
-    code: "vi" as const,
-    label: "Tiếng Việt",
-    flag: "https://flagcdn.com/w40/vn.png",
-  },
-  {
-    code: "en" as const,
-    label: "English",
-    flag: "https://flagcdn.com/w40/gb.png",
-  },
-] as const;
-const navItems = computed(() =>
-  props.locale === "vi"
-    ? [
-        { label: "Trang chủ", to: "/" },
-        { label: "Phim lẻ", to: "/browse" },
-        { label: "Phim bộ", to: "/browse?type=series" },
-        { label: "Thể loại", to: "/genres" },
-        { label: "Danh sách của tôi", to: "/my-list" },
-      ]
-    : [
-        { label: "Home", to: "/" },
-        { label: "Movies", to: "/browse" },
-        { label: "Series", to: "/browse?type=series" },
-        { label: "Genres", to: "/genres" },
-        { label: "My list", to: "/my-list" },
-      ],
-);
 
-function isActive(index: number) {
-  if (index === 0) return route.path === "/";
-  if (index === 1)
-    return route.path === "/browse" && route.query.type !== "series";
-  if (index === 2)
-    return route.path === "/browse" && route.query.type === "series";
-  if (index === 3) return route.path === "/genres";
-  return route.path === "/my-list";
+const isDrawerOpen = ref(false);
+const { user, logout } = useAuthSession();
+const router = useRouter();
+
+const searchQuery = ref("");
+const isTheLoaiOpen = ref(false);
+const isQuocGiaOpen = ref(false);
+const isThemOpen = ref(false);
+
+const genres = [
+  "Hành Động",
+  "Cổ Trang",
+  "Chiến Tranh",
+  "Viễn Tưởng",
+  "Kinh Dị",
+  "Tài Liệu",
+  "Bí Ẩn",
+  "Phim Hài",
+  "Tình Cảm",
+  "Tâm Lý",
+  "Thể Thao",
+  "Phiêu Lưu",
+  "Âm Nhạc",
+  "Gia Đình",
+  "Học Đường",
+  "Hình Sự",
+  "Võ Thuật",
+  "Khoa Học",
+  "Thần Thoại",
+];
+
+const countries = [
+  "Trung Quốc",
+  "Hàn Quốc",
+  "Âu Mỹ",
+  "Nhật Bản",
+  "Thái Lan",
+  "Ấn Độ",
+  "Đài Loan",
+  "Hồng Kông",
+  "Việt Nam",
+];
+
+const moreItems = [
+  { name: "Top IMDb", path: "/browse?sort=rating" },
+  { name: "Phim Chiếu Rạp", path: "/browse?genre=Chiếu%20Rạp" },
+  { name: "Anime", path: "/browse?genre=Hoạt%20Hình" },
+  { name: "Netflix", path: "/browse?country=Âu%20Mỹ" },
+  { name: "Phim 4K", path: "/browse?collection=recommended" },
+  { name: "Thuyết Minh", path: "/browse?genre=Thuyết%20Minh" },
+];
+
+function handleSearch() {
+  if (!searchQuery.value.trim()) return;
+  router.push({ path: "/browse", query: { query: searchQuery.value.trim() } });
 }
 
-function selectLocale(locale: "vi" | "en") {
-  isLanguageOpen.value = false;
-  emit("localeChange", locale);
+function handleLogout() {
+  logout();
+  router.push("/");
 }
-
-async function logout() {
-  await signOut();
-  isAccountOpen.value = false;
-  await navigateTo("/");
-}
-
-onMounted(() => {
-  void fetchSession();
-});
 </script>
 
 <template>
   <header
-    class="sticky top-0 z-50 border-b border-white/10 bg-background/90 px-5 py-4 backdrop-blur-xl lg:px-12"
+    class="sticky top-0 z-40 w-full transition-all duration-300 bg-gradient-to-b from-black/85 via-black/40 to-transparent"
   >
-    <div class="mx-auto flex h-10 max-w-360 items-center justify-between">
-      <div class="flex items-center gap-10">
+    <div
+      class="mx-auto flex h-21 sm:h-22 max-w-[1480px] items-center justify-between px-5 sm:px-8 lg:px-12 xl:px-14"
+    >
+      <!-- LEFT: Logo + Desktop Search + Navigation Links -->
+      <div class="flex items-center gap-6 xl:gap-8">
+        <!-- Mobile hamburger toggle -->
+        <button
+          type="button"
+          class="grid size-11 place-items-center rounded-xl text-white/90 transition hover:bg-white/10 hover:text-primary active:scale-95 lg:hidden"
+          aria-label="Mở menu"
+          @click="isDrawerOpen = true"
+        >
+          <Menu class="size-6 stroke-[2.2]" />
+        </button>
+
+        <!-- Brand Logo -->
         <NuxtLink
           to="/"
-          class="inline-flex h-10 items-center font-display text-2xl font-extrabold tracking-tight text-primary"
-          >ZMovie</NuxtLink
+          class="transition hover:opacity-90 active:scale-[0.99] shrink-0"
         >
-        <nav class="hidden h-10 items-center gap-6 md:flex">
-          <NuxtLink
-            v-for="(item, index) in navItems"
-            :key="item.label"
-            :to="item.to"
-            class="inline-flex h-10 items-center border-b-2 text-sm font-semibold leading-none transition-colors"
-            :class="
-              isActive(index)
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-primary'
-            "
-            >{{ item.label }}</NuxtLink
-          >
-        </nav>
-      </div>
-      <div class="flex h-10 items-center gap-4 text-muted-foreground sm:gap-6">
-        <NuxtLink
-          to="/browse"
-          aria-label="Search"
-          title="Tìm kiếm"
-          class="grid size-10 place-items-center rounded-xl border border-white/10 bg-surface-container text-foreground/80 shadow-sm transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          ><Search class="size-[18px]"
-        /></NuxtLink>
-        <NuxtLink
-          to="/assistant"
-          aria-label="ZMovie Bot"
-          title="ZMovie Bot"
-          class="hidden size-10 place-items-center rounded-xl border border-white/10 bg-surface-container text-foreground/80 shadow-sm transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary xl:grid"
-          ><Bot class="size-[18px]"
-        /></NuxtLink>
-        <NotificationBell />
-        <span class="hidden h-6 w-px bg-white/10 sm:block" />
-        <div class="relative z-[60]">
-          <button
-            class="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-surface-container px-3 text-xs font-semibold text-foreground transition hover:border-primary/60"
-            type="button"
-            :aria-expanded="isLanguageOpen"
-            @click="isLanguageOpen = !isLanguageOpen"
-          >
-            <img
-              :src="locale === 'vi' ? languages[0].flag : languages[1].flag"
-              class="size-4 rounded-full object-cover"
-              alt="Current language"
-            />
-            <span>{{ locale === "vi" ? "VI" : "EN" }}</span
-            ><ChevronRight class="size-3 rotate-90" />
-          </button>
+          <ZMovieLogo />
+        </NuxtLink>
+
+        <!-- Desktop Search Input (Clean Pill) -->
+        <form class="relative hidden md:block" @submit.prevent="handleSearch">
+          <Search
+            class="pointer-events-none absolute left-4 top-1/2 size-4.5 -translate-y-1/2 text-gray-400"
+          />
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Tìm kiếm phim, diễn viên..."
+            class="h-11 w-56 lg:w-72 xl:w-88 rounded-full border border-white/12 bg-black/40 pl-11 pr-5 text-sm font-medium text-white placeholder-gray-400/80 backdrop-blur-md transition focus:border-primary/60 focus:bg-black/60 focus:outline-none focus:ring-1 focus:ring-primary/40"
+          />
+        </form>
+
+        <!-- Desktop Navigation Bar -->
+        <nav
+          class="hidden lg:flex items-center gap-2 xl:gap-3 text-sm xl:text-[15px] font-semibold text-white/90"
+        >
+          <!-- 1. Thể loại Dropdown -->
           <div
-            v-if="isLanguageOpen"
-            class="absolute right-0 top-[calc(100%+8px)] z-[70] w-40 overflow-hidden rounded-2xl border border-white/10 bg-surface-container p-1.5 shadow-[0_16px_40px_rgba(0,0,0,.42)]"
+            class="relative"
+            @mouseenter="isTheLoaiOpen = true"
+            @mouseleave="isTheLoaiOpen = false"
           >
             <button
-              v-for="language in languages"
-              :key="language.code"
-              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition hover:bg-white/7"
-              :class="
-                locale === language.code
-                  ? 'bg-primary-container text-primary-container-foreground'
-                  : 'text-foreground'
-              "
               type="button"
-              @click="selectLocale(language.code)"
+              class="flex items-center gap-1.5 rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
+              :class="{ 'text-primary': isTheLoaiOpen }"
             >
-              <img
-                :src="language.flag"
-                :alt="`${language.label} flag`"
-                class="size-5 rounded-full object-cover"
-              /><span>{{ language.label }}</span>
+              <span>Thể loại</span>
+              <ChevronDown
+                class="size-4 transition-transform duration-200"
+                :class="{ 'rotate-180': isTheLoaiOpen }"
+              />
             </button>
+
+            <!-- Dropdown Menu -->
+            <div
+              v-show="isTheLoaiOpen"
+              class="absolute left-0 top-full z-50 mt-1 w-96 rounded-2xl border border-white/10 bg-[#191b24]/95 p-4 shadow-2xl backdrop-blur-xl transition-all"
+            >
+              <div class="grid grid-cols-3 gap-1.5 text-xs font-medium">
+                <NuxtLink
+                  v-for="g in genres"
+                  :key="g"
+                  :to="`/browse?genre=${encodeURIComponent(g)}`"
+                  class="rounded-lg px-2.5 py-2 text-gray-300 transition hover:bg-white/10 hover:text-primary"
+                  @click="isTheLoaiOpen = false"
+                >
+                  {{ g }}
+                </NuxtLink>
+              </div>
+            </div>
           </div>
-        </div>
-        <button
-          class="hidden sm:inline-flex h-10 items-center gap-1.5 rounded-full border border-amber-400/40 bg-gradient-to-r from-amber-500/20 to-amber-400/10 px-3.5 text-xs font-bold text-amber-300 shadow-sm transition hover:border-amber-400 hover:from-amber-500/30"
-          type="button"
-          @click="isVipModalOpen = true"
+
+          <!-- 2. Phim Lẻ Link -->
+          <NuxtLink
+            to="/browse?type=movie"
+            class="rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
+          >
+            Phim Lẻ
+          </NuxtLink>
+
+          <!-- 3. Phim Bộ Link -->
+          <NuxtLink
+            to="/browse?type=series"
+            class="rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
+          >
+            Phim Bộ
+          </NuxtLink>
+
+          <!-- 4. Quốc gia Dropdown -->
+          <div
+            class="relative"
+            @mouseenter="isQuocGiaOpen = true"
+            @mouseleave="isQuocGiaOpen = false"
+          >
+            <button
+              type="button"
+              class="flex items-center gap-1.5 rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
+              :class="{ 'text-primary': isQuocGiaOpen }"
+            >
+              <span>Quốc gia</span>
+              <ChevronDown
+                class="size-4 transition-transform duration-200"
+                :class="{ 'rotate-180': isQuocGiaOpen }"
+              />
+            </button>
+
+            <!-- Dropdown Menu -->
+            <div
+              v-show="isQuocGiaOpen"
+              class="absolute left-0 top-full z-50 mt-1 w-64 rounded-2xl border border-white/10 bg-[#191b24]/95 p-3 shadow-2xl backdrop-blur-xl"
+            >
+              <div class="grid grid-cols-2 gap-1 text-xs font-medium">
+                <NuxtLink
+                  v-for="c in countries"
+                  :key="c"
+                  :to="`/browse?country=${encodeURIComponent(c)}`"
+                  class="rounded-lg px-2.5 py-2 text-gray-300 transition hover:bg-white/10 hover:text-primary"
+                  @click="isQuocGiaOpen = false"
+                >
+                  {{ c }}
+                </NuxtLink>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Thêm Dropdown -->
+          <div
+            class="relative"
+            @mouseenter="isThemOpen = true"
+            @mouseleave="isThemOpen = false"
+          >
+            <button
+              type="button"
+              class="flex items-center gap-1.5 rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
+              :class="{ 'text-primary': isThemOpen }"
+            >
+              <span>Thêm</span>
+              <ChevronDown
+                class="size-4 transition-transform duration-200"
+                :class="{ 'rotate-180': isThemOpen }"
+              />
+            </button>
+
+            <!-- Dropdown Menu -->
+            <div
+              v-show="isThemOpen"
+              class="absolute left-0 top-full z-50 mt-1 w-48 rounded-2xl border border-white/10 bg-[#191b24]/95 p-2 shadow-2xl backdrop-blur-xl"
+            >
+              <div class="flex flex-col gap-0.5 text-xs font-medium">
+                <NuxtLink
+                  v-for="m in moreItems"
+                  :key="m.name"
+                  :to="m.path"
+                  class="rounded-lg px-3 py-2 text-gray-300 transition hover:bg-white/10 hover:text-primary"
+                  @click="isThemOpen = false"
+                >
+                  {{ m.name }}
+                </NuxtLink>
+              </div>
+            </div>
+          </div>
+        </nav>
+      </div>
+
+      <!-- RIGHT: Thành Viên Button -->
+      <div class="flex items-center gap-3 xl:gap-4 shrink-0">
+        <!-- Mobile search button (when screen < md) -->
+        <NuxtLink
+          to="/browse"
+          aria-label="Tìm kiếm"
+          class="grid size-10 place-items-center rounded-xl text-white/90 transition hover:bg-white/10 hover:text-primary active:scale-95 md:hidden"
         >
-          <Crown class="size-3.5 fill-current text-amber-400" />
-          <span>Nâng cấp VIP</span>
-        </button>
+          <Search class="size-5" />
+        </NuxtLink>
+
+        <!-- Thành viên Button (Clean White Pill on Desktop) -->
         <NuxtLink
           v-if="!user"
           to="/login"
-          aria-label="Đăng nhập"
-          class="grid size-10 place-items-center rounded-full border border-white/10 bg-surface-container transition hover:border-primary/60 hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          ><CircleUserRound class="size-5 text-primary"
-        /></NuxtLink>
-        <div v-else class="relative">
-          <button
-            type="button"
-            class="flex items-center gap-2 rounded-full border border-white/10 bg-surface-container p-1 transition hover:border-primary/60"
-            :aria-expanded="isAccountOpen"
-            @click="isAccountOpen = !isAccountOpen"
+          class="flex items-center gap-2.5 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-black shadow-lg transition hover:bg-gray-100 hover:scale-105 active:scale-95"
+        >
+          <UserIcon class="size-4" />
+          <span>Thành viên</span>
+        </NuxtLink>
+
+        <!-- Logged in state dropdown -->
+        <div v-else class="relative group">
+          <NuxtLink
+            to="/profile"
+            class="flex items-center gap-2.5 rounded-full border border-primary/50 bg-[#191b24] py-1.5 pl-2 pr-4 text-sm font-bold text-white transition hover:border-primary"
           >
             <img
               :src="user.avatarUrl || '/default-meme-avatar.png'"
               :alt="user.displayName"
               class="size-7 rounded-full object-cover"
-              referrerpolicy="no-referrer"
             />
-            <span
-              class="hidden max-w-28 truncate pr-2 text-xs font-semibold text-foreground lg:block"
-              >{{ user.displayName }}</span
-            >
-          </button>
+            <span class="max-w-[120px] truncate">{{ user.displayName }}</span>
+          </NuxtLink>
+
+          <!-- Profile quick menu on hover -->
           <div
-            v-if="isAccountOpen"
-            class="absolute right-0 top-[calc(100%+8px)] z-[70] w-56 overflow-hidden rounded-2xl border border-white/10 bg-surface-container p-1.5 shadow-[0_16px_40px_rgba(0,0,0,.42)]"
+            class="absolute right-0 top-full hidden group-hover:flex flex-col z-50 mt-1.5 w-48 rounded-2xl border border-white/10 bg-[#191b24]/95 p-2 shadow-2xl backdrop-blur-xl text-xs font-medium"
           >
-            <div class="border-b border-white/10 px-3 py-2.5">
-              <p class="truncate text-sm font-semibold text-foreground">
-                {{ user.displayName }}
-              </p>
-              <p class="mt-0.5 truncate text-xs text-muted-foreground">
-                {{ user.email }}
-              </p>
-            </div>
             <NuxtLink
               to="/profile"
-              class="mt-1 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-white/7 hover:text-foreground"
-              @click="isAccountOpen = false"
-              ><UserRound class="size-4" /> Hồ sơ</NuxtLink
+              class="rounded-lg px-3 py-2 text-gray-200 hover:bg-white/10 hover:text-primary transition"
             >
+              Hồ sơ của tôi
+            </NuxtLink>
             <NuxtLink
-              v-if="isAdmin"
-              to="/admin"
-              class="mt-1 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-white/7 hover:text-foreground"
-              @click="isAccountOpen = false"
-              ><ShieldCheck class="size-4" /> Quản trị</NuxtLink
+              to="/my-list"
+              class="rounded-lg px-3 py-2 text-gray-200 hover:bg-white/10 hover:text-primary transition"
             >
+              Danh sách xem
+            </NuxtLink>
             <button
               type="button"
-              class="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-muted-foreground transition hover:bg-white/7 hover:text-foreground"
-              @click="logout"
+              class="flex items-center gap-2 rounded-lg px-3 py-2 text-red-400 hover:bg-red-500/10 transition text-left"
+              @click="handleLogout"
             >
-              <LogOut class="size-4" /> Đăng xuất
+              <LogOut class="size-3.5" /> Đăng xuất
             </button>
           </div>
         </div>
       </div>
     </div>
-    <VipCheckoutModal
-      :is-open="isVipModalOpen"
-      @close="isVipModalOpen = false"
-    />
+
+    <!-- Slide-out Drawer Component (for Mobile) -->
+    <AppDrawer :is-open="isDrawerOpen" @close="isDrawerOpen = false" />
   </header>
 </template>

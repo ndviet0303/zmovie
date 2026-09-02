@@ -7,6 +7,7 @@ import {
   Download,
   Expand,
   Flag,
+  Heart,
   LoaderCircle,
   Pause,
   Play,
@@ -83,6 +84,12 @@ const isReportModalOpen = ref(false);
 const reportReason = ref("video");
 const reportDescription = ref("");
 const isSubmittingReport = ref(false);
+
+const isAutoNext = ref(true);
+const isSkipIntro = ref(false);
+const isTheaterMode = ref(false);
+const watchAudio = ref<"sub" | "dual" | "dub">("sub");
+const isCompactEpisodes = ref(false);
 
 const isDanmakuEnabled = ref(true);
 const danmakuInput = ref("");
@@ -708,13 +715,21 @@ onBeforeUnmount(() => {
       </AlertDialogPortal>
     </AlertDialogRoot>
     <template v-if="title && playback">
-      <section class="mx-auto max-w-360 px-5 py-7 lg:px-12">
-        <NuxtLink
-          :to="`/movies/${title.slug}`"
-          class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"
-        >
-          <ChevronLeft class="size-4" />{{ copy.back }}
-        </NuxtLink>
+      <section class="mx-auto max-w-360 px-4 sm:px-6 lg:px-10 py-5">
+        <div class="mb-4 flex items-center gap-3">
+          <NuxtLink
+            :to="`/movies/${title.slug}`"
+            class="inline-flex size-9 items-center justify-center rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/10 hover:text-primary transition"
+          >
+            <ChevronLeft class="size-5" />
+          </NuxtLink>
+          <h1
+            class="text-sm sm:text-base font-bold text-white font-display truncate"
+          >
+            Xem phim {{ title.title }} -
+            {{ playback.isSeries ? `Tập ${episode?.number || 1}` : "Bản Đẹp" }}
+          </h1>
+        </div>
         <div
           class="mt-5 overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl"
         >
@@ -741,6 +756,35 @@ onBeforeUnmount(() => {
 
           <!-- Native HLS Video Mode -->
           <div v-else ref="playerFrame" class="relative aspect-video group">
+            <!-- CôBéPhim Meme Error Fallback State -->
+            <div
+              v-if="playerError"
+              class="absolute inset-0 z-30 flex flex-col sm:flex-row items-center justify-center gap-6 bg-[#0f111a]/95 p-6 backdrop-blur-md text-center sm:text-left"
+            >
+              <img
+                src="/default-meme-avatar.png"
+                alt="Meme"
+                class="size-28 sm:size-36 rounded-2xl object-cover shadow-2xl border-2 border-white/10"
+              />
+              <div>
+                <h3
+                  class="text-2xl sm:text-3xl font-black text-white font-display"
+                >
+                  CÓ BIẾN RỒI
+                </h3>
+                <p class="text-sm sm:text-base text-gray-300 mt-1">
+                  Hãy thử refresh lại!
+                </p>
+                <button
+                  type="button"
+                  class="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-black hover:bg-[#ffde8a] transition shadow-lg active:scale-95"
+                  @click="loadEpisode"
+                >
+                  Thử lại ngay
+                </button>
+              </div>
+            </div>
+
             <video
               ref="video"
               class="size-full bg-black object-contain"
@@ -962,6 +1006,157 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </div>
+
+          <!-- UNDER-PLAYER TOOLBAR (CôBéPhim Style) -->
+          <div
+            class="flex flex-wrap items-center justify-between gap-y-3 bg-[#141622] px-4 py-3.5 border-t border-white/5 text-xs font-semibold text-white/80"
+          >
+            <!-- Left actions -->
+            <div class="flex items-center gap-4">
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 hover:text-primary transition"
+                @click="toggleMyList"
+              >
+                <Heart
+                  class="size-4"
+                  :class="{ 'fill-red-500 text-red-500': isInMyList }"
+                />
+                <span>{{ isInMyList ? "Đã thích" : "Yêu thích" }}</span>
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 hover:text-primary transition"
+                @click="toggleMyList"
+              >
+                <BookmarkPlus
+                  class="size-4"
+                  :class="{ 'fill-primary text-primary': isInMyList }"
+                />
+                <span>Thêm vào</span>
+              </button>
+            </div>
+
+            <!-- Center controls (Chuyển tập, Bỏ qua giới thiệu, Rạp phim) -->
+            <div class="flex flex-wrap items-center gap-4 text-xs">
+              <div
+                class="flex items-center gap-1.5 cursor-pointer select-none"
+                @click="isAutoNext = !isAutoNext"
+              >
+                <span>Chuyển tập</span>
+                <span
+                  class="rounded px-1.5 py-0.5 text-[10px] font-bold"
+                  :class="
+                    isAutoNext
+                      ? 'bg-primary text-black'
+                      : 'bg-white/10 text-white/60'
+                  "
+                >
+                  {{ isAutoNext ? "ON" : "OFF" }}
+                </span>
+              </div>
+
+              <div
+                class="flex items-center gap-1.5 cursor-pointer select-none"
+                @click="isSkipIntro = !isSkipIntro"
+              >
+                <span>Bỏ qua giới thiệu</span>
+                <span
+                  class="rounded px-1.5 py-0.5 text-[10px] font-bold"
+                  :class="
+                    isSkipIntro
+                      ? 'bg-primary text-black'
+                      : 'bg-white/10 text-white/60'
+                  "
+                >
+                  {{ isSkipIntro ? "ON" : "OFF" }}
+                </span>
+              </div>
+
+              <div
+                class="flex items-center gap-1.5 cursor-pointer select-none"
+                @click="isTheaterMode = !isTheaterMode"
+              >
+                <span>Rạp phim</span>
+                <span
+                  class="rounded px-1.5 py-0.5 text-[10px] font-bold"
+                  :class="
+                    isTheaterMode
+                      ? 'bg-primary text-black'
+                      : 'bg-white/10 text-white/60'
+                  "
+                >
+                  {{ isTheaterMode ? "ON" : "OFF" }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Right actions -->
+            <div class="flex items-center gap-4">
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 hover:text-primary transition"
+                @click="shareTitle"
+              >
+                <Share2 class="size-4" />
+                <span>Chia sẻ</span>
+              </button>
+              <NuxtLink
+                :to="`/party/${title.slug}-party?movie=${title.slug}&episode=${episode?.number || 1}`"
+                class="inline-flex items-center gap-1.5 text-rose-400 hover:text-rose-300 transition"
+              >
+                <Users class="size-4" />
+                <span>Xem chung</span>
+              </NuxtLink>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 hover:text-amber-400 transition"
+                @click="isReportModalOpen = true"
+              >
+                <Flag class="size-4" />
+                <span>Báo lỗi</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Chapter Thumbnails Strip -->
+          <div
+            class="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-[#0d0f16] px-4 py-2.5 border-t border-white/5"
+          >
+            <div
+              class="flex items-center gap-2.5 overflow-hidden rounded-xl bg-white/5 p-2 hover:bg-white/10 cursor-pointer transition"
+            >
+              <img
+                src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=100&auto=format&fit=crop&q=80"
+                class="size-9 rounded-lg object-cover"
+              />
+              <span class="text-xs font-semibold text-white/80 truncate"
+                >Secrets Await</span
+              >
+            </div>
+            <div
+              class="flex items-center gap-2.5 overflow-hidden rounded-xl bg-white/5 p-2 hover:bg-white/10 cursor-pointer transition"
+            >
+              <img
+                src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=100&auto=format&fit=crop&q=80"
+                class="size-9 rounded-lg object-cover"
+              />
+              <span class="text-xs font-semibold text-white/80 truncate"
+                >Find Your Path</span
+              >
+            </div>
+            <div
+              class="flex items-center gap-2.5 overflow-hidden rounded-xl bg-white/5 p-2 hover:bg-white/10 cursor-pointer transition"
+            >
+              <img
+                src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=100&auto=format&fit=crop&q=80"
+                class="size-9 rounded-lg object-cover"
+              />
+              <span class="text-xs font-semibold text-white/80 truncate"
+                >Discover Hidden Gems</span
+              >
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1128,81 +1323,131 @@ onBeforeUnmount(() => {
           </p>
         </article>
 
-        <section v-if="playback.episodes.length" class="mt-11">
+        <!-- Episode Grid Section (CôBéPhim Style) -->
+        <section v-if="playback.episodes.length" class="mt-8">
           <div
-            class="flex items-center justify-between border-b border-white/7 pb-4"
+            class="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4"
           >
-            <h2
-              class="font-display text-2xl font-semibold tracking-[-.02em] lg:text-[1.8rem]"
-            >
-              Tập tiếp theo
-            </h2>
-            <button
-              class="text-xs font-semibold text-primary transition hover:text-primary-container"
-            >
-              Xem tất cả <span class="ml-1">→</span>
-            </button>
+            <div class="flex items-center gap-3">
+              <!-- Season Dropdown -->
+              <div
+                class="rounded-xl border border-white/10 bg-[#191b24] px-3.5 py-2 text-xs font-bold text-white"
+              >
+                Phần 1 ▾
+              </div>
+
+              <!-- Audio track pills -->
+              <div class="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  class="rounded-xl border px-3 py-1.5 text-xs font-semibold transition"
+                  :class="
+                    watchAudio === 'sub'
+                      ? 'border-primary bg-primary/10 text-primary font-bold'
+                      : 'border-white/10 bg-white/5 text-white/80'
+                  "
+                  @click="watchAudio = 'sub'"
+                >
+                  Phụ đề #1
+                </button>
+                <button
+                  type="button"
+                  class="rounded-xl border px-3 py-1.5 text-xs font-semibold transition"
+                  :class="
+                    watchAudio === 'dual'
+                      ? 'border-primary bg-primary/10 text-primary font-bold'
+                      : 'border-white/10 bg-white/5 text-white/80'
+                  "
+                  @click="watchAudio = 'dual'"
+                >
+                  Song ngữ
+                </button>
+                <button
+                  type="button"
+                  class="rounded-xl border px-3 py-1.5 text-xs font-semibold transition"
+                  :class="
+                    watchAudio === 'dub'
+                      ? 'border-primary bg-primary/10 text-primary font-bold'
+                      : 'border-white/10 bg-white/5 text-white/80'
+                  "
+                  @click="watchAudio = 'dub'"
+                >
+                  Thuyết Minh #1
+                </button>
+              </div>
+            </div>
+
+            <!-- Rút gọn toggle -->
+            <div class="flex items-center gap-2 text-xs text-white/70">
+              <span>Rút gọn</span>
+              <div
+                class="h-5 w-9 rounded-full bg-primary p-0.5 cursor-pointer"
+                @click="isCompactEpisodes = !isCompactEpisodes"
+              >
+                <div
+                  class="size-4 rounded-full bg-black transition-transform"
+                  :class="{ 'translate-x-4': isCompactEpisodes }"
+                />
+              </div>
+            </div>
           </div>
+
+          <!-- Episode Buttons Grid -->
           <div
-            class="mt-5 grid gap-5 sm:grid-cols-2 lg:max-w-250 lg:grid-cols-3"
+            class="mt-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5"
           >
             <button
-              v-for="(item, index) in playback.episodes.slice(0, 3)"
+              v-for="(item, index) in playback.episodes"
               :key="item.number"
-              class="group text-left"
+              type="button"
+              class="flex items-center justify-center gap-2 rounded-2xl border py-3 text-xs font-bold transition active:scale-95"
+              :class="
+                index === selectedEpisode
+                  ? 'border-primary bg-primary text-black shadow-md'
+                  : 'border-white/10 bg-[#191b24] text-white hover:border-primary/50 hover:text-primary'
+              "
               @click="selectEpisode(index)"
             >
-              <span
-                class="relative block aspect-video overflow-hidden rounded-lg border border-white/8 bg-surface-container-high"
-              >
-                <img
-                  :src="title.posterUrl"
-                  :alt="item.name"
-                  class="size-full object-cover opacity-70 transition duration-300 group-hover:scale-105 group-hover:opacity-90"
-                />
-                <span
-                  class="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent"
-                />
-                <span
-                  v-if="index === selectedEpisode"
-                  class="absolute bottom-2 right-2 grid size-7 place-items-center rounded-full bg-primary-container text-primary-container-foreground"
-                  ><Play class="size-3 fill-current"
-                /></span>
-                <span
-                  v-else
-                  class="absolute bottom-2 right-2 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-semibold text-white/75"
-                  >{{ playback.isSeries ? `Tập ${item.number}` : "HD" }}</span
-                >
-              </span>
-              <b
-                class="mt-2.5 block truncate text-sm font-semibold text-foreground transition group-hover:text-primary"
-                >{{ playback.isSeries ? item.name : title.title }}</b
-              >
-              <span class="mt-1 block text-xs text-muted-foreground">{{
-                playback.isSeries
-                  ? `Tập ${item.number}`
-                  : `${title.runtimeMinutes} phút`
-              }}</span>
+              <Play class="size-3.5 fill-current" />
+              <span>Tập {{ item.number }}</span>
             </button>
           </div>
         </section>
+
+        <!-- Discord Community Banner (CôBéPhim Style) -->
+        <div
+          class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-700 p-4 sm:p-5 shadow-xl text-white"
+        >
+          <div class="flex items-center gap-3.5 text-center sm:text-left">
+            <div
+              class="grid size-12 shrink-0 place-items-center rounded-2xl bg-white/20 shadow-inner"
+            >
+              <svg class="size-6 fill-current" viewBox="0 0 24 24">
+                <path
+                  d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"
+                />
+              </svg>
+            </div>
+            <div>
+              <h4 class="text-sm font-black tracking-tight font-display">
+                ĐẢO RÒ XANH - NHÓM DISCORD
+              </h4>
+              <p class="text-xs text-white/80 mt-0.5">
+                Tham gia cộng đồng bàn luận phim sôi nổi nhất
+              </p>
+            </div>
+          </div>
+          <a
+            href="#"
+            class="rounded-xl bg-white px-5 py-2.5 text-xs font-bold text-indigo-900 shadow hover:bg-gray-100 transition whitespace-nowrap active:scale-95"
+          >
+            Tham gia ngay
+          </a>
+        </div>
       </section>
-      <footer
-        class="border-t border-white/5 bg-surface-container-lowest px-5 py-10 text-center lg:px-12"
-      >
-        <NuxtLink to="/" class="font-display text-sm font-semibold text-primary"
-          >ZMovie</NuxtLink
-        >
-        <nav
-          class="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2 text-[10px] text-muted-foreground"
-        >
-          <a href="#">Privacy Policy</a><a href="#">Terms of Service</a
-          ><a href="#">Help Center</a><a href="#">Contact Us</a>
-        </nav>
-        <p class="mt-5 text-[10px] text-tertiary">
-          © 2026 ZMovie Premium. All rights reserved.
-        </p>
-      </footer>
+
+      <!-- AppFooter Component -->
+      <AppFooter />
     </template>
 
     <AlertDialogRoot v-model:open="isReportModalOpen">

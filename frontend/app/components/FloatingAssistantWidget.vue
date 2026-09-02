@@ -240,24 +240,16 @@ function toggleWidget() {
 
     <!-- Floating launcher button -->
     <button
-      class="group relative flex items-center gap-2.5 rounded-full border border-white/15 bg-gradient-to-r from-surface-container-high to-surface-container px-4 py-3 text-xs font-semibold text-foreground shadow-xl shadow-black/50 transition hover:border-primary/50 hover:shadow-primary/20 hover:scale-105 active:scale-95"
-      :class="
-        isOpen
-          ? 'border-primary/60 bg-primary text-primary-container-foreground'
-          : ''
-      "
+      class="group relative flex size-10 items-center justify-center rounded-full border border-white/15 bg-[#191b24]/90 text-primary shadow-2xl shadow-black/80 backdrop-blur-md transition hover:scale-110 hover:border-primary/60 hover:bg-[#202331] active:scale-95"
+      :class="isOpen ? 'border-primary/80 bg-primary text-black' : ''"
+      title="ZMovie AI - Gợi ý phim"
       aria-label="Toggle AI Assistant"
       @click="toggleWidget"
     >
-      <div
-        class="grid size-6 place-items-center rounded-full bg-gradient-to-tr from-primary to-amber-400 text-primary-container-foreground shadow-sm"
-      >
-        <Sparkles class="size-3.5" />
-      </div>
-      <span class="font-display">AI Gợi Ý Phim</span>
+      <Sparkles class="size-4.5 transition-transform group-hover:rotate-12" />
       <span
         v-if="!isOpen"
-        class="absolute -right-0.5 -top-0.5 size-3 rounded-full bg-primary ring-2 ring-background animate-ping"
+        class="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-primary ring-2 ring-background animate-ping"
       />
     </button>
   </div>

@@ -1,340 +1,448 @@
 <script setup lang="ts">
-import { ChevronRight, Flame, Info, Play } from "@lucide/vue";
+import { ChevronRight, Heart, Info, Play } from "@lucide/vue";
+import type { TitleSummary } from "~/types/catalog";
 
 const {
   home,
-  error,
   activeLocale,
   messages,
   continueWatching,
-  recommendedTitles,
   newReleaseTitles,
   titles2026,
   moviePicks,
   seriesPicks,
-  topPeriod,
-  topPeriods,
   topTitles,
-  topPending,
   changeLocale,
-  selectTopPeriod,
-  formatViews,
   progressPercent,
 } = await useHomePage();
 
-const text = computed(() => ({
-  ...messages.value.home,
-  new: messages.value.home.newRelease,
-  watch: messages.value.home.watchNow,
-  empty: messages.value.home.emptyTrending,
-}));
+// Reactive spotlight title in Hero Banner
+const selectedHero = ref<TitleSummary | null>(null);
+
+const activeHero = computed<TitleSummary | null>(() => {
+  return (
+    selectedHero.value ||
+    home.value?.hero ||
+    newReleaseTitles.value?.[0] ||
+    null
+  );
+});
+
+// Spotlight thumbnails list for the bottom-right hero slider
+const heroSliderTitles = computed<TitleSummary[]>(() => {
+  const currentHero = home.value?.hero;
+  const list = [
+    ...(currentHero ? [currentHero] : []),
+    ...(newReleaseTitles.value || []).slice(0, 6),
+  ];
+  const seen = new Set<string>();
+  return list.filter((item) => {
+    if (seen.has(item.slug)) return false;
+    seen.add(item.slug);
+    return true;
+  });
+});
+
+let autoCycleTimer: ReturnType<typeof setInterval> | null = null;
+const isHoveringHero = ref(false);
+
+function selectHero(title: TitleSummary) {
+  selectedHero.value = title;
+}
+
+onMounted(() => {
+  autoCycleTimer = setInterval(() => {
+    if (isHoveringHero.value || !heroSliderTitles.value.length) return;
+    const currentIndex = heroSliderTitles.value.findIndex(
+      (item) => item.slug === activeHero.value?.slug,
+    );
+    const nextIndex = (currentIndex + 1) % heroSliderTitles.value.length;
+    selectedHero.value = heroSliderTitles.value[nextIndex];
+  }, 7000);
+});
+
+onBeforeUnmount(() => {
+  if (autoCycleTimer) clearInterval(autoCycleTimer);
+});
+
+// Fallback posters collection
+const fallbackPosters = [
+  "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
+];
+
+function getSafePoster(title?: TitleSummary | null) {
+  if (!title) return fallbackPosters[0];
+  const url = title.posterUrl?.trim() || "";
+  if (
+    url === "https://phim.nguonc.com" ||
+    url === "https://phim.nguonc.com/" ||
+    !url
+  ) {
+    const idx =
+      Math.abs(
+        (title.slug || "")
+          .split("")
+          .reduce((acc, c) => acc + c.charCodeAt(0), 0),
+      ) % fallbackPosters.length;
+    return fallbackPosters[idx];
+  }
+  return url;
+}
+
+function onImgError(e: Event, slug?: string) {
+  const target = e.target as HTMLImageElement;
+  if (!target) return;
+  const idx =
+    Math.abs(
+      (slug || "").split("").reduce((acc, c) => acc + c.charCodeAt(0), 0),
+    ) % fallbackPosters.length;
+  target.src = fallbackPosters[idx];
+}
+
+// Split genres into pills
+const heroGenres = computed(() => {
+  if (!activeHero.value?.genre) return ["Hành Động", "Viễn Tưởng"];
+  return activeHero.value.genre
+    .split(",")
+    .map((g) => g.trim())
+    .filter(Boolean);
+});
 </script>
 
 <template>
-  <main class="min-h-screen overflow-x-hidden bg-background text-foreground">
+  <div class="min-h-screen bg-[#0f111a] text-white flex flex-col">
+    <!-- Minimalist Sticky Header with Drawer -->
     <AppNavbar :locale="activeLocale" @locale-change="changeLocale" />
 
+    <!-- 1. HERO SPOTLIGHT BANNER -->
     <section
-      v-if="home"
-      class="relative flex min-h-175 items-end px-5 pb-16 pt-28 lg:min-h-217.5 lg:px-12 lg:pb-20"
+      v-if="activeHero"
+      class="relative -mt-22 h-[80vh] min-h-[560px] max-h-[700px] w-full flex items-end overflow-hidden pb-5 pt-26"
+      @mouseenter="isHoveringHero = true"
+      @mouseleave="isHoveringHero = false"
     >
-      <img
-        :src="home.hero.posterUrl"
-        :alt="home.hero.title"
-        class="absolute inset-0 size-full object-cover object-center opacity-70"
-      />
+      <!-- Backdrop Image with Transition -->
+      <transition name="fade" mode="out-in">
+        <img
+          :key="activeHero.slug"
+          :src="getSafePoster(activeHero)"
+          :alt="activeHero.title"
+          class="absolute inset-0 size-full object-cover object-center opacity-70 animate-cover-fade"
+          @error="(e) => onImgError(e, activeHero?.slug)"
+        />
+      </transition>
+
+      <!-- Gradient Masks (Cinematic Vignette) -->
+      <!-- Top header fade -->
       <div
-        class="absolute inset-0 bg-[linear-gradient(90deg,#131313_0%,rgba(19,19,19,.88)_28%,rgba(19,19,19,.34)_62%,rgba(19,19,19,.74)_100%),linear-gradient(0deg,#131313_0%,transparent_53%)]"
+        class="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/85 via-black/40 to-transparent pointer-events-none"
+      />
+      <!-- Left text backdrop veil -->
+      <div
+        class="absolute inset-y-0 left-0 w-full lg:w-3/5 bg-gradient-to-r from-[#0f111a] via-[#0f111a]/85 to-transparent pointer-events-none"
+      />
+      <!-- Bottom fade into page background -->
+      <div
+        class="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#0f111a] via-[#0f111a]/70 to-transparent pointer-events-none"
       />
 
-      <div class="relative mx-auto w-full max-w-360">
+      <!-- Hero Content Container -->
+      <div
+        class="relative mx-auto flex w-full max-w-360 flex-col px-4 sm:px-6 lg:px-10 z-10"
+      >
+        <!-- Details Column -->
         <div class="max-w-2xl">
-          <div class="mb-4 flex items-center gap-3 text-xs">
-            <span
-              class="rounded-full border border-white/10 bg-background/60 px-3 py-1.5 text-foreground backdrop-blur-sm"
-              >{{ text.new }}</span
-            >
-            <span class="text-tertiary"
-              >{{ home.hero.year }} · {{ home.hero.genre }} ·
-              {{ text.movie }}</span
-            >
-          </div>
+          <!-- Title & Subtitle -->
           <h1
-            class="font-display max-w-xl text-5xl font-bold leading-[.98] tracking-[-.035em] text-foreground drop-shadow-md sm:text-6xl lg:text-7xl"
+            class="text-3xl sm:text-4xl lg:text-[46px] font-black tracking-tight text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.9)] font-display leading-[1.1]"
           >
-            {{ home.hero.title }}
+            {{ activeHero.title }}
           </h1>
           <p
-            class="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground lg:text-lg"
+            class="mt-1.5 text-xs sm:text-sm font-semibold text-[#ffd875] font-display tracking-wider drop-shadow"
           >
-            {{ text.description }}
+            {{
+              activeHero.slug
+                .split("-")
+                .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+                .join(" ")
+            }}
           </p>
-          <div class="mt-8 flex flex-wrap items-center gap-4">
-            <NuxtLink
-              :to="`/watch/${home.hero.slug}`"
-              class="inline-flex items-center gap-2 rounded-2xl bg-primary-container px-7 py-4 text-sm font-semibold text-primary-container-foreground transition hover:bg-primary"
-            >
-              <Play class="size-4 fill-current" /> {{ text.watch }}
-            </NuxtLink>
-            <NuxtLink
-              :to="`/movies/${home.hero.slug}`"
-              class="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-background/30 px-7 py-4 text-sm font-medium text-foreground backdrop-blur-sm transition hover:bg-surface-container"
-            >
-              <Info class="size-4" /> {{ text.details }}
-            </NuxtLink>
-          </div>
-        </div>
-      </div>
-    </section>
 
-    <section
-      v-if="home"
-      id="browse"
-      class="mx-auto max-w-360 px-5 py-20 lg:px-12"
-    >
-      <div class="grid items-start gap-14 lg:grid-cols-[minmax(0,1fr)_19rem]">
-        <div>
-          <section v-if="continueWatching.length" class="mb-20">
-            <div class="mb-8 flex items-end justify-between">
-              <h2
-                class="font-display text-3xl font-semibold tracking-tight lg:text-4xl"
-              >
-                {{ activeLocale === "vi" ? "Xem tiếp" : "Continue watching" }}
-              </h2>
-              <NuxtLink
-                to="/my-list"
-                class="inline-flex items-center gap-1 text-sm font-medium text-primary transition hover:text-primary-container"
-                >{{ text.viewAll }} <ChevronRight class="size-4"
-              /></NuxtLink>
-            </div>
-            <div class="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-5">
-              <NuxtLink
-                v-for="item in continueWatching"
-                :key="item.title.slug"
-                :to="{
-                  path: `/watch/${item.title.slug}`,
-                  query: item.episodeNumber
-                    ? { episode: item.episodeNumber }
-                    : {},
-                }"
-                class="group relative aspect-video overflow-hidden rounded-2xl bg-surface-container"
-              >
-                <img
-                  :src="item.title.posterUrl"
-                  :alt="item.title.title"
-                  class="absolute inset-0 size-full object-cover opacity-75 transition duration-300 group-hover:scale-105 group-hover:opacity-100"
-                />
-                <div
-                  class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/15 to-transparent"
-                />
-                <div class="absolute inset-x-0 bottom-0 p-3">
-                  <h3 class="truncate text-sm font-semibold text-white">
-                    {{ item.title.title }}
-                  </h3>
-                  <p
-                    v-if="item.episodeNumber"
-                    class="mt-0.5 text-[11px] text-white/65"
-                  >
-                    {{
-                      activeLocale === "vi"
-                        ? `Tập ${item.episodeNumber}`
-                        : `Episode ${item.episodeNumber}`
-                    }}
-                  </p>
-                  <div
-                    class="mt-2 h-1 overflow-hidden rounded-full bg-white/25"
-                  >
-                    <span
-                      class="block h-full rounded-full bg-primary"
-                      :style="{ width: `${progressPercent(item)}%` }"
-                    />
-                  </div>
-                </div>
-              </NuxtLink>
-            </div>
-          </section>
-
-          <section v-if="recommendedTitles.length">
-            <div class="mb-8 flex items-end justify-between">
-              <h2
-                class="font-display text-3xl font-semibold tracking-tight lg:text-4xl"
-              >
-                {{ text.recommended }}
-              </h2>
-              <NuxtLink
-                to="/browse?collection=recommended"
-                class="inline-flex items-center gap-1 text-sm font-medium text-primary transition hover:text-primary-container"
-                >{{ text.viewAll }} <ChevronRight class="size-4"
-              /></NuxtLink>
-            </div>
-            <TitlePosterRow :titles="recommendedTitles" />
-          </section>
-
-          <section v-if="newReleaseTitles.length" class="mt-20">
-            <div class="mb-8 flex items-end justify-between">
-              <h2
-                class="font-display text-3xl font-semibold tracking-tight lg:text-4xl"
-              >
-                {{ text.newReleases }}
-              </h2>
-              <NuxtLink
-                to="/browse?sort=latest"
-                class="inline-flex items-center gap-1 text-sm font-medium text-primary transition hover:text-primary-container"
-                >{{ text.viewAll }} <ChevronRight class="size-4"
-              /></NuxtLink>
-            </div>
-            <TitlePosterRow :titles="newReleaseTitles" />
-          </section>
-
-          <section v-if="titles2026.length" class="mt-20">
-            <div class="mb-8 flex items-end justify-between">
-              <h2
-                class="font-display text-3xl font-semibold tracking-tight lg:text-4xl"
-              >
-                {{ text.year2026 }}
-              </h2>
-              <NuxtLink
-                to="/browse?sort=latest"
-                class="inline-flex items-center gap-1 text-sm font-medium text-primary transition hover:text-primary-container"
-                >{{ text.viewAll }} <ChevronRight class="size-4"
-              /></NuxtLink>
-            </div>
-            <TitlePosterRow :titles="titles2026" />
-          </section>
-
-          <section v-if="moviePicks.length" class="mt-20">
-            <div class="mb-8 flex items-end justify-between">
-              <h2
-                class="font-display text-3xl font-semibold tracking-tight lg:text-4xl"
-              >
-                {{ text.moviePicks }}
-              </h2>
-              <NuxtLink
-                to="/browse?sort=latest"
-                class="inline-flex items-center gap-1 text-sm font-medium text-primary transition hover:text-primary-container"
-                >{{ text.viewAll }} <ChevronRight class="size-4"
-              /></NuxtLink>
-            </div>
-            <TitlePosterRow :titles="moviePicks" />
-          </section>
-
-          <section v-if="seriesPicks.length" class="mt-20">
-            <div class="mb-8 flex items-end justify-between">
-              <h2
-                class="font-display text-3xl font-semibold tracking-tight lg:text-4xl"
-              >
-                {{ text.seriesPicks }}
-              </h2>
-              <NuxtLink
-                to="/browse?type=series"
-                class="inline-flex items-center gap-1 text-sm font-medium text-primary transition hover:text-primary-container"
-                >{{ text.viewAll }} <ChevronRight class="size-4"
-              /></NuxtLink>
-            </div>
-            <TitlePosterRow :titles="seriesPicks" />
-          </section>
-        </div>
-
-        <aside class="lg:sticky lg:top-24">
+          <!-- Metadata Chips Row -->
           <div
-            class="rounded-3xl border border-white/10 bg-surface-container p-5 shadow-[inset_0_1px_0_rgba(235,225,214,.08)]"
+            class="mt-3.5 flex flex-wrap items-center gap-1.5 text-xs font-semibold"
           >
-            <p
-              class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[.16em] text-primary"
+            <!-- IMDb Badge with gold border -->
+            <span
+              class="rounded border border-[#ffd875] bg-black/40 px-2 py-0.5 text-xs font-bold text-[#ffd875] backdrop-blur-md"
             >
-              <Flame class="size-4 fill-current" /> {{ text.trending }}
-            </p>
-            <div
-              class="mt-4 flex rounded-full border border-white/10 bg-background/50 p-1"
-              role="tablist"
-              :aria-label="text.trending"
+              IMDb
+              {{ activeHero.rating ? activeHero.rating.toFixed(1) : "8.5" }}
+            </span>
+            <!-- Rating Tag -->
+            <span
+              class="rounded border border-white/20 bg-black/40 px-2 py-0.5 text-xs text-gray-200 backdrop-blur-md"
             >
-              <button
-                v-for="period in topPeriods"
-                :key="period"
-                class="flex-1 rounded-full px-2 py-2 text-[11px] font-semibold transition"
-                :class="
-                  topPeriod === period
-                    ? 'bg-primary-container text-primary-container-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                "
-                :aria-selected="topPeriod === period"
-                role="tab"
-                @click="selectTopPeriod(period)"
-              >
-                {{ text.periods[period] }}
-              </button>
-            </div>
-
-            <div v-if="topTitles?.length" class="mt-5 divide-y divide-white/8">
-              <NuxtLink
-                v-for="(item, index) in topTitles.slice(0, 5)"
-                :key="item.title.slug"
-                :to="`/movies/${item.title.slug}`"
-                class="group flex gap-3 py-3 first:pt-0 last:pb-0"
-              >
-                <span
-                  class="flex w-5 shrink-0 items-center justify-center font-display text-xl font-semibold text-primary"
-                  >{{ index + 1 }}</span
-                >
-                <img
-                  :src="item.title.posterUrl"
-                  :alt="item.title.title"
-                  class="h-16 w-11 rounded-lg object-cover"
-                  loading="lazy"
-                />
-                <div class="min-w-0 py-0.5">
-                  <h3
-                    class="truncate text-sm font-semibold text-foreground transition group-hover:text-primary"
-                  >
-                    {{ item.title.title }}
-                  </h3>
-                  <p class="mt-1 truncate text-xs text-muted-foreground">
-                    {{ item.title.genre }}
-                  </p>
-                  <p class="mt-1 text-[11px] font-medium text-primary">
-                    {{ formatViews(item.views) }} {{ text.views }}
-                  </p>
-                </div>
-              </NuxtLink>
-            </div>
-            <p
-              v-else-if="!topPending"
-              class="mt-5 text-sm leading-6 text-muted-foreground"
+              T16
+            </span>
+            <!-- Year -->
+            <span
+              class="rounded border border-white/20 bg-black/40 px-2 py-0.5 text-xs text-gray-200 backdrop-blur-md"
             >
-              {{ text.empty }}
-            </p>
+              {{ activeHero.year || 2026 }}
+            </span>
+            <!-- Type / Season -->
+            <span
+              class="rounded border border-white/20 bg-black/40 px-2 py-0.5 text-xs text-gray-200 backdrop-blur-md"
+            >
+              {{ activeHero.type === "series" ? "Phần 1" : "Bản Đẹp" }}
+            </span>
+            <!-- Episodes -->
+            <span
+              class="rounded border border-white/20 bg-black/40 px-2 py-0.5 text-xs text-gray-200 backdrop-blur-md"
+            >
+              {{
+                activeHero.type === "series"
+                  ? `Tập ${activeHero.totalEpisodes || 12}`
+                  : "Tập Hoàn Tất"
+              }}
+            </span>
           </div>
-        </aside>
+
+          <!-- Genre Pills -->
+          <div
+            class="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs font-medium"
+          >
+            <span
+              v-for="g in heroGenres"
+              :key="g"
+              class="rounded border border-white/10 bg-black/30 px-2.5 py-0.5 text-gray-300 backdrop-blur-md text-[11px]"
+            >
+              {{ g }}
+            </span>
+          </div>
+
+          <!-- Description (Truncated) -->
+          <p
+            class="mt-3 line-clamp-2 sm:line-clamp-3 text-xs sm:text-sm leading-relaxed text-gray-300/80 max-w-lg font-normal"
+          >
+            {{
+              activeHero.description ||
+              `${activeHero.title} (${activeHero.year || 2026}) - Trọn bộ HD vietsub thuyết minh mới nhất trên ZMovie.`
+            }}
+          </p>
+        </div>
+
+        <!-- Bottom Controls Row: Action Buttons on Left, Thumbnails on Right -->
+        <div class="mt-5 flex items-center justify-between gap-4">
+          <!-- Left Action Buttons -->
+          <div class="flex items-center gap-3">
+            <!-- Play Button (Yellow Circle) -->
+            <NuxtLink
+              :to="`/watch/${activeHero.slug}`"
+              class="grid size-13 place-items-center rounded-full bg-[#ffd875] text-black shadow-[0_0_22px_rgba(255,216,117,0.4)] transition duration-200 hover:scale-105 hover:bg-[#ffde8a] active:scale-95"
+              title="Xem ngay"
+            >
+              <Play class="size-5.5 fill-current translate-x-0.5" />
+            </NuxtLink>
+
+            <!-- Favorite Button (Round Outline) -->
+            <button
+              type="button"
+              class="grid size-10.5 place-items-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur-md transition duration-200 hover:border-white/50 hover:bg-white/10 active:scale-95"
+              title="Yêu thích"
+            >
+              <Heart class="size-4.5" />
+            </button>
+
+            <!-- Details Button (Round Outline) -->
+            <NuxtLink
+              :to="`/movies/${activeHero.slug}`"
+              class="grid size-10.5 place-items-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur-md transition duration-200 hover:border-white/50 hover:bg-white/10 active:scale-95"
+              title="Chi tiết phim"
+            >
+              <Info class="size-4.5" />
+            </NuxtLink>
+          </div>
+
+          <!-- Right Thumbnail Strip (Hero Select) -->
+          <div
+            class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 no-scrollbar shrink-0"
+          >
+            <button
+              v-for="item in heroSliderTitles"
+              :key="item.slug"
+              type="button"
+              class="relative aspect-[16/10] w-14 sm:w-16 shrink-0 overflow-hidden rounded-[7px] transition-all duration-200 bg-[#191b24]"
+              :class="
+                activeHero.slug === item.slug
+                  ? 'border-[1.5px] border-white opacity-100'
+                  : 'border border-white/10 opacity-45 hover:opacity-85'
+              "
+              :title="item.title"
+              @click="selectHero(item)"
+            >
+              <img
+                :src="getSafePoster(item)"
+                :alt="item.title"
+                class="size-full object-cover"
+                @error="(e) => onImgError(e, item.slug)"
+              />
+            </button>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section
-      v-if="error"
-      class="mx-auto max-w-360 px-5 pb-12 text-sm text-destructive lg:px-12"
-    >
-      {{ text.unavailable }}
-    </section>
+    <!-- 2. TOPIC CARDS: "Bạn đang quan tâm gì?" -->
+    <TopicCards />
 
-    <footer
-      class="border-t border-white/5 bg-surface-container-lowest px-5 py-10 lg:px-12"
+    <!-- 3. MAIN CONTENT SECTIONS -->
+    <div
+      class="mx-auto w-full max-w-360 px-4 sm:px-6 lg:px-10 pb-16 space-y-12"
     >
-      <div
-        class="mx-auto flex max-w-360 flex-col items-center gap-5 text-center"
-      >
-        <NuxtLink to="/" class="font-display text-xl font-semibold text-primary"
-          >ZMovie</NuxtLink
+      <!-- Section: Xem tiếp (Continue Watching) -->
+      <section v-if="continueWatching.length">
+        <div class="mb-4 flex items-center justify-between">
+          <h2
+            class="text-xl sm:text-2xl font-bold tracking-tight text-white font-display"
+          >
+            Xem tiếp
+          </h2>
+          <NuxtLink
+            to="/my-list"
+            class="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-primary hover:underline"
+          >
+            Xem toàn bộ <ChevronRight class="size-4" />
+          </NuxtLink>
+        </div>
+        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          <MovieCard
+            v-for="item in continueWatching"
+            :key="item.title.slug"
+            :title="item.title"
+            variant="horizontal"
+            :show-progress="true"
+            :progress-percent="progressPercent(item)"
+            :episode-number="item.episodeNumber"
+          />
+        </div>
+      </section>
+
+      <!-- Section: Phim Song Ngữ (16:9 Horizontal Cards) -->
+      <section>
+        <div class="mb-4 flex items-center justify-between">
+          <h2
+            class="text-xl sm:text-2xl font-bold tracking-tight text-white font-display"
+          >
+            Phim <span class="text-primary">Song Ngữ</span>
+          </h2>
+          <NuxtLink
+            to="/browse?genre=Song%20Ngữ"
+            class="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-white/70 hover:text-primary transition"
+          >
+            Xem toàn bộ <ChevronRight class="size-4" />
+          </NuxtLink>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <MovieCard
+            v-for="item in seriesPicks.slice(0, 3)"
+            :key="item.slug"
+            :title="item"
+            variant="horizontal"
+          />
+        </div>
+      </section>
+
+      <!-- Section: Phim Trung Quốc mới (2:3 Vertical Cards) -->
+      <section>
+        <div class="mb-4 flex items-center justify-between">
+          <h2
+            class="text-xl sm:text-2xl font-bold tracking-tight text-white font-display"
+          >
+            Phim <span class="text-amber-400">Trung Quốc</span> mới
+          </h2>
+          <NuxtLink
+            to="/browse?country=Trung%20Quốc"
+            class="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-white/70 hover:text-primary transition"
+          >
+            Xem toàn bộ <ChevronRight class="size-4" />
+          </NuxtLink>
+        </div>
+        <div
+          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5"
         >
-        <nav
-          class="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground"
+          <MovieCard
+            v-for="item in moviePicks.slice(0, 6)"
+            :key="item.slug"
+            :title="item"
+            variant="vertical"
+          />
+        </div>
+      </section>
+
+      <!-- Section: Phim US-UK mới (2:3 Vertical Cards) -->
+      <section>
+        <div class="mb-4 flex items-center justify-between">
+          <h2
+            class="text-xl sm:text-2xl font-bold tracking-tight text-white font-display"
+          >
+            Phim <span class="text-rose-400">US-UK</span> mới
+          </h2>
+          <NuxtLink
+            to="/browse?country=Âu%20Mỹ"
+            class="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-white/70 hover:text-primary transition"
+          >
+            Xem toàn bộ <ChevronRight class="size-4" />
+          </NuxtLink>
+        </div>
+        <div
+          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5"
         >
-          <a href="#">Privacy Policy</a><a href="#">Terms of Service</a
-          ><a href="#">Help Center</a><a href="#">Contact Us</a>
-        </nav>
-        <p class="text-xs text-tertiary">
-          © 2026 ZMovie Premium. All rights reserved.
-        </p>
-      </div>
-    </footer>
-  </main>
+          <MovieCard
+            v-for="item in newReleaseTitles.slice(0, 6)"
+            :key="item.slug"
+            :title="item"
+            variant="vertical"
+          />
+        </div>
+      </section>
+
+      <!-- Section: Phim 2026 Mới Chiếu Rạp -->
+      <section v-if="titles2026.length">
+        <div class="mb-4 flex items-center justify-between">
+          <h2
+            class="text-xl sm:text-2xl font-bold tracking-tight text-white font-display"
+          >
+            Phim Chiếu Rạp <span class="text-emerald-400">2026</span>
+          </h2>
+          <NuxtLink
+            to="/browse?year=2026"
+            class="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-white/70 hover:text-primary transition"
+          >
+            Xem toàn bộ <ChevronRight class="size-4" />
+          </NuxtLink>
+        </div>
+        <div
+          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5"
+        >
+          <MovieCard
+            v-for="item in titles2026.slice(0, 6)"
+            :key="item.slug"
+            :title="item"
+            variant="vertical"
+          />
+        </div>
+      </section>
+    </div>
+
+    <!-- 4. FOOTER -->
+    <AppFooter />
+  </div>
 </template>
