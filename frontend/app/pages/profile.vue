@@ -4,7 +4,7 @@ import { BadgeCheck, Film, LogOut, Mail, ShieldCheck } from "@lucide/vue";
 useHead({ title: "Hồ sơ — ZMovie" });
 
 const loading = ref(true);
-const locale = useCookie<"vi" | "en">("zmovie-locale", { default: () => "vi" });
+const { locale } = useLocale();
 const { user, isAdmin, fetchSession, signOut } = useAuthSession();
 
 async function logout() {

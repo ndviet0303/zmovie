@@ -1,18 +1,9 @@
 <script setup lang="ts">
-type Title = {
-  slug: string;
-  title: string;
-  genre: string;
-  year: number;
-  posterUrl: string;
-};
-type TitleListResponse = { items: Title[] };
-const locale = useCookie<"vi" | "en">("zmovie-locale", { default: () => "vi" });
-const { $api } = useNuxtApp();
+import { fetchCatalogTitles } from "~/services/catalog.service";
+
+const { locale, setLocale: setGlobalLocale } = useLocale();
 const { data } = await useAsyncData("genre-catalog", () =>
-  $api<TitleListResponse>("/v1/catalog/titles", {
-    query: { locale: locale.value },
-  }),
+  fetchCatalogTitles({ locale: locale.value }),
 );
 const genres = computed(() => [
   ...new Set(data.value?.items.map((item) => item.genre) ?? []),
@@ -38,7 +29,7 @@ useZMovieSeo({
 
 async function setLocale(next: "vi" | "en") {
   if (next !== locale.value) {
-    locale.value = next;
+    setGlobalLocale(next);
     await refreshNuxtData("genre-catalog");
   }
 }

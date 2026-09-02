@@ -1,95 +1,22 @@
 <script setup lang="ts">
-import type { AdminUserSummary, Paged, UserRole } from "~/types/admin";
-
 definePageMeta({ layout: "admin", middleware: "admin" });
 useHead({ title: "Người dùng — ZMovie admin" });
 
-const { $api } = useNuxtApp();
-const { user: currentUser } = useAuthSession();
-
-const search = ref("");
-const roleFilter = ref<"" | UserRole>("");
-const page = ref(1);
-const result = ref<Paged<AdminUserSummary> | null>(null);
-const pending = ref(false);
-const errorMessage = ref("");
-const notice = ref("");
-const savingId = ref<string | null>(null);
-
-let searchTimer: ReturnType<typeof setTimeout> | undefined;
-let requestSeq = 0;
-
-async function load() {
-  const token = ++requestSeq;
-  pending.value = true;
-  errorMessage.value = "";
-  try {
-    const response = await $api<Paged<AdminUserSummary>>("/v1/admin/users", {
-      credentials: "include",
-      query: {
-        q: search.value.trim() || undefined,
-        role: roleFilter.value || undefined,
-        page: page.value,
-        pageSize: 20,
-      },
-    });
-    if (token !== requestSeq) return;
-    result.value = response;
-  } catch {
-    if (token !== requestSeq) return;
-    errorMessage.value = "Không tải được danh sách người dùng.";
-  } finally {
-    if (token === requestSeq) pending.value = false;
-  }
-}
-
-function scheduleSearch() {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    page.value = 1;
-    void load();
-  }, 300);
-}
-
-function applyFilters() {
-  page.value = 1;
-  void load();
-}
-
-async function setRole(item: AdminUserSummary, role: UserRole) {
-  if (savingId.value) return;
-  savingId.value = item.id;
-  errorMessage.value = "";
-  notice.value = "";
-  try {
-    const updated = await $api<AdminUserSummary>(
-      `/v1/admin/users/${item.id}/role`,
-      { method: "PATCH", credentials: "include", body: { role } },
-    );
-    Object.assign(item, updated);
-    notice.value = `Đã đổi quyền của ${updated.displayName} thành ${role === "admin" ? "quản trị viên" : "thành viên"}.`;
-  } catch (error: unknown) {
-    const problem = (
-      error as {
-        data?: { title?: string; errors?: { description?: string }[] };
-      }
-    )?.data;
-    notice.value = "";
-    errorMessage.value =
-      problem?.errors?.[0]?.description ??
-      problem?.title ??
-      "Không đổi được quyền.";
-  } finally {
-    savingId.value = null;
-  }
-}
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleString("vi-VN");
-}
-
-onMounted(() => void load());
-onBeforeUnmount(() => clearTimeout(searchTimer));
+const {
+  currentUser,
+  search,
+  roleFilter,
+  page,
+  result,
+  pending,
+  errorMessage,
+  notice,
+  savingId,
+  scheduleSearch,
+  applyFilters,
+  setRole,
+  formatDate,
+} = useAdminUsers();
 </script>
 
 <template>

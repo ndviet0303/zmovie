@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { googleAuth } from "~/services/auth.service";
+
 const props = withDefaults(
   defineProps<{ text?: "signin_with" | "signup_with" }>(),
   { text: "signin_with" },
@@ -7,7 +9,6 @@ const button = ref<HTMLElement | null>(null);
 const error = ref("");
 const config = useRuntimeConfig();
 const route = useRoute();
-const { $api } = useNuxtApp();
 const { fetchSession } = useAuthSession();
 
 /**
@@ -63,11 +64,7 @@ function loadGoogleScript() {
 
 async function signIn(response: { credential: string }) {
   try {
-    await $api("/v1/auth/google", {
-      method: "POST",
-      credentials: "include",
-      body: { credential: response.credential },
-    });
+    await googleAuth(response.credential);
     // Refresh shared session state so the navbar and admin middleware see the
     // new role without another navigation.
     await fetchSession(true);

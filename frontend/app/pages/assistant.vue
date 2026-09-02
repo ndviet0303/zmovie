@@ -1,151 +1,16 @@
 <script setup lang="ts">
 import { Bot, LoaderCircle, Send, Sparkles } from "@lucide/vue";
 
-type Title = {
-  slug: string;
-  title: string;
-  genre: string;
-  year: number;
-  type: string;
-  posterUrl: string;
-};
-type AssistantReply = {
-  message: string;
-  suggestions: Title[];
-  recommendationId?: string | null;
-};
-type Message = {
-  role: "bot" | "user";
-  text: string;
-  suggestions?: Title[];
-  recommendationId?: string | null;
-};
-
-const locale = useCookie<"vi" | "en">("zmovie-locale", { default: () => "vi" });
-const prompt = ref("");
-const isSending = ref(false);
-const { $api } = useNuxtApp();
-const messages = ref<Message[]>([
-  {
-    role: "bot",
-    text:
-      locale.value === "vi"
-        ? "Chào bạn, mình là ZMovie Bot. Bạn muốn xem phim thể loại, tâm trạng hay chủ đề nào?"
-        : "Hi, I am ZMovie Bot. What genre, mood, or topic would you like to watch?",
-  },
-]);
-
-const copy = computed(() =>
-  locale.value === "vi"
-    ? {
-        title: "ZMovie Bot",
-        subtitle: "Tìm phim theo thể loại, chủ đề hoặc tâm trạng của bạn.",
-        placeholder: "Ví dụ: phim phiêu lưu hoạt hình, nhẹ nhàng cuối tuần…",
-        send: "Gửi",
-        suggestions: [
-          "Phim hành động kịch tính",
-          "Anime phiêu lưu",
-          "Phim lãng mạn nhẹ nhàng",
-        ],
-      }
-    : {
-        title: "ZMovie Bot",
-        subtitle: "Find a movie by genre, topic, or your current mood.",
-        placeholder: "Try: animated adventure, a light weekend movie…",
-        send: "Send",
-        suggestions: [
-          "Intense action movies",
-          "Adventure anime",
-          "Light romantic movies",
-        ],
-      },
-);
-
-async function setLocale(nextLocale: "vi" | "en") {
-  if (nextLocale === locale.value) return;
-  locale.value = nextLocale;
-}
-
-function statusOf(error: unknown) {
-  if (!error || typeof error !== "object") return undefined;
-  const candidate = error as {
-    status?: unknown;
-    statusCode?: unknown;
-    response?: { status?: unknown };
-  };
-  const status =
-    candidate.response?.status ?? candidate.status ?? candidate.statusCode;
-  return typeof status === "number" ? status : undefined;
-}
-
-function errorText(status: number | undefined) {
-  if (status === 524 || status === 504) {
-    return locale.value === "vi"
-      ? `Backend đang timeout (HTTP ${status}). Vui lòng kiểm tra API/deployment.`
-      : `The backend timed out (HTTP ${status}). Check the API deployment.`;
-  }
-  if (status && status >= 500) {
-    return locale.value === "vi"
-      ? `Backend đang lỗi (HTTP ${status}). Bạn thử lại sau nhé.`
-      : `The backend returned an error (HTTP ${status}). Please try again.`;
-  }
-  return locale.value === "vi"
-    ? "Mình đang gặp sự cố. Bạn thử lại sau nhé."
-    : "I am having trouble right now. Please try again.";
-}
-
-async function send(nextPrompt = prompt.value) {
-  const message = nextPrompt.trim();
-  if (!message || isSending.value) return;
-  messages.value.push({ role: "user", text: message });
-  prompt.value = "";
-  isSending.value = true;
-  const phase = "assistant";
-  try {
-    const assistantReply = await $api<AssistantReply>("/v1/assistant/chat", {
-      method: "POST",
-      credentials: "include",
-      body: { message, locale: locale.value },
-    });
-    messages.value.push({
-      role: "bot",
-      text: assistantReply.message,
-      suggestions: assistantReply.suggestions,
-      recommendationId: assistantReply.recommendationId,
-    });
-  } catch (error) {
-    console.error(`[assistant:${phase}]`, error);
-    const status = statusOf(error);
-    messages.value.push({
-      role: "bot",
-      text:
-        status === 401
-          ? locale.value === "vi"
-            ? "Bạn cần đăng nhập để dùng tìm phim theo lịch sử và sở thích cá nhân."
-            : "Please sign in to use recommendations based on your history and preferences."
-          : errorText(status),
-    });
-  } finally {
-    isSending.value = false;
-  }
-}
-
-async function recordFeedback(message: Message, slug: string) {
-  if (!message.recommendationId) return;
-  try {
-    await $api("/v1/assistant/feedback", {
-      method: "POST",
-      credentials: "include",
-      body: {
-        recommendationId: message.recommendationId,
-        slug,
-        eventType: "click",
-      },
-    });
-  } catch (error) {
-    console.debug("[assistant:feedback]", error);
-  }
-}
+const {
+  locale,
+  copy,
+  prompt,
+  isSending,
+  messages,
+  send,
+  recordFeedback,
+  setLocale,
+} = useAssistant();
 </script>
 
 <template>

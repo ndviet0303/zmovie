@@ -1,33 +1,9 @@
 <script setup lang="ts">
-import type { AdminOverview } from "~/types/admin";
-
 definePageMeta({ layout: "admin", middleware: "admin" });
 useHead({ title: "Tổng quan — ZMovie admin" });
 
-const { $api } = useNuxtApp();
-const overview = ref<AdminOverview | null>(null);
-const pending = ref(true);
-const errorMessage = ref("");
-
-async function load() {
-  pending.value = true;
-  errorMessage.value = "";
-  try {
-    overview.value = await $api<AdminOverview>("/v1/admin/overview", {
-      credentials: "include",
-    });
-  } catch {
-    errorMessage.value = "Không tải được số liệu tổng quan.";
-  } finally {
-    pending.value = false;
-  }
-}
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("vi-VN");
-}
-
-onMounted(() => void load());
+const { overview, pending, errorMessage, load, formatDate } =
+  useAdminOverview();
 </script>
 
 <template>

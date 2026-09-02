@@ -24,44 +24,34 @@ import {
   AlertDialogTitle,
 } from "reka-ui";
 
-type Title = {
-  slug: string;
-  title: string;
-  synopsis: string;
-  genre: string;
-  year: number;
-  type: string;
-  posterUrl: string;
-  runtimeMinutes: number;
-  viewCount: number;
-};
-type Episode = { number: number; name: string; hlsUrl: string };
-type Playback = {
-  slug: string;
-  title: string;
-  isSeries: boolean;
-  episodes: Episode[];
-};
-type ViewRecordedResponse = { viewCount: number; counted: boolean };
+import type { TitleDetail } from "~/types/catalog";
+import type { LocalWatchProgress } from "~/types/watch";
+import {
+  fetchCatalogPlayback,
+  fetchCatalogTitleBySlug,
+  recordTitleView,
+} from "~/services/catalog.service";
+import {
+  fetchUserLibrary,
+  recordWatchHistory,
+  removeTitleFromLibrary,
+  saveTitleToLibrary,
+} from "~/services/library.service";
+
+type Title = TitleDetail & { viewCount?: number };
 type LibraryHistory = {
   title: { slug: string };
   episodeNumber: number | null;
   progressSeconds: number;
 };
 type LibraryResponse = { saved: { slug: string }[]; history: LibraryHistory[] };
-type LocalWatchProgress = {
-  episodeNumber: number | null;
-  progressSeconds: number;
-  updatedAt: number;
-};
 
 const LOCAL_PROGRESS_KEY = "zmovie.watch-progress.v1";
 const LOCAL_PROGRESS_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const LOCAL_PROGRESS_LIMIT = 100;
 
 const route = useRoute();
-const locale = useCookie<"vi" | "en">("zmovie-locale", { default: () => "vi" });
-const { $api } = useNuxtApp();
+const { locale } = useLocale();
 const video = ref<HTMLVideoElement | null>(null);
 const playerFrame = ref<HTMLElement | null>(null);
 const selectedEpisode = ref(0);
@@ -96,16 +86,14 @@ let libraryRequest: Promise<LibraryResponse> | null = null;
 const { data: title, error: titleError } = await useAsyncData(
   `watch-title-${route.params.slug}`,
   () =>
-    $api<Title>(`/v1/catalog/titles/${route.params.slug}`, {
-      query: { locale: locale.value },
-    }),
+    fetchCatalogTitleBySlug(
+      String(route.params.slug),
+      locale.value,
+    ) as Promise<Title>,
 );
 const { data: playback, error: playbackError } = await useAsyncData(
   `watch-playback-${route.params.slug}`,
-  () =>
-    $api<Playback>(`/v1/catalog/titles/${route.params.slug}/playback`, {
-      query: { locale: locale.value },
-    }),
+  () => fetchCatalogPlayback(String(route.params.slug), locale.value),
 );
 const requestedEpisode = Number(route.query.episode);
 if (
@@ -301,10 +289,7 @@ async function loadResumePosition() {
   }
   if (libraryRequest) return libraryRequest;
 
-  const request = $api<LibraryResponse>("/v1/me/library", {
-    credentials: "include",
-    query: { locale: locale.value },
-  });
+  const request = fetchUserLibrary(locale.value) as Promise<LibraryResponse>;
   libraryRequest = request;
 
   try {
@@ -339,10 +324,11 @@ function selectEpisode(index: number) {
 async function toggleMyList() {
   if (!title.value) return;
   try {
-    await $api(`/v1/me/saved/${title.value.slug}`, {
-      method: isInMyList.value ? "DELETE" : "PUT",
-      credentials: "include",
-    });
+    if (isInMyList.value) {
+      await removeTitleFromLibrary(title.value.slug);
+    } else {
+      await saveTitleToLibrary(title.value.slug);
+    }
     isInMyList.value = !isInMyList.value;
   } catch {
     actionNotice.value = "Hãy đăng nhập để lưu phim vào danh sách.";
@@ -367,15 +353,14 @@ async function recordWatchProgress(keepalive = false) {
   isSavingProgress = true;
   const progressSeconds = currentTime.value;
   try {
-    await $api(`/v1/me/history/${title.value.slug}`, {
-      method: "POST",
-      credentials: "include",
-      keepalive,
-      body: {
+    await recordWatchHistory(
+      title.value.slug,
+      {
         episodeNumber: playback.value?.isSeries ? episode.value?.number : null,
         progressSeconds,
       },
-    });
+      keepalive,
+    );
     lastProgressSaved = progressSeconds;
   } catch {
     // Progress saving is best effort and must not interrupt playback.
@@ -401,17 +386,9 @@ async function recordView() {
   if (hasRecordedView.value || !title.value) return;
   hasRecordedView.value = true;
   try {
-    const result = await $api<ViewRecordedResponse>(
-      `/v1/catalog/titles/${title.value.slug}/views`,
-      {
-        method: "POST",
-        credentials: "include",
-        body: {
-          episodeNumber: playback.value?.isSeries
-            ? episode.value?.number
-            : null,
-        },
-      },
+    const result = await recordTitleView(
+      title.value.slug,
+      playback.value?.isSeries ? episode.value?.number : null,
     );
     viewCount.value = result.viewCount;
   } catch {

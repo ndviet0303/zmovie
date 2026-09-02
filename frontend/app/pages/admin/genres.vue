@@ -1,151 +1,29 @@
 <script setup lang="ts">
 import { Check, Pencil, Trash2, X } from "@lucide/vue";
-import type { AdminGenreSummary } from "~/types/admin";
 
 definePageMeta({ layout: "admin", middleware: "admin" });
 useHead({ title: "Thể loại — ZMovie admin" });
 
-const { $api } = useNuxtApp();
-
-const genres = ref<AdminGenreSummary[]>([]);
-const pending = ref(true);
-const errorMessage = ref("");
-const notice = ref("");
-
-const newSlug = ref("");
-const newName = ref("");
-const isCreating = ref(false);
-
-const editingId = ref<string | null>(null);
-const editingName = ref("");
-const isSaving = ref(false);
-
-const deleteTarget = ref<AdminGenreSummary | null>(null);
-const isDeleting = ref(false);
-
-async function load() {
-  pending.value = true;
-  errorMessage.value = "";
-  try {
-    genres.value = await $api<AdminGenreSummary[]>("/v1/admin/genres", {
-      credentials: "include",
-    });
-  } catch {
-    errorMessage.value = "Không tải được danh sách thể loại.";
-  } finally {
-    pending.value = false;
-  }
-}
-
-function slugify(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[đĐ]/g, "d")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-// Mirror the name into the slug until the operator edits the slug themselves.
-const isSlugManual = ref(false);
-watch(newName, (value) => {
-  if (!isSlugManual.value) newSlug.value = slugify(value);
-});
-
-async function createGenre() {
-  if (isCreating.value) return;
-  const slug = newSlug.value.trim();
-  const name = newName.value.trim();
-  if (!slug || !name) {
-    errorMessage.value = "Cần nhập cả tên và slug.";
-    return;
-  }
-  isCreating.value = true;
-  errorMessage.value = "";
-  notice.value = "";
-  try {
-    await $api<AdminGenreSummary>("/v1/admin/genres", {
-      method: "POST",
-      credentials: "include",
-      body: { slug, name },
-    });
-    notice.value = `Đã thêm thể loại "${name}".`;
-    newName.value = "";
-    newSlug.value = "";
-    isSlugManual.value = false;
-    await load();
-  } catch (error: unknown) {
-    notice.value = "";
-    errorMessage.value = readApiMessage(error, "Không thêm được thể loại.");
-  } finally {
-    isCreating.value = false;
-  }
-}
-
-function startEdit(genre: AdminGenreSummary) {
-  editingId.value = genre.id;
-  editingName.value = genre.name;
-}
-
-function cancelEdit() {
-  editingId.value = null;
-  editingName.value = "";
-}
-
-async function saveEdit(genre: AdminGenreSummary) {
-  if (isSaving.value) return;
-  const name = editingName.value.trim();
-  if (!name) return;
-  isSaving.value = true;
-  errorMessage.value = "";
-  try {
-    const updated = await $api<AdminGenreSummary>(
-      `/v1/admin/genres/${genre.id}`,
-      {
-        method: "PUT",
-        credentials: "include",
-        body: { name },
-      },
-    );
-    Object.assign(genre, updated);
-    notice.value = `Đã đổi tên thành "${updated.name}".`;
-    cancelEdit();
-  } catch (error: unknown) {
-    notice.value = "";
-    errorMessage.value = readApiMessage(error, "Không đổi được tên thể loại.");
-  } finally {
-    isSaving.value = false;
-  }
-}
-
-async function confirmDelete() {
-  if (!deleteTarget.value || isDeleting.value) return;
-  isDeleting.value = true;
-  try {
-    await $api(`/v1/admin/genres/${deleteTarget.value.id}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    notice.value = `Đã xoá thể loại "${deleteTarget.value.name}".`;
-    deleteTarget.value = null;
-    await load();
-  } catch {
-    notice.value = "";
-    errorMessage.value = "Không xoá được thể loại.";
-  } finally {
-    isDeleting.value = false;
-  }
-}
-
-function readApiMessage(error: unknown, fallback: string) {
-  const problem = (
-    error as { data?: { title?: string; errors?: { description?: string }[] } }
-  )?.data;
-  return problem?.errors?.[0]?.description ?? problem?.title ?? fallback;
-}
-
-onMounted(() => void load());
+const {
+  genres,
+  pending,
+  errorMessage,
+  notice,
+  newSlug,
+  newName,
+  isCreating,
+  isSlugManual,
+  editingId,
+  editingName,
+  isSaving,
+  deleteTarget,
+  isDeleting,
+  createGenre,
+  startEdit,
+  cancelEdit,
+  saveEdit,
+  confirmDelete,
+} = useAdminGenres();
 </script>
 
 <template>

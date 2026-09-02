@@ -12,7 +12,7 @@
     "generate": "nuxt generate",
     "lint": "eslint .",
     "preview": "nuxt preview",
-    "test": "bun test app/lib",
+    "test": "bun test tests",
     "test:e2e": "playwright test",
     "typecheck": "nuxt prepare && vue-tsc --noEmit",
     "postinstall": "nuxt prepare"

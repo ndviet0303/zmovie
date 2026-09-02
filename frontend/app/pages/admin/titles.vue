@@ -1,204 +1,35 @@
 <script setup lang="ts">
 import { Pencil, Star, Trash2 } from "@lucide/vue";
-import type {
-  AdminGenreSummary,
-  AdminTitleDetail,
-  AdminTitleEdit,
-  AdminTitleSummary,
-  Paged,
-} from "~/types/admin";
 
 definePageMeta({ layout: "admin", middleware: "admin" });
 useHead({ title: "Quản lý phim — ZMovie admin" });
 
-const { $api } = useNuxtApp();
-
-const search = ref("");
-const genreFilter = ref("");
-const typeFilter = ref("");
-const featuredFilter = ref("");
-const page = ref(1);
-const result = ref<Paged<AdminTitleSummary> | null>(null);
-const genres = ref<AdminGenreSummary[]>([]);
-const pending = ref(false);
-const errorMessage = ref("");
-const notice = ref("");
-
-const editing = ref<AdminTitleDetail | null>(null);
-const form = ref<AdminTitleEdit | null>(null);
-const isSaving = ref(false);
-const formError = ref("");
-const deleteTarget = ref<AdminTitleSummary | null>(null);
-const isDeleting = ref(false);
-const featuredPending = ref(new Set<string>());
-
-let searchTimer: ReturnType<typeof setTimeout> | undefined;
-// Monotonic token: a slow response for an old query must never overwrite a newer one.
-let requestSeq = 0;
-
-async function load() {
-  const token = ++requestSeq;
-  pending.value = true;
-  errorMessage.value = "";
-  try {
-    const response = await $api<Paged<AdminTitleSummary>>("/v1/admin/titles", {
-      credentials: "include",
-      query: {
-        q: search.value.trim() || undefined,
-        genre: genreFilter.value || undefined,
-        type: typeFilter.value || undefined,
-        featured: featuredFilter.value || undefined,
-        page: page.value,
-        pageSize: 20,
-      },
-    });
-    if (token !== requestSeq) return;
-    result.value = response;
-  } catch {
-    if (token !== requestSeq) return;
-    errorMessage.value = "Không tải được danh sách phim.";
-  } finally {
-    if (token === requestSeq) pending.value = false;
-  }
-}
-
-async function loadGenres() {
-  genres.value = await $api<AdminGenreSummary[]>("/v1/admin/genres", {
-    credentials: "include",
-  }).catch(() => []);
-}
-
-function scheduleSearch() {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    page.value = 1;
-    void load();
-  }, 300);
-}
-
-function applyFilters() {
-  page.value = 1;
-  void load();
-}
-
-function changePage(next: number) {
-  page.value = next;
-  void load();
-}
-
-async function openEditor(item: AdminTitleSummary) {
-  formError.value = "";
-  try {
-    const detail = await $api<AdminTitleDetail>(
-      `/v1/admin/titles/${encodeURIComponent(item.slug)}`,
-      { credentials: "include" },
-    );
-    editing.value = detail;
-    form.value = {
-      vietnameseTitle: detail.vietnameseTitle,
-      englishTitle: detail.englishTitle,
-      vietnameseSynopsis: detail.vietnameseSynopsis,
-      englishSynopsis: detail.englishSynopsis,
-      genre: detail.genre,
-      year: detail.year,
-      type: detail.type,
-      posterUrl: detail.posterUrl,
-      runtimeMinutes: detail.runtimeMinutes,
-      featured: detail.featured,
-    };
-  } catch {
-    errorMessage.value = "Không mở được phim này.";
-  }
-}
-
-function closeEditor() {
-  editing.value = null;
-  form.value = null;
-  formError.value = "";
-}
-
-async function saveTitle() {
-  if (!editing.value || !form.value || isSaving.value) return;
-  isSaving.value = true;
-  formError.value = "";
-  try {
-    await $api<AdminTitleDetail>(
-      `/v1/admin/titles/${encodeURIComponent(editing.value.slug)}`,
-      { method: "PUT", credentials: "include", body: form.value },
-    );
-    errorMessage.value = "";
-    notice.value = `Đã lưu "${form.value.vietnameseTitle}".`;
-    closeEditor();
-    await load();
-  } catch (error: unknown) {
-    formError.value = readApiMessage(error, "Không lưu được thay đổi.");
-  } finally {
-    isSaving.value = false;
-  }
-}
-
-async function toggleFeatured(item: AdminTitleSummary) {
-  if (featuredPending.value.has(item.slug)) return;
-  featuredPending.value.add(item.slug);
-  notice.value = "";
-  errorMessage.value = "";
-  try {
-    // Trust the server's value rather than a locally negated one, so a double
-    // click or a concurrent edit cannot leave the row out of sync.
-    const updated = await $api<AdminTitleDetail>(
-      `/v1/admin/titles/${encodeURIComponent(item.slug)}/featured`,
-      {
-        method: "PATCH",
-        credentials: "include",
-        body: { featured: !item.featured },
-      },
-    );
-    item.featured = updated.featured;
-  } catch {
-    errorMessage.value = "Không đổi được trạng thái nổi bật.";
-  } finally {
-    featuredPending.value.delete(item.slug);
-  }
-}
-
-async function confirmDelete() {
-  if (!deleteTarget.value || isDeleting.value) return;
-  isDeleting.value = true;
-  const target = deleteTarget.value;
-  try {
-    await $api(`/v1/admin/titles/${encodeURIComponent(target.slug)}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    errorMessage.value = "";
-    notice.value = `Đã xoá "${target.vietnameseTitle}".`;
-    deleteTarget.value = null;
-    // Removing the last row of the last page would otherwise strand the admin on an
-    // out-of-range page that renders the "no results" empty state.
-    if (result.value && result.value.items.length === 1 && page.value > 1)
-      page.value -= 1;
-    await load();
-  } catch {
-    notice.value = "";
-    errorMessage.value = "Không xoá được phim.";
-  } finally {
-    isDeleting.value = false;
-  }
-}
-
-function readApiMessage(error: unknown, fallback: string) {
-  const problem = (
-    error as { data?: { title?: string; errors?: { description?: string }[] } }
-  )?.data;
-  return problem?.errors?.[0]?.description ?? problem?.title ?? fallback;
-}
-
-onMounted(() => {
-  void load();
-  void loadGenres();
-});
-
-onBeforeUnmount(() => clearTimeout(searchTimer));
+const {
+  search,
+  genreFilter,
+  typeFilter,
+  featuredFilter,
+  result,
+  genres,
+  pending,
+  errorMessage,
+  notice,
+  editing,
+  form,
+  isSaving,
+  formError,
+  deleteTarget,
+  isDeleting,
+  featuredPending,
+  scheduleSearch,
+  applyFilters,
+  changePage,
+  openEditor,
+  closeEditor,
+  saveTitle,
+  toggleFeatured,
+  confirmDelete,
+} = useAdminTitles();
 </script>
 
 <template>

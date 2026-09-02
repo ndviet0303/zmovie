@@ -1,4 +1,6 @@
-import type { SessionUser } from "~/types/admin";
+import { computed } from "vue";
+import { fetchAuthMe, logoutAuth } from "~/services/auth.service";
+import type { SessionUser } from "~/types/auth";
 
 /**
  * Client-side dedupe for concurrent `/v1/auth/me` calls (the navbar and a route
@@ -19,15 +21,12 @@ function statusOf(error: unknown) {
 }
 
 export function useAuthSession() {
-  const { $api } = useNuxtApp();
   const user = useState<SessionUser | null>("zmovie:session-user", () => null);
   const isResolved = useState<boolean>("zmovie:session-resolved", () => false);
 
   async function load(): Promise<SessionUser | null> {
     try {
-      user.value = await $api<SessionUser>("/v1/auth/me", {
-        credentials: "include",
-      });
+      user.value = await fetchAuthMe();
       isResolved.value = true;
     } catch (error: unknown) {
       const status = statusOf(error);
@@ -49,10 +48,7 @@ export function useAuthSession() {
   }
 
   async function signOut() {
-    await $api("/v1/auth/logout", {
-      method: "POST",
-      credentials: "include",
-    }).catch(() => undefined);
+    await logoutAuth().catch(() => undefined);
     user.value = null;
     isResolved.value = true;
   }
