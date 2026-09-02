@@ -90,15 +90,16 @@ if (args.Contains("--import-nguonc-catalog", StringComparer.OrdinalIgnoreCase))
     var startPage = ReadIntegerOption(args, "--start-page") ?? 1;
     var importAll = args.Contains("--all", StringComparer.OrdinalIgnoreCase);
     var includeEpisodes = !args.Contains("--without-episodes", StringComparer.OrdinalIgnoreCase);
-    var detailConcurrency = ReadIntegerOption(args, "--concurrency") ?? 3;
-    if (detailConcurrency is < 1 or > 8) throw new ArgumentOutOfRangeException("--concurrency", "Use a value from 1 to 8.");
+    var detailConcurrency = ReadIntegerOption(args, "--concurrency") ?? 12;
+    if (detailConcurrency is < 1 or > 32) throw new ArgumentOutOfRangeException("--concurrency", "Use a value from 1 to 32.");
+    var delayMs = ReadIntegerOption(args, "--delay-ms") ?? 50;
     if (!importAll && maxPages is null) maxPages = 1;
 
     await using var importScope = app.Services.CreateAsyncScope();
     var importDb = importScope.ServiceProvider.GetRequiredService<CatalogDbContext>();
     var httpClient = importScope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient();
     await importDb.Database.MigrateAsync();
-    var options = new NguonCCatalogImportOptions(maxPages, startPage, includeEpisodes, TimeSpan.FromMilliseconds(300))
+    var options = new NguonCCatalogImportOptions(maxPages, startPage, includeEpisodes, TimeSpan.FromMilliseconds(delayMs))
     {
         DetailConcurrency = detailConcurrency,
     };

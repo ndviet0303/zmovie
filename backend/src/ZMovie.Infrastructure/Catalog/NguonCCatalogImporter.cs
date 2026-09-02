@@ -138,6 +138,7 @@ public static partial class NguonCCatalogImporter
         {
             if (detail?.Movie is null) continue;
             if (!titlesBySlug.TryGetValue(movieSlug, out var title)) continue;
+            if (title.IsR2Hosted) continue;
 
             // Enrich title metadata using the rich detail data from NguonC
             var vietnameseName = !string.IsNullOrWhiteSpace(detail.Movie.Name) ? detail.Movie.Name.Trim() : title.TitleName.Vietnamese;
@@ -241,6 +242,7 @@ public static partial class NguonCCatalogImporter
 
         if (existingTitles.TryGetValue(movie.Slug, out var existing))
         {
+            if (existing.IsR2Hosted) return existing;
             existing.UpdateMetadata(
                 new LocalizedText(vietnameseName, englishName),
                 new LocalizedText(synopsis, synopsis),
