@@ -10,6 +10,8 @@ public static class ApiEndpoints
             .MapDiscoveryEndpoints()
             .MapAssistantEndpoints()
             .MapSearchEndpoints()
+            .MapAdminEndpoints()
+            .MapBillingEndpoints()
             .MapHealthEndpoints();
 
         return endpoints;

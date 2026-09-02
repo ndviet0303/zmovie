@@ -1,0 +1,11 @@
+{
+  "viewport": "mobile",
+  "route": "/lien-he",
+  "url": "https://cobephim.pro/lien-he",
+  "files": [
+    "mobile/homelien-he/full-page.png",
+    "mobile/homelien-he/viewport.png"
+  ],
+  "states": [],
+  "title": "Liên Hệ - CôBe Phim"
+}

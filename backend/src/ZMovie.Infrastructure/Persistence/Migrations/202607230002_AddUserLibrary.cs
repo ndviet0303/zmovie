@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ZMovie.Infrastructure.Persistence.Migrations;
 
 [Migration("202607230002_AddUserLibrary")]
-[DbContext(typeof(CatalogDbContext))]
+[DbContext(typeof(LegacyCatalogDbContext))]
 public partial class AddUserLibrary : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)

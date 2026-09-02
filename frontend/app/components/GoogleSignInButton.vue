@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { googleAuth } from "~/services/auth.service";
+
 const props = withDefaults(
   defineProps<{ text?: "signin_with" | "signup_with" }>(),
   { text: "signin_with" },
@@ -6,7 +8,19 @@ const props = withDefaults(
 const button = ref<HTMLElement | null>(null);
 const error = ref("");
 const config = useRuntimeConfig();
-const { $api } = useNuxtApp();
+const route = useRoute();
+const { fetchSession } = useAuthSession();
+
+/**
+ * Only same-site absolute paths are honoured, so a crafted
+ * `?redirect=https://evil.example` cannot turn login into an open redirect.
+ */
+function safeRedirectTarget() {
+  const requested = route.query.redirect;
+  const value = Array.isArray(requested) ? requested[0] : requested;
+  if (typeof value !== "string") return "/";
+  return value.startsWith("/") && !value.startsWith("//") ? value : "/";
+}
 
 declare global {
   interface Window {
@@ -50,12 +64,11 @@ function loadGoogleScript() {
 
 async function signIn(response: { credential: string }) {
   try {
-    await $api("/v1/auth/google", {
-      method: "POST",
-      credentials: "include",
-      body: { credential: response.credential },
-    });
-    await navigateTo("/");
+    await googleAuth(response.credential);
+    // Refresh shared session state so the navbar and admin middleware see the
+    // new role without another navigation.
+    await fetchSession(true);
+    await navigateTo(safeRedirectTarget());
   } catch {
     error.value = "Không thể đăng nhập với Google. Vui lòng thử lại.";
   }

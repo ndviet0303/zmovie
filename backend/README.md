@@ -26,3 +26,16 @@ Build the backend image for Linux AMD64, including when running Docker on Apple 
 ```bash
 docker build --platform linux/amd64 -f src/ZMovie.Api/Dockerfile -t zmovie-api:latest .
 ```
+
+## Verify the backend
+
+Run the same restore, build, unit, HTTP contract, architecture, and PostgreSQL
+migration checks used by CI:
+
+```bash
+./scripts/verify.sh
+```
+
+Local verification starts a disposable PostgreSQL 17 container. CI or other
+environments may set `ZMOVIE_TEST_POSTGRES` to an admin connection string; the
+tests create and remove isolated databases and never use the development volume.

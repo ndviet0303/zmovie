@@ -1,0 +1,3265 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoBePhim / RoPhim - Complete UI Design System & Component Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ==========================================================================
+       1. DESIGN SYSTEM TOKENS & CSS VARIABLES (EXTRACTED FROM COBEPHIM)
+       ========================================================================== */
+    :root {
+      /* Base Theme Colors */
+      --bg-color: #191b24;
+      --bg-2: #282b3a;
+      --bg-3: #2f3346;
+      --bg-4: #3e435c;
+      --bg-5: #535d8e;
+      --footer-bg: #0f111a;
+      --top-bg-default: #202331;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-color-hover: rgba(255, 255, 255, 0.18);
+
+      /* Primary Brand / Gold Colors */
+      --primary-color: #ffd875;
+      --primary-color-hover: #ffde8a;
+      --primary-button-text: #191b24;
+      --primary-text: #ffd875;
+      --primary-gradient: linear-gradient(39deg, #ffd875 0%, #fff1cc 100%);
+      --primary-gradient-green: linear-gradient(39deg, #36fa77 0%, #d3ffdd 100%);
+
+      /* Accents & Badges */
+      --accent-green: #51f085;
+      --accent-green-bright: #60FC90;
+      --accent-blue: #1667cf;
+      --accent-red: #ff5252;
+      --accent-orange: #ff9800;
+      --accent-purple: #bb86fc;
+      --category-name: #ffffff;
+
+      /* Typography */
+      --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-display: 'Space Grotesk', var(--font-main);
+      --text-base: #aaaaaa;
+      --text-muted: rgba(255, 255, 255, 0.6);
+      --text-white: #ffffff;
+
+      /* Shadows & Effects */
+      --shadow-large: 0 0 20px 20px rgba(0, 0, 0, 0.25);
+      --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+      --h-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
+    }
+
+    /* ==========================================================================
+       2. ANIMATIONS & KEYFRAMES (EXTRACTED ALL 20+ ANIMATIONS)
+       ========================================================================== */
+    /* Hero Cover Transition */
+    @keyframes cover-fade {
+      0% { transform: translateX(-45%); opacity: 0; }
+      100% { transform: translateX(-50%); opacity: 1; }
+    }
+
+    /* Hide to Show Fade */
+    @keyframes hide-show {
+      0% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+
+    /* Slide Content In */
+    @keyframes slide-content {
+      0% { transform: translateX(-50px); opacity: 0; }
+      100% { transform: translateX(0px); opacity: 1; }
+    }
+
+    /* Hover Preview Card Zoom */
+    @keyframes qtip-animation {
+      0% { opacity: 0; transform: scale(0.3) translateY(20px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    /* Signature Server LED Chase Border */
+    @keyframes episode-server-led-chase {
+      100% { stroke-dashoffset: -100; }
+    }
+
+    /* Skeleton Loading Shimmers */
+    @keyframes home-hero-skel-shimmer {
+      0% { background-position: 100% 0px; }
+      100% { background-position: -100% 0px; }
+    }
+
+    @keyframes main-home-skel-shimmer {
+      0% { opacity: 0.45; }
+      50% { opacity: 0.85; }
+      100% { opacity: 0.45; }
+    }
+
+    /* Reminder Bell / Icon Pulse */
+    @keyframes item-remind {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes bell-remind {
+      0% { transform: rotate(8deg); }
+      50% { transform: rotate(-8deg); }
+      100% { transform: rotate(8deg); }
+    }
+
+    /* Spinning CD / Sound Vinyl */
+    @keyframes sound-cd {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Pulsing & Glow Effects */
+    @keyframes flash {
+      0% { background-color: transparent; }
+      50% { background-color: rgba(255, 255, 255, 0.125); }
+      100% { background-color: rgba(255, 255, 255, 0.063); }
+    }
+
+    @keyframes live-avatar {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(81, 240, 133, 0.5); }
+      50% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(81, 240, 133, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(81, 240, 133, 0); }
+    }
+
+    @keyframes live-flash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    @keyframes fadeInUp {
+      0% { opacity: 0; transform: translateY(20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeSlideIn {
+      0% { opacity: 0; transform: translateX(80px); }
+      100% { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes arrow-down {
+      0% { transform: translateY(-2px); }
+      50% { transform: translateY(2px); }
+      100% { transform: translateY(-2px); }
+    }
+
+    /* Animation Utility Classes */
+    .anim-cover-fade { animation: cover-fade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-slide-content { animation: slide-content 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-qtip { animation: qtip-animation 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    .anim-fade-in-up { animation: fadeInUp 0.4s ease forwards; }
+    .anim-fade-slide-in { animation: fadeSlideIn 0.8s ease forwards; }
+    .anim-sound-cd { animation: sound-cd 8s linear infinite; }
+    .anim-live-pulse { animation: live-avatar 2s infinite; }
+    .anim-live-flash { animation: live-flash 1.2s infinite; }
+    .anim-bell-remind { animation: bell-remind 0.8s ease infinite; }
+    .anim-item-remind { animation: item-remind 1.5s ease infinite; }
+    .anim-arrow-float { animation: arrow-down 1.4s ease-in-out infinite; }
+
+    /* ==========================================================================
+       3. GLOBAL RESET & BASE STYLES
+       ========================================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-base);
+      font-family: var(--font-main);
+      font-size: 14px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+    a:hover {
+      color: var(--primary-color);
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      background: none;
+      transition: all 0.2s ease;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-color);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--bg-4);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--bg-5);
+    }
+
+    /* ==========================================================================
+       4. BUNDLE WORKBENCH APPSHELL (TOOLBAR, TABS, NOTIFICATIONS)
+       ========================================================================== */
+    .bundle-header {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(15, 17, 26, 0.96);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .bundle-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .bundle-badge {
+      background: linear-gradient(135deg, #ffd875, #ff9800);
+      color: #12141c;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .bundle-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      overflow-x: auto;
+      padding: 4px 0;
+    }
+
+    .bundle-tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.9rem;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .bundle-tab-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .bundle-tab-btn.active {
+      color: #191b24;
+      background: var(--primary-color);
+      font-weight: 700;
+      box-shadow: 0 2px 10px rgba(255, 216, 117, 0.3);
+    }
+
+    .bundle-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    .btn-copy-all {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--bg-3);
+      border: 1px solid var(--border-color-hover);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 0.45rem 0.85rem;
+      border-radius: var(--radius-sm);
+    }
+    .btn-copy-all:hover {
+      background: var(--bg-4);
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    /* Toast Notification */
+    .copy-toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 99999;
+      background: #191b24;
+      color: #fff;
+      border: 1px solid var(--primary-color);
+      padding: 0.75rem 1.25rem;
+      border-radius: var(--radius-md);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+    }
+    .copy-toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* Screen Views Container */
+    .screen-view {
+      display: none;
+      animation: fadeInUp 0.3s ease forwards;
+    }
+    .screen-view.active {
+      display: block;
+    }
+
+    /* Section Headers */
+    .screen-header-banner {
+      background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg-color) 100%);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .screen-header-banner h2 {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .screen-header-banner p {
+      color: var(--text-muted);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    /* Code Snippet Box */
+    .code-box {
+      position: relative;
+      background: #0e1017;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin: 1rem 0;
+    }
+    .code-box-header {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .code-box pre {
+      padding: 1rem;
+      font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
+      font-size: 12px;
+      color: #d1d5db;
+      overflow-x: auto;
+      line-height: 1.5;
+    }
+
+    /* ==========================================================================
+       5. COBEPHIM HEADER COMPONENT
+       ========================================================================== */
+    header.fly {
+      position: sticky;
+      top: 54px;
+      z-index: 900;
+      background: rgba(32, 35, 49, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.75rem 2rem;
+      transition: all 0.3s ease;
+    }
+
+    .header-elements {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .logo-text {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #fff;
+    }
+    .logo-text span {
+      color: var(--primary-color);
+    }
+
+    .main-nav-menu {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      list-style: none;
+    }
+
+    .main-nav-menu a {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.85);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.2rem;
+    }
+    .main-nav-menu a:hover, .main-nav-menu a.active {
+      color: var(--primary-color);
+    }
+
+    /* Search Box */
+    .header-search-wrapper {
+      position: relative;
+      flex: 1;
+      max-width: 420px;
+    }
+
+    .search-elements {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgba(255, 255, 255, 0.5);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .search-input {
+      width: 100%;
+      height: 2.6rem;
+      line-height: 2.6rem;
+      padding: 0.4rem 1rem 0.4rem 2.8rem;
+      background-color: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-full);
+      color: #fff;
+      font-size: 13.5px;
+      outline: none;
+      transition: all 0.25s ease;
+    }
+
+    .search-input:focus {
+      background-color: rgba(255, 255, 255, 0.12);
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(255, 216, 117, 0.15);
+    }
+    .search-input::placeholder {
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    /* Search Modal Dropdown */
+    .search-modal {
+      position: absolute;
+      z-index: 990;
+      top: calc(100% + 8px);
+      left: 0;
+      right: 0;
+      min-width: 380px;
+      background-color: rgba(25, 27, 36, 0.97);
+      backdrop-filter: blur(25px);
+      -webkit-backdrop-filter: blur(25px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+      display: none;
+    }
+    .search-modal.show {
+      display: block;
+      animation: fadeInUp 0.25s ease forwards;
+    }
+
+    .search-modal .h-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      transition: background-color 0.2s ease;
+      cursor: pointer;
+    }
+    .search-modal .h-item:hover {
+      background-color: rgba(255, 255, 255, 0.06);
+    }
+    .search-modal .h-item .v-thumbnail {
+      width: 44px;
+      height: 60px;
+      padding-bottom: 0;
+      border-radius: 4px;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: var(--bg-3);
+    }
+    .search-modal .h-item .info {
+      flex-grow: 1;
+      min-width: 0;
+      padding-top: 0;
+    }
+    .search-modal .h-item .item-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .search-modal .h-item .alias-title {
+      font-size: 12px;
+      color: var(--primary-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .search-modal .h-item .meta {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .search-modal .view-all {
+      display: block;
+      padding: 0.75rem;
+      text-align: center;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--primary-color);
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+    .search-modal .view-all:hover {
+      background-color: rgba(255, 255, 255, 0.08);
+    }
+
+    /* Header Right Actions */
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .btn-vip-gold {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: linear-gradient(135deg, #ffd875 0%, #f39c12 100%);
+      color: #191b24;
+      font-weight: 700;
+      font-size: 12.5px;
+      padding: 0.45rem 1rem;
+      border-radius: var(--radius-full);
+      box-shadow: 0 2px 10px rgba(255, 216, 117, 0.3);
+    }
+    .btn-vip-gold:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(255, 216, 117, 0.45);
+      color: #000;
+    }
+
+    .user-profile-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--bg-3);
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+
+    /* ==========================================================================
+       6. HERO TOP BANNER SLIDER COMPONENT
+       ========================================================================== */
+    .top-slide-wrap {
+      position: relative;
+      width: 100%;
+      height: 600px;
+      overflow: hidden;
+      background-color: #0d0f17;
+    }
+
+    .slide-elements {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    .background-fade {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      filter: blur(40px) brightness(0.4);
+      transform: scale(1.1);
+      z-index: 1;
+    }
+
+    .cover-fade {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 1440px;
+      height: 100%;
+      z-index: 2;
+      animation: cover-fade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .cover-image {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 70%;
+      height: 100%;
+      background-size: cover;
+      background-position: center top;
+      -webkit-mask-image: linear-gradient(to right, transparent 0%, black 35%, black 85%, transparent 100%), linear-gradient(to bottom, black 70%, transparent 100%);
+      mask-image: linear-gradient(to right, transparent 0%, black 35%, black 85%, transparent 100%), linear-gradient(to bottom, black 70%, transparent 100%);
+      animation: hide-show 1s ease forwards;
+    }
+
+    .hero-safe-area {
+      position: relative;
+      z-index: 3;
+      max-width: 1440px;
+      height: 100%;
+      margin: 0 auto;
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+    }
+
+    .slide-content {
+      max-width: 600px;
+      animation: slide-content 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .hero-title-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(255, 216, 117, 0.15);
+      border: 1px solid rgba(255, 216, 117, 0.4);
+      color: var(--primary-color);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: var(--radius-full);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .hero-title-h1 {
+      font-family: var(--font-display);
+      font-size: 2.75rem;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.15;
+      margin-bottom: 0.4rem;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+    }
+
+    .hero-title-sub {
+      font-size: 1.1rem;
+      color: var(--primary-color);
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .hero-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.25rem;
+      font-size: 13px;
+    }
+
+    .meta-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 3px 8px;
+      border-radius: 4px;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .meta-chip.imdb {
+      background: #f5c518;
+      color: #000;
+      font-weight: 800;
+      border-radius: 3px;
+    }
+
+    .meta-chip.age {
+      background: rgba(255, 82, 82, 0.2);
+      border: 1px solid rgba(255, 82, 82, 0.5);
+      color: #ff5252;
+    }
+
+    .hero-genres {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    .hero-genres a {
+      color: #ddd;
+    }
+    .hero-genres a:hover {
+      color: var(--primary-color);
+    }
+
+    .hero-synopsis {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.75);
+      line-height: 1.6;
+      margin-bottom: 1.75rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    .hero-actions-group {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    /* The Famous Button Play */
+    .button-play {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      background: var(--primary-gradient);
+      color: var(--primary-button-text);
+      font-weight: 800;
+      font-size: 15px;
+      padding: 0.8rem 1.8rem;
+      border-radius: var(--radius-full);
+      box-shadow: 0 4px 20px rgba(255, 216, 117, 0.4);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .button-play:hover {
+      transform: scale(1.04) translateY(-2px);
+      box-shadow: 0 8px 30px rgba(255, 216, 117, 0.6);
+      color: #000;
+    }
+
+    .btn-circle-action {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      transition: all 0.2s ease;
+    }
+    .btn-circle-action:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+      transform: scale(1.08);
+    }
+
+    /* ==========================================================================
+       7. TOPIC CARDS / CATEGORY CHIPS ("BẠN ĐANG QUAN TÂM GÌ?")
+       ========================================================================== */
+    .cards-row {
+      max-width: 1440px;
+      margin: 2.5rem auto;
+      padding: 0 2rem;
+    }
+
+    .row-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+
+    .category-name {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .cat-more {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .cat-more:hover {
+      text-decoration: underline;
+    }
+
+    .topics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .row-topic {
+      position: relative;
+      height: 90px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+    }
+
+    .row-topic .mask {
+      position: absolute;
+      inset: 0;
+      opacity: 0.85;
+      transition: all 0.3s ease;
+      z-index: 1;
+    }
+
+    .row-topic:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+    .row-topic:hover .mask {
+      opacity: 1;
+      filter: brightness(1.1);
+    }
+
+    .row-topic .intro {
+      position: relative;
+      z-index: 2;
+    }
+    .row-topic .heading {
+      font-family: var(--font-display);
+      font-size: 14.5px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 2px;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    }
+    .row-topic .sub-text {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    /* ==========================================================================
+       8. MOVIE CARDS & SLIDER ITEMS
+       ========================================================================== */
+    .movie-carousel-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .sw-item {
+      position: relative;
+      transition: all 0.3s ease;
+    }
+    .sw-item:hover {
+      transform: translateY(-4px);
+    }
+
+    .v-thumbnail {
+      position: relative;
+      width: 100%;
+      padding-bottom: 145%;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background-color: var(--bg-3);
+      display: block;
+      box-shadow: var(--shadow-card);
+    }
+
+    .v-thumbnail img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .sw-item:hover .v-thumbnail img {
+      transform: scale(1.06);
+    }
+
+    /* Card Badges (4K, Song Ngữ, Sub/Dub) */
+    .thumb-4k-badge {
+      position: absolute;
+      z-index: 2;
+      top: 0.4rem;
+      right: 0.4rem;
+      min-height: 1.15rem;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1.2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      padding: 1px 6px;
+      color: #000;
+      background-color: #ffd875;
+      background-image: linear-gradient(220deg, #ffd875 0%, #ffffff 100%);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      pointer-events: none;
+    }
+
+    .thumb-bilingual-badge {
+      position: absolute;
+      z-index: 2;
+      top: 0.4rem;
+      right: 0.4rem;
+      min-height: 1.15rem;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      padding: 1px 6px;
+      color: #07140c;
+      background-color: #1a8f4a;
+      background-image: linear-gradient(220deg, #1a8f4a 0%, #60fc90 100%);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      pointer-events: none;
+    }
+
+    .pin-new {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 0.3rem;
+      background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.8) 100%);
+    }
+
+    .pin-new .line-center {
+      font-size: 9.5px;
+      font-weight: 700;
+      line-height: 1.3;
+      padding: 1px 5px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+
+    .pin-new .line-pd {
+      background-color: rgba(255, 255, 255, 0.25);
+      color: #fff;
+    }
+    .pin-new .line-tm {
+      background-color: #2ca35d;
+      color: #fff;
+    }
+    .pin-new .line-lt {
+      background-color: #1667cf;
+      color: #fff;
+    }
+
+    /* Card Info */
+    .sw-item .info {
+      padding-top: 0.65rem;
+    }
+
+    .item-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .item-title a:hover {
+      color: var(--primary-color);
+    }
+
+    .alias-title {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ==========================================================================
+       9. TOP 10 RANKING CHART SECTION (GIANT NUMBER GRADIENT)
+       ========================================================================== */
+    .top10-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .sw-item.top10-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.75rem;
+    }
+    .sw-item.top10-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--border-color-hover);
+    }
+
+    .sw-item.top10-item .v-thumbnail {
+      width: 90px;
+      padding-bottom: 135px;
+      flex-shrink: 0;
+    }
+
+    .info-v.w-chart {
+      position: relative;
+      flex-grow: 1;
+      min-width: 0;
+      padding-left: 3.2rem;
+    }
+
+    .w-chart .number {
+      position: absolute;
+      left: 0;
+      top: -6px;
+      width: 48px;
+      line-height: 1;
+      text-align: center;
+      font-family: var(--font-display);
+      font-size: 3.5rem;
+      font-weight: 800;
+      font-style: italic;
+      background: linear-gradient(39deg, #fecf59 0%, #fff1cc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 2px 8px rgba(255, 207, 89, 0.3));
+    }
+
+    .w-chart .info-line {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-top: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .tag-small {
+      font-size: 11px;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.06);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+    .tag-small strong {
+      color: #fff;
+    }
+
+    /* ==========================================================================
+       10. MOVIE DETAIL SCREEN COMPONENT
+       ========================================================================== */
+    .top-detail-wrap {
+      position: relative;
+      width: 100%;
+      height: 380px;
+      overflow: hidden;
+    }
+
+    .detail-backdrop {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center 25%;
+      filter: blur(30px) brightness(0.35);
+      transform: scale(1.15);
+    }
+
+    .detail-backdrop-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 0%, rgba(25, 27, 36, 0.8) 60%, var(--bg-color) 100%);
+    }
+
+    .detail-container {
+      position: relative;
+      max-width: 1440px;
+      margin: -240px auto 3rem;
+      padding: 0 2rem;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 2.5rem;
+      z-index: 10;
+    }
+
+    /* Sidebar Poster */
+    .dc-side {
+      position: sticky;
+      top: 140px;
+    }
+
+    .v-thumb-l .v-thumbnail {
+      border-radius: var(--radius-lg);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .side-meta-list {
+      margin-top: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      font-size: 13px;
+    }
+
+    .side-meta-row {
+      display: flex;
+      justify-content: space-between;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .side-meta-label {
+      color: var(--text-muted);
+    }
+    .side-meta-val {
+      color: #fff;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    /* Main Detail Area */
+    .dc-main {
+      min-width: 0;
+    }
+
+    /* Glassmorphism Action Bar */
+    .dm-bar {
+      background-color: rgba(255, 255, 255, 0.05);
+      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1.25rem;
+      padding: 0.85rem 1.25rem;
+      margin-bottom: 1.75rem;
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .dm-bar .button-play {
+      min-width: 220px;
+      height: 52px;
+      font-size: 16px;
+    }
+
+    .touch-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn-action-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-md);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .btn-action-item:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    /* Season & Server Picker with Animated LED Chase */
+    .cg-body-box {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .box-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .season-dropdown-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--bg-3);
+      color: var(--primary-color);
+      font-weight: 700;
+      font-size: 13.5px;
+      padding: 0.55rem 1.1rem;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 216, 117, 0.3);
+    }
+
+    /* The Distinctive LED Chase Server Selector */
+    .episode-server-dropdown__led-ring {
+      position: relative;
+      display: inline-block;
+      min-width: 220px;
+      border-radius: 12px;
+    }
+
+    .episode-server-dropdown__led-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: visible;
+    }
+
+    .episode-server-dropdown__led-track {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.1);
+      stroke-width: 1.5;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .episode-server-dropdown__led-chase {
+      fill: none;
+      stroke: #ffe9a8;
+      stroke-width: 2.25;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vector-effect: non-scaling-stroke;
+      stroke-dasharray: 8 92;
+      stroke-dashoffset: 0;
+      animation: episode-server-led-chase 2.2s linear infinite;
+      filter: drop-shadow(0 0 5px rgba(255, 210, 90, 0.7));
+    }
+
+    .episode-server-dropdown__toggle {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      width: 100%;
+      min-height: 44px;
+      padding: 0.45rem 0.9rem;
+      border-radius: 10px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.95);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+    }
+    .episode-server-dropdown__toggle:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 216, 117, 0.45);
+    }
+
+    /* Episode Grid (.de-eps.is-simple) */
+    .de-eps.is-simple {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+      gap: 0.6rem;
+    }
+
+    .de-eps.is-simple .item {
+      height: 44px;
+      background-color: var(--bg-2);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 13.5px;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .de-eps.is-simple .item:hover {
+      background-color: var(--bg-3);
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+      transform: translateY(-2px);
+    }
+
+    .de-eps.is-simple .item.on-air {
+      background-color: var(--primary-color);
+      color: var(--primary-button-text);
+      font-weight: 800;
+      border-color: var(--primary-color);
+      box-shadow: 0 4px 12px rgba(255, 216, 117, 0.4);
+    }
+
+    .de-eps.is-simple .item.schedule {
+      background-color: #373a4b;
+      border-style: dashed;
+      color: #ff83f9;
+      font-size: 11px;
+    }
+
+    /* Cast & Crew */
+    .cast-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .cast-item {
+      text-align: center;
+    }
+    .cast-avatar {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      margin: 0 auto 0.5rem;
+      overflow: hidden;
+      border: 2px solid var(--border-color);
+      background: var(--bg-3);
+      transition: all 0.2s ease;
+    }
+    .cast-item:hover .cast-avatar {
+      border-color: var(--primary-color);
+      transform: scale(1.08);
+    }
+    .cast-name {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #fff;
+      line-height: 1.3;
+    }
+    .cast-role {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* ==========================================================================
+       11. WATCH / PLAYER SCREEN COMPONENT
+       ========================================================================== */
+    .watch-player {
+      max-width: 1440px;
+      margin: 1.5rem auto;
+      padding: 0 2rem;
+    }
+
+    .wp-bread {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .page-name {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .player-ratio {
+      position: relative;
+      background: #000;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .ratio-16x9 {
+      position: relative;
+      width: 100%;
+      padding-bottom: 56.25%;
+      background: #07090e;
+    }
+
+    .player-mock-screen {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, rgba(30, 35, 55, 0.8) 0%, #080a12 100%);
+      color: #fff;
+    }
+
+    .player-mock-play-btn {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: var(--primary-gradient);
+      color: #191b24;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 35px rgba(255, 216, 117, 0.6);
+      transition: transform 0.2s ease;
+      cursor: pointer;
+    }
+    .player-mock-play-btn:hover {
+      transform: scale(1.12);
+    }
+
+    .player-control {
+      background: var(--bg-2);
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .control-items {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .ctrl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      font-size: 12.5px;
+      font-weight: 600;
+    }
+    .ctrl-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--primary-color);
+    }
+
+    /* ==========================================================================
+       12. FILTER & CATALOG SCREEN COMPONENT
+       ========================================================================== */
+    .v-filter {
+      background: var(--bg-2);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .filter-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--bg-3);
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      color: var(--primary-color);
+      cursor: pointer;
+      margin-bottom: 1rem;
+    }
+
+    .fe-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.25rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    .fe-row:last-child {
+      border-bottom: none;
+    }
+
+    .fe-name {
+      width: 90px;
+      flex-shrink: 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      padding-top: 2px;
+    }
+
+    .fe-results {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .fe-results .item {
+      font-size: 12.5px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.04);
+      color: rgba(255, 255, 255, 0.8);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .fe-results .item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+    .fe-results .item.active {
+      background: var(--primary-color);
+      color: var(--primary-button-text);
+      font-weight: 700;
+    }
+
+    /* Custom Pagination (.v-pagination) */
+    .v-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      margin: 3rem 0;
+    }
+
+    .page-control {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .page-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--bg-2);
+      border: 1px solid var(--border-color);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .page-btn:hover:not(:disabled) {
+      background: var(--primary-color);
+      color: #191b24;
+      border-color: var(--primary-color);
+    }
+    .page-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .page-current {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .page-input {
+      width: 54px;
+      height: 38px;
+      text-align: center;
+      background: var(--bg-2);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--primary-color);
+      font-weight: 700;
+      font-size: 14px;
+      outline: none;
+    }
+    .page-input:focus {
+      border-color: var(--primary-color);
+    }
+
+    /* ==========================================================================
+       13. HOVER PREVIEW QTIP MODAL COMPONENT
+       ========================================================================== */
+    .qtip-preview-box {
+      background-color: var(--bg-3);
+      width: 100%;
+      max-width: 420px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .qtip-thumb {
+      position: relative;
+      width: 100%;
+      height: 190px;
+      background-size: cover;
+      background-position: center;
+    }
+
+    .qtip-thumb-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(0deg, var(--bg-3) 0%, transparent 80%);
+    }
+
+    .qtip-play-btn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--primary-gradient);
+      color: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(255, 216, 117, 0.5);
+    }
+
+    .qtip-content {
+      padding: 1rem 1.25rem;
+    }
+
+    .qtip-title {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 2px;
+    }
+    .qtip-sub {
+      font-size: 12px;
+      color: var(--primary-color);
+      margin-bottom: 0.6rem;
+    }
+
+    /* ==========================================================================
+       14. ANIMATIONS LAB & PLAYGROUND
+       ========================================================================== */
+    .anim-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+      padding: 1.5rem 0;
+    }
+
+    .anim-card {
+      background: var(--bg-2);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .anim-preview-box {
+      height: 120px;
+      background: #0e1017;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      margin: 1rem 0;
+    }
+
+    /* ==========================================================================
+       15. FOOTER COMPONENT
+       ========================================================================== */
+    footer {
+      background-color: var(--footer-bg);
+      border-top: 1px solid var(--border-color);
+      padding: 3.5rem 2rem 2rem;
+      margin-top: 4rem;
+    }
+
+    .footer-container {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 2.5rem;
+    }
+
+    .footer-desc {
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.6;
+      margin-top: 1rem;
+      max-width: 380px;
+    }
+
+    .footer-heading {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .footer-links {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      font-size: 13px;
+    }
+    .footer-links a {
+      color: var(--text-muted);
+    }
+    .footer-links a:hover {
+      color: var(--primary-color);
+    }
+
+    .footer-bottom {
+      max-width: 1440px;
+      margin: 2.5rem auto 0;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-muted);
+      font-size: 12px;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    /* Responsive Queries */
+    @media (max-width: 992px) {
+      .detail-container {
+        grid-template-columns: 1fr;
+        margin-top: -120px;
+      }
+      .dc-side {
+        position: static;
+        max-width: 240px;
+        margin: 0 auto;
+      }
+      .footer-container {
+        grid-template-columns: 1fr 1fr;
+      }
+      .cover-image {
+        width: 100%;
+        opacity: 0.45;
+      }
+    }
+
+    @media (max-width: 640px) {
+      header.fly {
+        padding: 0.6rem 1rem;
+      }
+      .header-search-wrapper, .main-nav-menu {
+        display: none;
+      }
+      .hero-title-h1 {
+        font-size: 1.8rem;
+      }
+      .top-slide-wrap {
+        height: 520px;
+      }
+      .footer-container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       TOP CONTROL WORKBENCH
+       ========================================================================== -->
+  <div class="bundle-header">
+    <div class="bundle-brand">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffd875" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+        <line x1="7" y1="2" x2="7" y2="22"></line>
+        <line x1="17" y1="2" x2="17" y2="22"></line>
+        <line x1="2" y1="12" x2="22" y2="12"></line>
+        <line x1="2" y1="7" x2="7" y2="7"></line>
+        <line x1="2" y1="17" x2="7" y2="17"></line>
+        <line x1="17" y1="17" x2="22" y2="17"></line>
+        <line x1="17" y1="7" x2="22" y2="7"></line>
+      </svg>
+      <span class="logo-text">CôBe<span>Phim</span></span>
+      <span class="bundle-badge">UI Kit & Animation Bundle</span>
+    </div>
+
+    <nav class="bundle-nav">
+      <button class="bundle-tab-btn active" onclick="switchView('home')">🏠 1. Trang Chủ</button>
+      <button class="bundle-tab-btn" onclick="switchView('detail')">🎬 2. Chi Tiết Phim</button>
+      <button class="bundle-tab-btn" onclick="switchView('watch')">▶️ 3. Xem Phim & Player</button>
+      <button class="bundle-tab-btn" onclick="switchView('catalog')">🔍 4. Bộ Lọc & Catalog</button>
+      <button class="bundle-tab-btn" onclick="switchView('components')">🧩 5. Thư Viện Components</button>
+      <button class="bundle-tab-btn" onclick="switchView('animations')">✨ 6. Animation Lab</button>
+      <button class="bundle-tab-btn" onclick="switchView('vue')">💻 7. Vue 3 Cheatsheet</button>
+      <button class="bundle-tab-btn" onclick="switchView('tokens')">🎨 8. Design Tokens</button>
+    </nav>
+
+    <div class="bundle-actions">
+      <button class="btn-copy-all" onclick="copyCurrentView()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        Copy UI Code
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="copyToast" class="copy-toast">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#51f085" stroke-width="2.5">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+    <span id="toastMsg">Đã copy code vào clipboard!</span>
+  </div>
+
+  <!-- ==========================================================================
+       VIEW 1: TRANG CHỦ (HOME SCREEN)
+       ========================================================================== -->
+  <div id="view-home" class="screen-view active">
+    <!-- Header -->
+    <header class="fly">
+      <div class="header-elements">
+        <div class="header-left">
+          <a href="#" class="logo-container">
+            <span class="logo-text">CôBe<span>Phim</span></span>
+          </a>
+          <ul class="main-nav-menu">
+            <li><a href="#" class="active">Trang Chủ</a></li>
+            <li><a href="#">Phim Lẻ</a></li>
+            <li><a href="#">Phim Bộ</a></li>
+            <li><a href="#">Phim Chiếu Rạp</a></li>
+            <li><a href="#">Anime</a></li>
+            <li><a href="#">Top Phim</a></li>
+          </ul>
+        </div>
+
+        <div class="header-search-wrapper">
+          <form class="search-elements" onsubmit="event.preventDefault()">
+            <div class="search-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </div>
+            <input type="text" class="search-input" placeholder="Tìm kiếm phim, diễn viên, đạo diễn..." onfocus="toggleSearchModal(true)" onblur="setTimeout(() => toggleSearchModal(false), 200)">
+          </form>
+
+          <!-- Search Dropdown Modal -->
+          <div id="searchModal" class="search-modal">
+            <div class="h-item">
+              <div class="v-thumbnail">
+                <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/22xRAaDSNIwOqFhFDXWp5IMnQPT.webp" alt="Vợ Tôi Là Sát Thủ">
+              </div>
+              <div class="info">
+                <div class="item-title">Vợ Tôi Là Sát Thủ</div>
+                <div class="alias-title">A Bona Fide Killer</div>
+                <div class="meta">
+                  <span style="color:#f5c518;font-weight:700">★ 10.0</span> • 2026 • Tập 10
+                </div>
+              </div>
+            </div>
+            <div class="h-item">
+              <div class="v-thumbnail">
+                <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/3bHz9dYSZ5XDxY0zDaBpYgUOhE2.webp" alt="Bẫy Chuột">
+              </div>
+              <div class="info">
+                <div class="item-title">Bẫy Chuột</div>
+                <div class="alias-title">Mousetrap</div>
+                <div class="meta">
+                  <span style="color:#f5c518;font-weight:700">★ 8.8</span> • 2026 • Tập Hoàn Tất
+                </div>
+              </div>
+            </div>
+            <a href="#" class="view-all">Xem tất cả kết quả tìm kiếm →</a>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <a href="#" class="btn-vip-gold">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+            </svg>
+            Nâng VIP
+          </a>
+          <button class="user-profile-btn" aria-label="Tài khoản">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Top Hero Slider -->
+    <div class="top-slide-wrap">
+      <div class="slide-elements">
+        <div class="background-fade" style="background-image: url('https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/22xRAaDSNIwOqFhFDXWp5IMnQPT.webp');"></div>
+        <div class="cover-fade">
+          <div class="cover-image" style="background-image: url('https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/22xRAaDSNIwOqFhFDXWp5IMnQPT.webp');"></div>
+        </div>
+        <div class="hero-safe-area">
+          <div class="slide-content">
+            <div class="hero-title-badge">🔥 Nổi Bật Hôm Nay</div>
+            <h1 class="hero-title-h1">Vợ Tôi Là Sát Thủ</h1>
+            <div class="hero-title-sub">A Bona Fide Killer (2026)</div>
+            
+            <div class="hero-meta-row">
+              <span class="meta-chip imdb">IMDb 10.0</span>
+              <span class="meta-chip age">T16</span>
+              <span class="meta-chip">2026</span>
+              <span class="meta-chip">Phần 1</span>
+              <span class="meta-chip">Tập 10 (Mới)</span>
+              <div class="hero-genres">
+                <span>Thể loại:</span>
+                <a href="#">Hành Động</a> • <a href="#">Hình Sự</a> • <a href="#">Chính Kịch</a>
+              </div>
+            </div>
+
+            <p class="hero-synopsis">
+              Một người mẹ đi làm tưởng chừng bình thường nhưng bí mật sống với thân phận của một nữ xạ thủ huyền thoại, chuyên thực thi công lý ở những nơi pháp luật bất lực. Sau khi trở lại sau ba năm vắng bóng, cô phải vừa bảo vệ gia đình, vừa truy lùng và tiêu diệt những tên tội phạm nguy hiểm.
+            </p>
+
+            <div class="hero-actions-group">
+              <button class="button-play" onclick="switchView('watch')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                Xem Ngay (Tập 10)
+              </button>
+              <button class="btn-circle-action" title="Thêm vào danh sách yêu thích">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
+              </button>
+              <button class="btn-circle-action" title="Thông tin chi tiết" onclick="switchView('detail')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Category Topics Grid ("Bạn đang quan tâm gì?") -->
+    <div class="cards-row">
+      <div class="row-header">
+        <h3 class="category-name">Bạn đang quan tâm gì?</h3>
+      </div>
+      <div class="topics-grid">
+        <div class="row-topic">
+          <div class="mask" style="background: linear-gradient(135deg, #f5c518 0%, #b8860b 100%);"></div>
+          <div class="intro">
+            <div class="heading">Top IMDb 🌟</div>
+            <div class="sub-text">Tuyển tập phim điểm cao nhất</div>
+          </div>
+        </div>
+        <div class="row-topic">
+          <div class="mask" style="background: linear-gradient(135deg, #e50914 0%, #8b0000 100%);"></div>
+          <div class="intro">
+            <div class="heading">Phim Chiếu Rạp 🍿</div>
+            <div class="sub-text">Bom tấn màn ảnh rộng mới nhất</div>
+          </div>
+        </div>
+        <div class="row-topic">
+          <div class="mask" style="background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);"></div>
+          <div class="intro">
+            <div class="heading">Phim Hàn Quốc 🇰🇷</div>
+            <div class="sub-text">K-Drama tình cảm & giật gân</div>
+          </div>
+        </div>
+        <div class="row-topic">
+          <div class="mask" style="background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);"></div>
+          <div class="intro">
+            <div class="heading">Anime Nhật Bản 🌸</div>
+            <div class="sub-text">Đầy đủ Vietsub & Lồng tiếng</div>
+          </div>
+        </div>
+        <div class="row-topic">
+          <div class="mask" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);"></div>
+          <div class="intro">
+            <div class="heading">Phim Thuyết Minh 🎙️</div>
+            <div class="sub-text">Xem thả ga không cần đọc sub</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Featured Section 1: Phim Điện Ảnh Mới Coóng -->
+    <div class="cards-row">
+      <div class="row-header">
+        <h2 class="category-name">Phim Điện Ảnh Mới Coóng</h2>
+        <a href="#" class="cat-more" onclick="switchView('catalog')">Xem thêm →</a>
+      </div>
+      <div class="movie-carousel-grid">
+        <!-- Movie Item 1 -->
+        <div class="sw-item">
+          <a class="v-thumbnail" href="#" onclick="switchView('detail')">
+            <div class="pin-new">
+              <div class="line-center line-pd">P.Đề</div>
+              <div class="line-center line-tm">T.Minh</div>
+            </div>
+            <span class="thumb-4k-badge">4K</span>
+            <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/luavatrotan.webp" alt="Avatar 3">
+          </a>
+          <div class="info">
+            <h4 class="item-title"><a href="#" onclick="switchView('detail')">Avatar 3: Lửa và Tro Tàn</a></h4>
+            <div class="alias-title">Avatar: Fire and Ash</div>
+          </div>
+        </div>
+
+        <!-- Movie Item 2 -->
+        <div class="sw-item">
+          <a class="v-thumbnail" href="#" onclick="switchView('detail')">
+            <div class="pin-new">
+              <div class="line-center line-pd">P.Đề</div>
+              <div class="line-center line-tm">T.Minh</div>
+              <div class="line-center line-lt">L.Tiếng</div>
+            </div>
+            <span class="thumb-bilingual-badge">Song Ngữ</span>
+            <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/pxd9rc03EMMln3tVFdfd427Fpsi.webp" alt="Doraemon">
+          </a>
+          <div class="info">
+            <h4 class="item-title"><a href="#" onclick="switchView('detail')">Doraemon: Lâu Đài Đáy Biển</a></h4>
+            <div class="alias-title">Doraemon the Movie (2026)</div>
+          </div>
+        </div>
+
+        <!-- Movie Item 3 -->
+        <div class="sw-item">
+          <a class="v-thumbnail" href="#" onclick="switchView('detail')">
+            <div class="pin-new">
+              <div class="line-center line-pd">P.Đề</div>
+              <div class="line-center line-tm">T.Minh</div>
+            </div>
+            <span class="thumb-4k-badge">4K</span>
+            <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/3bHz9dYSZ5XDxY0zDaBpYgUOhE2.webp" alt="Bẫy Chuột">
+          </a>
+          <div class="info">
+            <h4 class="item-title"><a href="#" onclick="switchView('detail')">Bẫy Chuột</a></h4>
+            <div class="alias-title">Mousetrap</div>
+          </div>
+        </div>
+
+        <!-- Movie Item 4 -->
+        <div class="sw-item">
+          <a class="v-thumbnail" href="#" onclick="switchView('detail')">
+            <div class="pin-new">
+              <div class="line-center line-pd">P.Đề</div>
+            </div>
+            <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/nA2DS3PbUC1AcOGCq7IzEgxzvUL.webp" alt="Sư Huynh Quá Cẩn Trọng">
+          </a>
+          <div class="info">
+            <h4 class="item-title"><a href="#" onclick="switchView('detail')">Sư Huynh Quá Cẩn Trọng</a></h4>
+            <div class="alias-title">Pull Strings</div>
+          </div>
+        </div>
+
+        <!-- Movie Item 5 -->
+        <div class="sw-item">
+          <a class="v-thumbnail" href="#" onclick="switchView('detail')">
+            <div class="pin-new">
+              <div class="line-center line-pd">P.Đề</div>
+              <div class="line-center line-tm">T.Minh</div>
+            </div>
+            <span class="thumb-4k-badge">4K</span>
+            <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/22xRAaDSNIwOqFhFDXWp5IMnQPT.webp" alt="Vợ Tôi Là Sát Thủ">
+          </a>
+          <div class="info">
+            <h4 class="item-title"><a href="#" onclick="switchView('detail')">Vợ Tôi Là Sát Thủ</a></h4>
+            <div class="alias-title">A Bona Fide Killer</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Featured Section 2: Top 10 Phim Bộ Hôm Nay -->
+    <div class="cards-row">
+      <div class="row-header">
+        <h2 class="category-name">Top 10 Phim Bộ Hôm Nay 🔥</h2>
+      </div>
+      <div class="top10-grid">
+        <!-- Top 1 -->
+        <div class="sw-item top10-item">
+          <a class="v-thumbnail" href="#" onclick="switchView('detail')">
+            <span class="thumb-bilingual-badge">Song Ngữ</span>
+            <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/baychuotthumb.webp" alt="Bẫy Chuột">
+          </a>
+          <div class="info-v w-chart">
+            <div class="number">1</div>
+            <h4 class="item-title"><a href="#" onclick="switchView('detail')">Bẫy Chuột</a></h4>
+            <div class="alias-title">Mousetrap</div>
+            <div class="info-line">
+              <span class="tag-small"><strong>T16</strong></span>
+              <span class="tag-small">Phần 1</span>
+              <span class="tag-small">Hoàn tất (10/10)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top 2 -->
+        <div class="sw-item top10-item">
+          <a class="v-thumbnail" href="#" onclick="switchView('detail')">
+            <span class="thumb-4k-badge">4K</span>
+            <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/22xRAaDSNIwOqFhFDXWp5IMnQPT.webp" alt="Vợ Tôi Là Sát Thủ">
+          </a>
+          <div class="info-v w-chart">
+            <div class="number">2</div>
+            <h4 class="item-title"><a href="#" onclick="switchView('detail')">Vợ Tôi Là Sát Thủ</a></h4>
+            <div class="alias-title">A Bona Fide Killer</div>
+            <div class="info-line">
+              <span class="tag-small"><strong>T18</strong></span>
+              <span class="tag-small">Phần 1</span>
+              <span class="tag-small">Tập 10</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top 3 -->
+        <div class="sw-item top10-item">
+          <a class="v-thumbnail" href="#" onclick="switchView('detail')">
+            <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/nA2DS3PbUC1AcOGCq7IzEgxzvUL.webp" alt="Sư Huynh Quá Cẩn Trọng">
+          </a>
+          <div class="info-v w-chart">
+            <div class="number">3</div>
+            <h4 class="item-title"><a href="#" onclick="switchView('detail')">Sư Huynh Quá Cẩn Trọng</a></h4>
+            <div class="alias-title">Pull Strings</div>
+            <div class="info-line">
+              <span class="tag-small"><strong>T13</strong></span>
+              <span class="tag-small">Phần 1</span>
+              <span class="tag-small">Tập 25</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top 4 -->
+        <div class="sw-item top10-item">
+          <a class="v-thumbnail" href="#" onclick="switchView('detail')">
+            <span class="thumb-4k-badge">4K</span>
+            <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/luavatrotan.webp" alt="Avatar 3">
+          </a>
+          <div class="info-v w-chart">
+            <div class="number">4</div>
+            <h4 class="item-title"><a href="#" onclick="switchView('detail')">Avatar 3: Lửa và Tro Tàn</a></h4>
+            <div class="alias-title">Fire and Ash</div>
+            <div class="info-line">
+              <span class="tag-small"><strong>P</strong></span>
+              <span class="tag-small">3h 12m</span>
+              <span class="tag-small">Chiếu rạp</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       VIEW 2: CHI TIẾT PHIM (MOVIE DETAIL SCREEN)
+       ========================================================================== -->
+  <div id="view-detail" class="screen-view">
+    <div class="top-detail-wrap">
+      <div class="detail-backdrop" style="background-image: url('https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/22xRAaDSNIwOqFhFDXWp5IMnQPT.webp');"></div>
+      <div class="detail-backdrop-overlay"></div>
+    </div>
+
+    <div class="detail-container">
+      <!-- Left Column: Poster & Side Meta -->
+      <div class="dc-side">
+        <div class="v-thumb-l">
+          <div class="v-thumbnail">
+            <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/v-c3RvcmFnZS9pbWFnZXMvdm8tdG9pLWxhLXNhdC10aHUvdGh1bWJfdXJsL2Y3NWNkMTg2NGViODAxYjcyMTRkZDZjMDI2NmQwYjBiLmpwZWc.webp" alt="Vợ Tôi Là Sát Thủ">
+          </div>
+        </div>
+
+        <div class="side-meta-list">
+          <div class="side-meta-row">
+            <span class="side-meta-label">Điểm đánh giá:</span>
+            <span class="side-meta-val" style="color: #f5c518">★ 10.0 (IMDb)</span>
+          </div>
+          <div class="side-meta-row">
+            <span class="side-meta-label">Năm phát hành:</span>
+            <span class="side-meta-val">2026</span>
+          </div>
+          <div class="side-meta-row">
+            <span class="side-meta-label">Thời lượng:</span>
+            <span class="side-meta-val">60 phút / tập</span>
+          </div>
+          <div class="side-meta-row">
+            <span class="side-meta-label">Quốc gia:</span>
+            <span class="side-meta-val">Hàn Quốc</span>
+          </div>
+          <div class="side-meta-row">
+            <span class="side-meta-label">Chất lượng:</span>
+            <span class="side-meta-val" style="color: var(--primary-color)">4K UHD • Vietsub</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Info, Action Bar, Servers & Episode Grid -->
+      <div class="dc-main">
+        <h1 style="font-family: var(--font-display); font-size: 2.4rem; font-weight: 800; color: #fff; margin-bottom: 4px;">
+          Vợ Tôi Là Sát Thủ
+        </h1>
+        <div style="font-size: 1.15rem; color: var(--primary-color); font-weight: 600; margin-bottom: 1.25rem;">
+          A Bona Fide Killer (2026)
+        </div>
+
+        <!-- Glassmorphism Action Bar (.dm-bar) -->
+        <div class="dm-bar">
+          <button class="button-play" onclick="switchView('watch')">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Xem Ngay (Tập 10)
+          </button>
+
+          <div class="touch-group">
+            <button class="btn-action-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+              </svg>
+              Yêu Thích
+            </button>
+            <button class="btn-action-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Thêm Playlist
+            </button>
+            <button class="btn-action-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="18" cy="5" r="3"></circle>
+                <circle cx="6" cy="12" r="3"></circle>
+                <circle cx="18" cy="19" r="3"></circle>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+              </svg>
+              Chia Sẻ
+            </button>
+          </div>
+        </div>
+
+        <!-- Season & Server Selector Box with Animated LED Ring -->
+        <div class="cg-body-box">
+          <div class="box-header">
+            <!-- Season Dropdown -->
+            <button class="season-dropdown-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z"></path>
+              </svg>
+              Phần 1
+            </button>
+
+            <!-- Signature Server Picker with Running LED Border -->
+            <div class="episode-server-dropdown__led-ring">
+              <svg class="episode-server-dropdown__led-svg" viewBox="0 0 220 44" preserveAspectRatio="none">
+                <rect class="episode-server-dropdown__led-track" x="1" y="1" width="218" height="42" rx="10" ry="10"></rect>
+                <rect class="episode-server-dropdown__led-chase" x="1" y="1" width="218" height="42" rx="10" ry="10" pathLength="100"></rect>
+              </svg>
+              <button class="episode-server-dropdown__toggle">
+                <span>⚡ Vietsub #1 (Server VIP)</span>
+                <span style="font-size:10px">▼</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Episode Numbers Grid -->
+          <div class="de-eps is-simple">
+            <div class="item" onclick="switchView('watch')">Tập 1</div>
+            <div class="item" onclick="switchView('watch')">Tập 2</div>
+            <div class="item" onclick="switchView('watch')">Tập 3</div>
+            <div class="item" onclick="switchView('watch')">Tập 4</div>
+            <div class="item" onclick="switchView('watch')">Tập 5</div>
+            <div class="item" onclick="switchView('watch')">Tập 6</div>
+            <div class="item" onclick="switchView('watch')">Tập 7</div>
+            <div class="item" onclick="switchView('watch')">Tập 8</div>
+            <div class="item" onclick="switchView('watch')">Tập 9</div>
+            <div class="item on-air" onclick="switchView('watch')">Tập 10</div>
+            <div class="item schedule">Tập 11 (20:00 T6)</div>
+            <div class="item schedule">Tập 12 (20:00 T7)</div>
+          </div>
+        </div>
+
+        <!-- Movie Description -->
+        <div style="margin-bottom: 2rem;">
+          <h3 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 0.6rem;">Nội Dung Phim</h3>
+          <p style="color: rgba(255,255,255,0.8); line-height: 1.7; font-size: 14.5px;">
+            Một người mẹ đi làm tưởng chừng bình thường nhưng bí mật sống với thân phận của một nữ xạ thủ huyền thoại, chuyên thực thi công lý ở những nơi pháp luật bất lực. Sau khi trở lại sau ba năm vắng bóng, cô phải vừa bảo vệ gia đình, vừa truy lùng và tiêu diệt những tên tội phạm nguy hiểm, trong khi một nhà báo quyết tâm và một thanh tra không khoan nhượng ngày càng tiến gần đến việc khám phá danh tính bí mật của cô.
+          </p>
+        </div>
+
+        <!-- Cast & Crew -->
+        <div>
+          <h3 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 0.6rem;">Diễn Viên</h3>
+          <div class="cast-grid">
+            <div class="cast-item">
+              <div class="cast-avatar">
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80" alt="Gong Hyo Jin">
+              </div>
+              <div class="cast-name">Gong Hyo Jin</div>
+              <div class="cast-role">Nữ chính</div>
+            </div>
+            <div class="cast-item">
+              <div class="cast-avatar">
+                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80" alt="Choi Woo-sung">
+              </div>
+              <div class="cast-name">Choi Woo-sung</div>
+              <div class="cast-role">Nam chính</div>
+            </div>
+            <div class="cast-item">
+              <div class="cast-avatar">
+                <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80" alt="Sung Dong-il">
+              </div>
+              <div class="cast-name">Sung Dong-il</div>
+              <div class="cast-role">Đội trưởng</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       VIEW 3: XEM PHIM & PLAYER (WATCH SCREEN)
+       ========================================================================== -->
+  <div id="view-watch" class="screen-view">
+    <div class="watch-player">
+      <!-- Breadcrumb bar -->
+      <div class="wp-bread">
+        <button class="btn-circle-action" onclick="switchView('detail')" title="Quay lại chi tiết">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <h1 class="page-name">Xem phim Vợ Tôi Là Sát Thủ - Tập 10</h1>
+      </div>
+
+      <!-- 16:9 Cinema Player Frame -->
+      <div class="player-ratio">
+        <div class="ratio-16x9">
+          <div class="player-mock-screen">
+            <div class="player-mock-play-btn" onclick="alert('Trình phát video đã sẵn sàng!')">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+            </div>
+            <div style="margin-top: 1.25rem; font-weight: 700; font-size: 16px;">Vợ Tôi Là Sát Thủ - Tập 10 (Full HD 1080p)</div>
+            <div style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">Nhấn vào để phát video mô phỏng</div>
+          </div>
+        </div>
+
+        <!-- Video Controls Bar -->
+        <div class="player-control">
+          <div class="control-items">
+            <button class="ctrl-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+              </svg>
+              Yêu thích
+            </button>
+            <button class="ctrl-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+              </svg>
+              Bật/Tắt Đèn
+            </button>
+            <button class="ctrl-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+              Rạp Chiếu
+            </button>
+          </div>
+
+          <div class="control-items">
+            <button class="ctrl-btn" style="color: #ff5252">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              Báo Lỗi Phim
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Episode Server Picker under player -->
+      <div class="cg-body-box" style="margin-top: 1.5rem;">
+        <div class="box-header">
+          <div class="episode-server-dropdown__led-ring">
+            <svg class="episode-server-dropdown__led-svg" viewBox="0 0 220 44" preserveAspectRatio="none">
+              <rect class="episode-server-dropdown__led-track" x="1" y="1" width="218" height="42" rx="10" ry="10"></rect>
+              <rect class="episode-server-dropdown__led-chase" x="1" y="1" width="218" height="42" rx="10" ry="10" pathLength="100"></rect>
+            </svg>
+            <button class="episode-server-dropdown__toggle">
+              <span>⚡ Vietsub #1 (Server VIP)</span>
+              <span style="font-size:10px">▼</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="de-eps is-simple">
+          <div class="item">Tập 1</div>
+          <div class="item">Tập 2</div>
+          <div class="item">Tập 3</div>
+          <div class="item">Tập 4</div>
+          <div class="item">Tập 5</div>
+          <div class="item">Tập 6</div>
+          <div class="item">Tập 7</div>
+          <div class="item">Tập 8</div>
+          <div class="item">Tập 9</div>
+          <div class="item on-air">Tập 10</div>
+          <div class="item schedule">Tập 11</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       VIEW 4: BỘ LỌC & DANH MỤC PHIM (CATALOG SCREEN)
+       ========================================================================== -->
+  <div id="view-catalog" class="screen-view">
+    <div class="cards-row">
+      <div class="row-header">
+        <h2 class="category-name">Khám Phá & Bộ Lọc Phim</h2>
+      </div>
+
+      <!-- Expandable Filter Bar -->
+      <div class="v-filter">
+        <div class="filter-toggle" onclick="toggleFilterBar()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"></path>
+          </svg>
+          Bộ Lọc Nâng Cao
+        </div>
+
+        <div id="filterContent">
+          <!-- Row 1: Thể loại -->
+          <div class="fe-row">
+            <div class="fe-name">Thể loại:</div>
+            <div class="fe-results">
+              <div class="item active">Tất cả</div>
+              <div class="item">Hành Động</div>
+              <div class="item">Tình Cảm</div>
+              <div class="item">Hoạt Hình</div>
+              <div class="item">Kinh Dị</div>
+              <div class="item">Hài Hước</div>
+              <div class="item">Viễn Tưởng</div>
+              <div class="item">Võ Thuật</div>
+              <div class="item">Tâm Lý</div>
+            </div>
+          </div>
+
+          <!-- Row 2: Quốc gia -->
+          <div class="fe-row">
+            <div class="fe-name">Quốc gia:</div>
+            <div class="fe-results">
+              <div class="item active">Tất cả</div>
+              <div class="item">Hàn Quốc</div>
+              <div class="item">Trung Quốc</div>
+              <div class="item">Âu Mỹ</div>
+              <div class="item">Nhật Bản</div>
+              <div class="item">Thái Lan</div>
+              <div class="item">Việt Nam</div>
+            </div>
+          </div>
+
+          <!-- Row 3: Năm -->
+          <div class="fe-row">
+            <div class="fe-name">Năm:</div>
+            <div class="fe-results">
+              <div class="item active">Tất cả</div>
+              <div class="item">2026</div>
+              <div class="item">2025</div>
+              <div class="item">2024</div>
+              <div class="item">2023</div>
+              <div class="item">Trước 2020</div>
+            </div>
+          </div>
+
+          <!-- Row 4: Sắp xếp -->
+          <div class="fe-row">
+            <div class="fe-name">Sắp xếp:</div>
+            <div class="fe-results">
+              <div class="item active">Mới Cập Nhật</div>
+              <div class="item">Xem Nhiều Nhất</div>
+              <div class="item">Điểm IMDb Cao</div>
+              <div class="item">Năm Sản Xuất</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Catalog Grid -->
+      <div class="movie-carousel-grid">
+        <div class="sw-item">
+          <a class="v-thumbnail" href="#" onclick="switchView('detail')">
+            <div class="pin-new"><div class="line-center line-pd">P.Đề</div></div>
+            <span class="thumb-4k-badge">4K</span>
+            <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/22xRAaDSNIwOqFhFDXWp5IMnQPT.webp" alt="Vợ Tôi Là Sát Thủ">
+          </a>
+          <div class="info">
+            <h4 class="item-title"><a href="#">Vợ Tôi Là Sát Thủ</a></h4>
+            <div class="alias-title">A Bona Fide Killer</div>
+          </div>
+        </div>
+
+        <div class="sw-item">
+          <a class="v-thumbnail" href="#" onclick="switchView('detail')">
+            <div class="pin-new"><div class="line-center line-pd">P.Đề</div><div class="line-center line-tm">T.Minh</div></div>
+            <span class="thumb-bilingual-badge">Song Ngữ</span>
+            <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/3bHz9dYSZ5XDxY0zDaBpYgUOhE2.webp" alt="Bẫy Chuột">
+          </a>
+          <div class="info">
+            <h4 class="item-title"><a href="#">Bẫy Chuột</a></h4>
+            <div class="alias-title">Mousetrap</div>
+          </div>
+        </div>
+
+        <div class="sw-item">
+          <a class="v-thumbnail" href="#" onclick="switchView('detail')">
+            <div class="pin-new"><div class="line-center line-pd">P.Đề</div></div>
+            <span class="thumb-4k-badge">4K</span>
+            <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/luavatrotan.webp" alt="Avatar 3">
+          </a>
+          <div class="info">
+            <h4 class="item-title"><a href="#">Avatar 3: Lửa và Tro Tàn</a></h4>
+            <div class="alias-title">Avatar: Fire and Ash</div>
+          </div>
+        </div>
+
+        <div class="sw-item">
+          <a class="v-thumbnail" href="#" onclick="switchView('detail')">
+            <div class="pin-new"><div class="line-center line-pd">P.Đề</div><div class="line-center line-lt">L.Tiếng</div></div>
+            <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/pxd9rc03EMMln3tVFdfd427Fpsi.webp" alt="Doraemon">
+          </a>
+          <div class="info">
+            <h4 class="item-title"><a href="#">Doraemon: Lâu Đài Đáy Biển</a></h4>
+            <div class="alias-title">New Nobita Undersea</div>
+          </div>
+        </div>
+
+        <div class="sw-item">
+          <a class="v-thumbnail" href="#" onclick="switchView('detail')">
+            <div class="pin-new"><div class="line-center line-pd">P.Đề</div></div>
+            <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/nA2DS3PbUC1AcOGCq7IzEgxzvUL.webp" alt="Sư Huynh Quá Cẩn Trọng">
+          </a>
+          <div class="info">
+            <h4 class="item-title"><a href="#">Sư Huynh Quá Cẩn Trọng</a></h4>
+            <div class="alias-title">Pull Strings</div>
+          </div>
+        </div>
+
+        <div class="sw-item">
+          <a class="v-thumbnail" href="#" onclick="switchView('detail')">
+            <div class="pin-new"><div class="line-center line-tm">T.Minh</div></div>
+            <span class="thumb-4k-badge">4K</span>
+            <img src="https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/22xRAaDSNIwOqFhFDXWp5IMnQPT.webp" alt="Vợ Tôi Là Sát Thủ">
+          </a>
+          <div class="info">
+            <h4 class="item-title"><a href="#">Nhiệm Vụ Bất Khả Thi 8</a></h4>
+            <div class="alias-title">Mission: Impossible 8</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom Pagination Controls (.v-pagination) -->
+      <div class="v-pagination">
+        <div class="page-control">
+          <button class="page-btn" disabled title="Trang trước">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+          
+          <div class="page-current">
+            <span>Trang</span>
+            <input type="number" class="page-input" value="1" min="1" max="226">
+            <span>/ 226</span>
+          </div>
+
+          <button class="page-btn" title="Trang sau">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       VIEW 5: THƯ VIỆN COMPONENTS & MODALS
+       ========================================================================== -->
+  <div id="view-components" class="screen-view">
+    <div class="screen-header-banner">
+      <div>
+        <h2>Thư Viện UI Components & Modals</h2>
+        <p>Tất cả components độc lập được bóc tách từ CoBePhim, sẵn sàng tái sử dụng.</p>
+      </div>
+    </div>
+
+    <div class="cards-row">
+      <!-- Group 1: Badges & Tags -->
+      <h3 class="category-name" style="margin-top: 2rem;">1. Hệ Thống Badges & Quality Pins</h3>
+      <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin: 1rem 0 2rem;">
+        <span class="thumb-4k-badge" style="position:static">4K UHD</span>
+        <span class="thumb-bilingual-badge" style="position:static">Song Ngữ</span>
+        <span class="pin-new" style="position:static; display:inline-flex; width:auto; border-radius:4px;">
+          <span class="line-center line-pd">P.Đề</span>
+          <span class="line-center line-tm">T.Minh</span>
+          <span class="line-center line-lt">L.Tiếng</span>
+        </span>
+        <span class="meta-chip imdb">IMDb 10.0</span>
+        <span class="meta-chip age">T16</span>
+        <span class="meta-chip age" style="border-color:#ff9800; color:#ff9800">T18</span>
+        <span class="meta-chip" style="background: rgba(81,240,133,0.15); color:#51f085">P (Mọi lứa tuổi)</span>
+      </div>
+
+      <!-- Group 2: Buttons -->
+      <h3 class="category-name">2. Hệ Thống Nút Bấm (Button Styles)</h3>
+      <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin: 1rem 0 2rem;">
+        <button class="button-play">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          Xem Phim Ngay
+        </button>
+        <button class="button-play" style="background: var(--primary-gradient-green); color: #07140c;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          Phát Trực Tuyến
+        </button>
+        <button class="btn-vip-gold">Nâng VIP Vĩnh Viễn</button>
+        <button class="btn-action-item">Yêu Thích</button>
+        <button class="btn-circle-action">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+        </button>
+      </div>
+
+      <!-- Group 3: Hover Card QTip Preview -->
+      <h3 class="category-name">3. Hover Card QTip Preview Modal</h3>
+      <div style="margin: 1.5rem 0;">
+        <div class="qtip-preview-box anim-qtip">
+          <div class="qtip-thumb" style="background-image: url('https://icdn.darkbytes.xyz/file/cm9waGltbQ/images/22xRAaDSNIwOqFhFDXWp5IMnQPT.webp');">
+            <div class="qtip-thumb-overlay"></div>
+            <div class="qtip-play-btn">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            </div>
+          </div>
+          <div class="qtip-content">
+            <div class="qtip-title">Vợ Tôi Là Sát Thủ</div>
+            <div class="qtip-sub">A Bona Fide Killer (2026)</div>
+            <div class="hero-meta-row" style="margin-bottom:0.5rem">
+              <span class="meta-chip imdb">IMDb 10.0</span>
+              <span class="meta-chip age">T16</span>
+              <span class="meta-chip">Tập 10</span>
+            </div>
+            <p style="font-size:12.5px; color:rgba(255,255,255,0.7); line-height:1.5;">
+              Nữ xạ thủ huyền thoại tái xuất giang hồ để bảo vệ gia đình và săn lùng băng nhóm tội phạm ngầm khét tiếng...
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group 4: Skeleton Loaders -->
+      <h3 class="category-name">4. Skeleton Shimmer Loaders</h3>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin: 1.5rem 0;">
+        <div style="height: 240px; border-radius: 10px; background: rgba(255,255,255,0.06); animation: main-home-skel-shimmer 1.2s ease-in-out infinite;"></div>
+        <div style="height: 240px; border-radius: 10px; background: rgba(255,255,255,0.06); animation: main-home-skel-shimmer 1.2s ease-in-out infinite; animation-delay: 0.15s;"></div>
+        <div style="height: 240px; border-radius: 10px; background: rgba(255,255,255,0.06); animation: main-home-skel-shimmer 1.2s ease-in-out infinite; animation-delay: 0.3s;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       VIEW 6: ANIMATIONS & KEYFRAMES LAB (LIVE PLAYGROUND)
+       ========================================================================== -->
+  <div id="view-animations" class="screen-view">
+    <div class="screen-header-banner">
+      <div>
+        <h2>Animation & Keyframes Lab</h2>
+        <p>Xem trực tiếp các hiệu ứng chuyển động và sao chép CSS @keyframes nguyên bản.</p>
+      </div>
+    </div>
+
+    <div class="cards-row">
+      <div class="anim-cards-grid">
+        <!-- 1. Signature LED Chase -->
+        <div class="anim-card">
+          <h4 style="color:#fff; font-size:15px;">1. Episode Server LED Chase</h4>
+          <p style="color:var(--text-muted); font-size:12px; margin-top:2px;">Hiệu ứng viền LED chạy quanh nút chọn server</p>
+          <div class="anim-preview-box">
+            <div class="episode-server-dropdown__led-ring" style="width:220px">
+              <svg class="episode-server-dropdown__led-svg" viewBox="0 0 220 44" preserveAspectRatio="none">
+                <rect class="episode-server-dropdown__led-track" x="1" y="1" width="218" height="42" rx="10" ry="10"></rect>
+                <rect class="episode-server-dropdown__led-chase" x="1" y="1" width="218" height="42" rx="10" ry="10" pathLength="100"></rect>
+              </svg>
+              <button class="episode-server-dropdown__toggle">
+                <span>⚡ Vietsub #1 VIP</span>
+                <span>Active</span>
+              </button>
+            </div>
+          </div>
+          <button class="btn-copy-all" onclick="copySnippet('led-chase')">Copy Keyframes CSS</button>
+        </div>
+
+        <!-- 2. QTip Bounce In -->
+        <div class="anim-card">
+          <h4 style="color:#fff; font-size:15px;">2. QTip Scale & Zoom In</h4>
+          <p style="color:var(--text-muted); font-size:12px; margin-top:2px;">Hiệu ứng phóng to thẻ xem nhanh khi rê chuột</p>
+          <div class="anim-preview-box">
+            <div class="anim-qtip" style="background:var(--bg-3); padding:0.75rem 1.5rem; border-radius:8px; border:1px solid var(--primary-color); color:#fff; font-weight:700;">
+              Preview Pop-in ✨
+            </div>
+          </div>
+          <button class="btn-copy-all" onclick="copySnippet('qtip')">Copy Keyframes CSS</button>
+        </div>
+
+        <!-- 3. Spinning Vinyl CD -->
+        <div class="anim-card">
+          <h4 style="color:#fff; font-size:15px;">3. Sound CD Rotation</h4>
+          <p style="color:var(--text-muted); font-size:12px; margin-top:2px;">Đĩa quay bài hát OST / Soundtrack</p>
+          <div class="anim-preview-box">
+            <div class="anim-sound-cd" style="width:60px; height:60px; border-radius:50%; background:radial-gradient(circle, #ffd875 15%, #191b24 16%, #191b24 45%, #ffd875 46%, #333 48%, #111 100%); border:2px solid #555; box-shadow:0 0 15px rgba(0,0,0,0.5);"></div>
+          </div>
+          <button class="btn-copy-all" onclick="copySnippet('sound-cd')">Copy Keyframes CSS</button>
+        </div>
+
+        <!-- 4. Bell & Remind Shake -->
+        <div class="anim-card">
+          <h4 style="color:#fff; font-size:15px;">4. Bell & Item Remind Shake</h4>
+          <p style="color:var(--text-muted); font-size:12px; margin-top:2px;">Chuông rung báo tập phim sắp chiếu</p>
+          <div class="anim-preview-box">
+            <div class="anim-bell-remind" style="font-size:32px;">🔔</div>
+          </div>
+          <button class="btn-copy-all" onclick="copySnippet('bell-remind')">Copy Keyframes CSS</button>
+        </div>
+
+        <!-- 5. Live Pulse & Glow -->
+        <div class="anim-card">
+          <h4 style="color:#fff; font-size:15px;">5. Live Pulse Glow</h4>
+          <p style="color:var(--text-muted); font-size:12px; margin-top:2px;">Sóng phát sáng thông báo livestream / xem chung</p>
+          <div class="anim-preview-box">
+            <div class="anim-live-pulse" style="width:20px; height:20px; border-radius:50%; background:#51f085;"></div>
+          </div>
+          <button class="btn-copy-all" onclick="copySnippet('live-pulse')">Copy Keyframes CSS</button>
+        </div>
+
+        <!-- 6. Shimmer Skeleton -->
+        <div class="anim-card">
+          <h4 style="color:#fff; font-size:15px;">6. Skeleton Shimmer</h4>
+          <p style="color:var(--text-muted); font-size:12px; margin-top:2px;">Hiệu ứng placeholder nhịp nhàng</p>
+          <div class="anim-preview-box">
+            <div style="width:80%; height:40px; border-radius:8px; background:rgba(255,255,255,0.06); animation:main-home-skel-shimmer 1.2s ease-in-out infinite;"></div>
+          </div>
+          <button class="btn-copy-all" onclick="copySnippet('shimmer')">Copy Keyframes CSS</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       VIEW 7: VUE 3 / NUXT 3 CODE CHEATSHEET
+       ========================================================================== -->
+  <div id="view-vue" class="screen-view">
+    <div class="screen-header-banner">
+      <div>
+        <h2>Vue 3 / Nuxt 3 Component Cheatsheet</h2>
+        <p>Mẫu code component sẵn sàng copy trực tiếp vào dự án Vue/Nuxt của bạn.</p>
+      </div>
+    </div>
+
+    <div class="cards-row">
+      <!-- Component 1: MovieCard.vue -->
+      <div class="code-box">
+        <div class="code-box-header">
+          <span>components/MovieCard.vue (Thẻ phim với badge 4K & Sub/Dub)</span>
+          <button class="btn-copy-all" onclick="copyCodeBlock('vue-card')">Copy Component</button>
+        </div>
+        <pre id="vue-card">&lt;template&gt;
+  &lt;div class="sw-item group relative transition-all duration-300 hover:-translate-y-1"&gt;
+    &lt;NuxtLink :to="'/phim/' + movie.slug" class="v-thumbnail block relative w-full pb-[145%] rounded-xl overflow-hidden bg-[#2f3346] shadow-lg"&gt;
+      &lt;!-- Badges --&gt;
+      &lt;span v-if="movie.is4k" class="thumb-4k-badge absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 text-[10px] font-extrabold rounded text-black bg-gradient-to-tr from-[#ffd875] to-white shadow"&gt;4K&lt;/span&gt;
+      &lt;span v-else-if="movie.isBilingual" class="thumb-bilingual-badge absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 text-[10px] font-bold rounded text-[#07140c] bg-gradient-to-tr from-[#1a8f4a] to-[#60fc90] shadow"&gt;Song Ngữ&lt;/span&gt;
+
+      &lt;div class="pin-new absolute bottom-0 inset-x-0 z-10 flex gap-1 p-1.5 bg-gradient-to-t from-black/80 to-transparent"&gt;
+        &lt;span v-if="movie.hasSub" class="line-pd text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/20 text-white"&gt;P.Đề&lt;/span&gt;
+        &lt;span v-if="movie.hasDub" class="line-tm text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#2ca35d] text-white"&gt;T.Minh&lt;/span&gt;
+        &lt;span v-if="movie.hasVoice" class="line-lt text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#1667cf] text-white"&gt;L.Tiếng&lt;/span&gt;
+      &lt;/div&gt;
+
+      &lt;img :src="movie.poster" :alt="movie.name" class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /&gt;
+    &lt;/NuxtLink&gt;
+
+    &lt;div class="info pt-2.5"&gt;
+      &lt;h4 class="item-title text-sm font-semibold text-white truncate group-hover:text-[#ffd875] transition-colors"&gt;
+        &lt;NuxtLink :to="'/phim/' + movie.slug"&gt;{{ movie.name }}&lt;/NuxtLink&gt;
+      &lt;/h4&gt;
+      &lt;div class="alias-title text-xs text-white/50 truncate mt-0.5"&gt;{{ movie.originName }}&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/template&gt;
+
+&lt;script setup lang="ts"&gt;
+defineProps&lt;{
+  movie: {
+    name: string
+    originName: string
+    slug: string
+    poster: string
+    is4k?: boolean
+    isBilingual?: boolean
+    hasSub?: boolean
+    hasDub?: boolean
+    hasVoice?: boolean
+  }
+}&gt;()
+&lt;/script&gt;</pre>
+      </div>
+
+      <!-- Component 2: Top10Card.vue -->
+      <div class="code-box">
+        <div class="code-box-header">
+          <span>components/Top10Card.vue (Thẻ xếp hạng Top 10 với số gradient)</span>
+          <button class="btn-copy-all" onclick="copyCodeBlock('vue-top10')">Copy Component</button>
+        </div>
+        <pre id="vue-top10">&lt;template&gt;
+  &lt;div class="sw-item top10-item flex items-start gap-3.5 p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.06] transition-all"&gt;
+    &lt;NuxtLink :to="'/phim/' + movie.slug" class="v-thumbnail w-[85px] pb-[125px] flex-shrink-0 relative rounded-lg overflow-hidden bg-[#282b3a]"&gt;
+      &lt;img :src="movie.poster" :alt="movie.name" class="absolute inset-0 w-full h-full object-cover" /&gt;
+    &lt;/NuxtLink&gt;
+
+    &lt;div class="info-v w-chart relative flex-grow min-w-0 pl-12 pt-1"&gt;
+      &lt;!-- Giant Rank Number --&gt;
+      &lt;div class="number absolute left-0 top-0 w-11 text-center font-extrabold italic text-5xl leading-none bg-gradient-to-tr from-[#fecf59] to-[#fff1cc] bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(255,207,89,0.3)]"&gt;
+        {{ rank }}
+      &lt;/div&gt;
+      
+      &lt;h4 class="item-title text-sm font-bold text-white truncate hover:text-[#ffd875]"&gt;
+        &lt;NuxtLink :to="'/phim/' + movie.slug"&gt;{{ movie.name }}&lt;/NuxtLink&gt;
+      &lt;/h4&gt;
+      &lt;div class="alias-title text-xs text-white/50 truncate"&gt;{{ movie.originName }}&lt;/div&gt;
+      
+      &lt;div class="info-line flex items-center gap-1.5 mt-2 flex-wrap"&gt;
+        &lt;span class="tag-small text-[11px] px-1.5 py-0.5 rounded bg-white/5 text-white/60"&gt;{{ movie.ageRating || 'T16' }}&lt;/span&gt;
+        &lt;span class="tag-small text-[11px] px-1.5 py-0.5 rounded bg-white/5 text-white/60"&gt;{{ movie.season || 'Phần 1' }}&lt;/span&gt;
+        &lt;span class="tag-small text-[11px] px-1.5 py-0.5 rounded bg-white/5 text-white/60"&gt;{{ movie.episodeInfo || 'Tập 10' }}&lt;/span&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/template&gt;
+
+&lt;script setup lang="ts"&gt;
+defineProps&lt;{
+  rank: number
+  movie: any
+}&gt;()
+&lt;/script&gt;</pre>
+      </div>
+
+      <!-- Component 3: ServerPickerLed.vue -->
+      <div class="code-box">
+        <div class="code-box-header">
+          <span>components/ServerPickerLed.vue (Server Picker với hiệu ứng viền LED chạy)</span>
+          <button class="btn-copy-all" onclick="copyCodeBlock('vue-server')">Copy Component</button>
+        </div>
+        <pre id="vue-server">&lt;template&gt;
+  &lt;div class="episode-server-dropdown__led-ring relative inline-block min-w-[210px] rounded-xl"&gt;
+    &lt;!-- SVG Running Border LED --&gt;
+    &lt;svg class="episode-server-dropdown__led-svg absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible" viewBox="0 0 210 44" preserveAspectRatio="none"&gt;
+      &lt;rect class="episode-server-dropdown__led-track fill-none stroke-white/10 stroke-[1.5]" x="1" y="1" width="208" height="42" rx="10" ry="10" /&gt;
+      &lt;rect class="episode-server-dropdown__led-chase fill-none stroke-[#ffe9a8] stroke-[2.25] [stroke-linecap:round] [stroke-dasharray:8_92] [animation:episode-server-led-chase_2.2s_linear_infinite] drop-shadow-[0_0_5px_rgba(255,210,90,0.7)]" x="1" y="1" width="208" height="42" rx="10" ry="10" pathLength="100" /&gt;
+    &lt;/svg&gt;
+
+    &lt;button @click="isOpen = !isOpen" class="episode-server-dropdown__toggle relative z-10 flex items-center justify-between w-full h-11 px-3.5 rounded-[10px] text-sm font-semibold text-white/95 bg-white/10 hover:bg-white/15 border border-white/15 transition-colors"&gt;
+      &lt;span&gt;⚡ {{ currentServer }}&lt;/span&gt;
+      &lt;span class="text-xs transition-transform" :class="{ 'rotate-180': isOpen }"&gt;▼&lt;/span&gt;
+    &lt;/button&gt;
+
+    &lt;!-- Dropdown Menu --&gt;
+    &lt;div v-if="isOpen" class="absolute top-[calc(100%+6px)] left-0 right-0 z-50 bg-[#191b24] border border-white/15 rounded-xl shadow-2xl overflow-hidden py-1"&gt;
+      &lt;div v-for="srv in servers" :key="srv" @click="currentServer = srv; isOpen = false" class="px-3.5 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-[#ffd875] cursor-pointer"&gt;
+        ⚡ {{ srv }}
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/template&gt;
+
+&lt;script setup lang="ts"&gt;
+import { ref } from 'vue'
+const isOpen = ref(false)
+const currentServer = ref('Vietsub #1 (VIP Fast)')
+const servers = ['Vietsub #1 (VIP Fast)', 'Vietsub #2 (Dự phòng)', 'Thuyết Minh #1', 'Lồng Tiếng HD']
+&lt;/script&gt;
+
+&lt;style scoped&gt;
+@keyframes episode-server-led-chase {
+  100% { stroke-dashoffset: -100; }
+}
+&lt;/style&gt;</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       VIEW 8: DESIGN TOKENS & COLOR PALETTE
+       ========================================================================== -->
+  <div id="view-tokens" class="screen-view">
+    <div class="screen-header-banner">
+      <div>
+        <h2>Design Tokens & Palette</h2>
+        <p>Bảng mã màu chuẩn, font chữ và các biến CSS trích xuất từ cobephim.ws.</p>
+      </div>
+    </div>
+
+    <div class="cards-row">
+      <h3 class="category-name" style="margin-top:2rem">1. Bảng Màu Chính (Color Swatches)</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin: 1rem 0 2rem;">
+        <div style="background: #191b24; padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1)">
+          <div style="height: 45px; background: #191b24; border-radius: 4px; border: 1px solid #333; margin-bottom: 0.5rem"></div>
+          <div style="font-weight: 700; color: #fff">--bg-color</div>
+          <div style="font-size: 12px; color: var(--text-muted)">#191b24</div>
+        </div>
+        <div style="background: #282b3a; padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1)">
+          <div style="height: 45px; background: #282b3a; border-radius: 4px; margin-bottom: 0.5rem"></div>
+          <div style="font-weight: 700; color: #fff">--bg-2</div>
+          <div style="font-size: 12px; color: var(--text-muted)">#282b3a</div>
+        </div>
+        <div style="background: #2f3346; padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1)">
+          <div style="height: 45px; background: #2f3346; border-radius: 4px; margin-bottom: 0.5rem"></div>
+          <div style="font-weight: 700; color: #fff">--bg-3</div>
+          <div style="font-size: 12px; color: var(--text-muted)">#2f3346</div>
+        </div>
+        <div style="background: var(--bg-2); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1)">
+          <div style="height: 45px; background: #ffd875; border-radius: 4px; margin-bottom: 0.5rem"></div>
+          <div style="font-weight: 700; color: #ffd875">--primary-color</div>
+          <div style="font-size: 12px; color: var(--text-muted)">#ffd875</div>
+        </div>
+        <div style="background: var(--bg-2); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1)">
+          <div style="height: 45px; background: #51f085; border-radius: 4px; margin-bottom: 0.5rem"></div>
+          <div style="font-weight: 700; color: #51f085">--accent-green</div>
+          <div style="font-size: 12px; color: var(--text-muted)">#51f085</div>
+        </div>
+        <div style="background: var(--bg-2); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1)">
+          <div style="height: 45px; background: #1667cf; border-radius: 4px; margin-bottom: 0.5rem"></div>
+          <div style="font-weight: 700; color: #1667cf">--accent-blue</div>
+          <div style="font-size: 12px; color: var(--text-muted)">#1667cf</div>
+        </div>
+      </div>
+
+      <h3 class="category-name">2. CSS Variables Declarations</h3>
+      <div class="code-box">
+        <div class="code-box-header">
+          <span>variables.css</span>
+          <button class="btn-copy-all" onclick="copyCodeBlock('css-vars')">Copy CSS</button>
+        </div>
+        <pre id="css-vars">:root {
+  --bg-color: #191b24;
+  --bg-2: #282b3a;
+  --bg-3: #2f3346;
+  --bg-4: #3e435c;
+  --bg-5: #535d8e;
+  --footer-bg: #0f111a;
+  --top-bg-default: #202331;
+  --border-color: rgba(255, 255, 255, 0.08);
+
+  --primary-color: #ffd875;
+  --primary-color-hover: #ffde8a;
+  --primary-button-text: #191b24;
+  --primary-text: #ffd875;
+  --primary-gradient: linear-gradient(39deg, #ffd875 0%, #fff1cc 100%);
+  
+  --accent-green: #51f085;
+  --accent-green-bright: #60FC90;
+  --accent-blue: #1667cf;
+  
+  --shadow-large: 0 0 20px 20px rgba(0,0,0,0.25);
+  --h-shadow: 0 2px 3px rgba(0,0,0,0.4);
+}</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       FOOTER
+       ========================================================================== -->
+  <footer>
+    <div class="footer-container">
+      <div>
+        <span class="logo-text">CôBe<span>Phim</span></span>
+        <p class="footer-desc">
+          Trang web xem phim trực tuyến miễn phí với kho phim đa dạng, cập nhật liên tục các bộ phim mới nhất, bom tấn chiếu rạp với chất lượng Full HD, 4K sắc nét.
+        </p>
+      </div>
+      <div>
+        <div class="footer-heading">Khám Phá</div>
+        <ul class="footer-links">
+          <li><a href="#">Phim Lẻ Mới</a></li>
+          <li><a href="#">Phim Bộ Hot</a></li>
+          <li><a href="#">Phim Chiếu Rạp</a></li>
+          <li><a href="#">Anime Vietsub</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-heading">Thể Loại</div>
+        <ul class="footer-links">
+          <li><a href="#">Hành Động</a></li>
+          <li><a href="#">Hình Sự</a></li>
+          <li><a href="#">Chính Kịch</a></li>
+          <li><a href="#">Bí Ẩn</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-heading">Thông Tin</div>
+        <ul class="footer-links">
+          <li><a href="#">Điều khoản sử dụng</a></li>
+          <li><a href="#">Chính sách bảo mật</a></li>
+          <li><a href="#">Bản quyền DMCA</a></li>
+          <li><a href="#">Liên hệ quảng cáo</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div>© 2026 CôBePhim / RoPhim. All rights reserved. UI Bundle for Antigravity & ZMovie.</div>
+      <div style="display:flex; gap:1rem;">
+        <span style="color:var(--primary-color)">● Server Status: Online</span>
+        <span>Version 2.5 (Extracted)</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==========================================================================
+       INTERACTION SCRIPTS
+       ========================================================================== -->
+  <script>
+    // View Switcher Function
+    function switchView(viewName) {
+      document.querySelectorAll('.screen-view').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.bundle-tab-btn').forEach(el => el.classList.remove('active'));
+      
+      const targetView = document.getElementById('view-' + viewName);
+      if (targetView) targetView.classList.add('active');
+
+      const tabs = Array.from(document.querySelectorAll('.bundle-tab-btn'));
+      const activeTab = tabs.find(t => t.getAttribute('onclick') && t.getAttribute('onclick').includes(viewName));
+      if (activeTab) activeTab.classList.add('active');
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Toggle Search Modal
+    function toggleSearchModal(show) {
+      const modal = document.getElementById('searchModal');
+      if (!modal) return;
+      if (show) modal.classList.add('show');
+      else modal.classList.remove('show');
+    }
+
+    // Toggle Filter Bar
+    function toggleFilterBar() {
+      const content = document.getElementById('filterContent');
+      if (!content) return;
+      content.style.display = content.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Toast Notification helper
+    function showToast(message) {
+      const toast = document.getElementById('copyToast');
+      const msgEl = document.getElementById('toastMsg');
+      if (msgEl) msgEl.textContent = message;
+      if (toast) {
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2500);
+      }
+    }
+
+    // Copy text to clipboard
+    function copyToClipboard(text, successMsg = 'Đã copy vào clipboard!') {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast(successMsg);
+        }).catch(() => fallbackCopy(text, successMsg));
+      } else {
+        fallbackCopy(text, successMsg);
+      }
+    }
+
+    function fallbackCopy(text, successMsg) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showToast(successMsg);
+      } catch (e) {
+        console.error('Copy failed', e);
+      }
+      document.body.removeChild(textarea);
+    }
+
+    // Copy code from pre element
+    function copyCodeBlock(elementId) {
+      const el = document.getElementById(elementId);
+      if (el) {
+        copyToClipboard(el.innerText, 'Đã copy code component!');
+      }
+    }
+
+    // Copy current active view HTML
+    function copyCurrentView() {
+      const activeView = document.querySelector('.screen-view.active');
+      if (activeView) {
+        copyToClipboard(activeView.outerHTML, 'Đã copy toàn bộ HTML màn hình hiện tại!');
+      }
+    }
+
+    // Copy animation snippet
+    function copySnippet(type) {
+      const snippets = {
+        'led-chase': '@keyframes episode-server-led-chase {\n  100% { stroke-dashoffset: -100; }\n}\n.episode-server-dropdown__led-chase {\n  stroke: #ffe9a8;\n  stroke-width: 2.25;\n  stroke-dasharray: 8 92;\n  animation: episode-server-led-chase 2.2s linear infinite;\n}',
+        'qtip': '@keyframes qtip-animation {\n  0% { opacity: 0; transform: scale(0.3) translateY(20px); }\n  100% { opacity: 1; transform: scale(1) translateY(0); }\n}\n.anim-qtip {\n  animation: qtip-animation 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;\n}',
+        'sound-cd': '@keyframes sound-cd {\n  0% { transform: rotate(0deg); }\n  100% { transform: rotate(360deg); }\n}\n.anim-sound-cd {\n  animation: sound-cd 8s linear infinite;\n}',
+        'bell-remind': '@keyframes bell-remind {\n  0% { transform: rotate(8deg); }\n  50% { transform: rotate(-8deg); }\n  100% { transform: rotate(8deg); }\n}',
+        'live-pulse': '@keyframes live-avatar {\n  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(81, 240, 133, 0.5); }\n  50% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(81, 240, 133, 0); }\n  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(81, 240, 133, 0); }\n}',
+        'shimmer': '@keyframes main-home-skel-shimmer {\n  0% { opacity: 0.45; }\n  50% { opacity: 0.85; }\n  100% { opacity: 0.45; }\n}'
+      };
+      if (snippets[type]) {
+        copyToClipboard(snippets[type], 'Đã copy CSS animation keyframes!');
+      }
+    }
+  </script>
+</body>
+</html>

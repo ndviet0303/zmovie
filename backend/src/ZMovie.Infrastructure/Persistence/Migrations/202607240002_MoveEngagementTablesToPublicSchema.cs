@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace ZMovie.Infrastructure.Persistence.Migrations;
 
-[DbContext(typeof(CatalogDbContext))]
+[DbContext(typeof(LegacyCatalogDbContext))]
 [Migration("202607240002_MoveEngagementTablesToPublicSchema")]
 public partial class MoveEngagementTablesToPublicSchema : Migration
 {

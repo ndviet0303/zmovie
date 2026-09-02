@@ -1,0 +1,92 @@
+export type Messages = {
+  common: {
+    nav: string[];
+    home: string;
+    movies: string;
+    series: string;
+    genres: string;
+    myList: string;
+    search: string;
+    admin: string;
+    login: string;
+    logout: string;
+    profile: string;
+    privacy: string;
+    terms: string;
+    help: string;
+    contact: string;
+    allRightsReserved: string;
+  };
+  home: {
+    newRelease: string;
+    movie: string;
+    description: string;
+    watchNow: string;
+    details: string;
+    trending: string;
+    recommended: string;
+    newReleases: string;
+    year2026: string;
+    moviePicks: string;
+    seriesPicks: string;
+    viewAll: string;
+    emptyTrending: string;
+    unavailable: string;
+    continueWatching: string;
+    periods: {
+      day: string;
+      week: string;
+      month: string;
+    };
+    views: string;
+    seoTitle: string;
+  };
+  browse: {
+    title: string;
+    recommendedTitle: string;
+    seriesTitle: string;
+    latestTitle: string;
+    placeholder: string;
+    filters: string;
+    all: string;
+    movies: string;
+    series: string;
+    latest: string;
+    oldest: string;
+    titleAZ: string;
+    showMore: string;
+    loading: string;
+    error: string;
+    empty: string;
+    chooseGenre: string;
+    clearFilters: string;
+    showResults: string;
+    titlesCount: string;
+    seoDescription: string;
+  };
+  myList: {
+    title: string;
+    saved: string;
+    history: string;
+    emptySavedTitle: string;
+    emptySavedDesc: string;
+    emptyHistoryTitle: string;
+    emptyHistoryDesc: string;
+    exploreMore: string;
+    exploreMovies: string;
+    watchedPercent: string;
+    retry: string;
+    errorNotFound: string;
+    errorDefault: string;
+  };
+  assistant: {
+    title: string;
+    subtitle: string;
+    placeholder: string;
+    send: string;
+    welcomeMessage: string;
+    suggestions: string[];
+  };
+};
+
+export type SupportedLocale = "vi" | "en";

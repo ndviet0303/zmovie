@@ -1,102 +1,169 @@
-# Backend architecture
+# Backend Architecture
 
-ZMovie is a .NET 10 modular-monolith foundation with four layers:
+ZMovie is a .NET 10 modular-monolith adhering to strict Domain-Driven Design (DDD) principles and a clean four-layer architecture:
 
-- `ZMovie.Api` hosts Minimal API endpoints, OpenAPI/Scalar, CORS, Problem Details, health endpoints, and composition.
-- `ZMovie.Application` owns MediatR queries, FluentValidation, ErrorOr contracts, and application interfaces.
-- `ZMovie.Domain` owns the Catalog title and episode entities.
-- `ZMovie.Infrastructure` owns EF Core/PostgreSQL persistence, Meilisearch access, and catalog seed data.
+- `ZMovie.Domain`: Pure domain logic containing aggregates, entities, value objects, domain events, and domain rules. Zero third-party dependencies, zero framework dependencies, and zero system wall-clock access (`TimeProvider` / `DateTimeOffset` are passed explicitly).
+- `ZMovie.Application`: Application use cases, MediatR commands/queries, FluentValidation validators, error contracts (`ErrorOr`), domain event notifications, and domain ports/interfaces.
+- `ZMovie.Infrastructure`: Persistence adapters (EF Core with PostgreSQL), isolated DbContexts per bounded context, `PublishDomainEventsInterceptor`, `MediatRDomainEventDispatcher`, Meilisearch client, external identity verifiers, AI text generators, caching, and background coordinators.
+- `ZMovie.Api`: Minimal API endpoints, OpenAPI/Scalar, CORS, Problem Details, authentication cookies, claim translation adapters (`UserIdentityAdapter`), and ASP.NET Core composition root.
 
-## Implemented vertical slice
+---
 
-The implemented module is Catalog. It uses the `catalog` PostgreSQL schema and exposes:
+## Bounded Contexts & Context Map
 
-- `GET /v1/catalog/titles`
-- `GET /v1/catalog/titles/{slug}`
-- `GET /v1/catalog/genres`
-- `GET /v1/catalog/titles/{slug}/playback`
-- `GET /v1/discovery/home`
-- `GET /v1/search`
-- `GET /health/live` and `GET /health/ready`
-
-Catalog data supports Vietnamese and English title/synopsis fields. Search queries Meilisearch when configured and fall back to PostgreSQL when that dependency is unavailable. The API uses snake_case database naming, UUIDv7 entity identifiers, and `UpdatedAt` optimistic concurrency metadata.
-
-`ZMovie.Application` does not depend on `ZMovie.Infrastructure`; the Infrastructure layer implements `ICatalogReadStore` and `ISearchCatalogStore` for the application layer.
-
-## Current runtime
-
-`compose.yaml` currently starts PostgreSQL 17 only. The Aspire AppHost currently starts the API project only. Database migration and seed calls in `Program.cs` remain intentionally disabled, so they must be run explicitly before a fresh environment serves catalog data.
-
-## Production secrets (Infisical)
-
-When `ASPNETCORE_ENVIRONMENT=Production`, the API fails fast unless it can retrieve
-its configuration from [Infisical's .NET SDK](https://infisical.com/docs/sdks/languages/dotnet).
-Create a dedicated **Universal Auth Machine Identity** with read-only access to the
-production environment and inject only these bootstrap values through your runtime's
-secret mechanism (for example, the hosting platform's encrypted environment variables):
+The application is decomposed into isolated bounded contexts, each owning its domain models, application contracts, and persistence tables:
 
 ```text
-INFISICAL_CLIENT_ID
-INFISICAL_CLIENT_SECRET
-INFISICAL_PROJECT_ID
-INFISICAL_ENVIRONMENT=prod       # optional; this is the default
-INFISICAL_SECRET_PATH=/          # optional; this is the default
-INFISICAL_API_URL=...            # optional; omit for https://app.infisical.com
++-------------------+      +-------------------+      +----------------------+
+| Identity & Access |      |      Catalog      |<-----|  Engagement (Library |
+| (Users, Roles)    |      | (Titles, Genres)  |      |  & Title Reviews)    |
++-------------------+      +-------------------+      +----------------------+
+          ^                          ^                          ^
+          |                          |                          |
+          +--------------------------+--------------------------+
+                                     |
+               +---------------------+---------------------+
+               |                     |                     |
+               v                     v                     v
+      +-----------------+   +-----------------+   +-----------------+
+      |    Analytics    |   | Personalization |   |  Administration |
+      | (Views/Ranks)   |   |   & Assistant   |   |   (Backoffice)  |
+      +-----------------+   +-----------------+   +-----------------+
 ```
 
-Store application configuration in Infisical using .NET environment-style keys.
-Double underscores are converted to configuration nesting, so the current API uses:
+### 1. Catalog Context
+- **Ownership**: Titles, episodes, genres, localized metadata (Vietnamese / English), runtime, and playback links.
+- **Aggregate Roots & Entities**: `Title` (AggregateRoot), `Genre` (AggregateRoot), `Episode` (Entity).
+- **Domain Events**: `TitleCreatedDomainEvent`, `TitleMetadataUpdatedDomainEvent`, `TitleFeaturedChangedDomainEvent`, `EpisodeCreatedDomainEvent`, `EpisodeUpdatedDomainEvent`, `GenreCreatedDomainEvent`, `GenreRenamedDomainEvent`.
+- **Persistence**: `CatalogDbContext` owning `titles`, `episodes`, `genres`, and `title_genres`.
+- **Migrations**: `__ef_migrations_history_catalog`.
+
+### 2. Identity & Access Context
+- **Ownership**: User aggregate, external identity (`sub`), role value object (`Role`), display info, and last-admin demotion protection policy.
+- **Aggregate Roots**: `User` (AggregateRoot).
+- **Domain Events**: `UserCreatedDomainEvent`, `UserSignedInDomainEvent`, `UserRoleChangedDomainEvent`.
+- **Persistence**: `IdentityDbContext` owning `users`.
+- **Migrations**: `__ef_migrations_history_identity`.
+
+### 3. Engagement Context
+- **Ownership**: User library (`saved_titles`), watch progress (`watch_history`), and user ratings/reviews (`title_reviews`).
+- **Aggregate Roots**: `Review` (AggregateRoot), `SavedTitle` (AggregateRoot), `WatchProgress` (AggregateRoot).
+- **Domain Events**: `ReviewSubmittedDomainEvent`, `ReviewEditedDomainEvent`, `TitleSavedDomainEvent`, `WatchProgressRecordedDomainEvent`.
+- **Persistence**: `EngagementDbContext` owning `saved_titles`, `watch_history`, and `title_reviews`.
+- **Migrations**: `__ef_migrations_history_engagement`.
+
+### 4. Analytics Context
+- **Ownership**: Title view facts (`title_view_events`), session deduplication, view counts, and time-windowed top-ranking aggregations.
+- **Aggregate Roots**: `TitleViewEvent` (AggregateRoot).
+- **Domain Events**: `TitleViewRecordedDomainEvent`.
+- **Persistence**: `AnalyticsDbContext` owning `title_view_events`.
+- **Migrations**: `__ef_migrations_history_analytics`.
+
+### 5. Personalization & Assistant Context
+- **Ownership**: Recommendation feedback, assistant learning impressions (`assistant_learning_events`), learned ranking weights, and TinyContent TF-IDF candidate ranking.
+- **Aggregate Roots**: `AssistantLearningEvent` (AggregateRoot).
+- **Domain Events**: `AssistantImpressionRecordedDomainEvent`, `PersonalizationFeedbackRecordedDomainEvent`.
+- **Persistence**: `PersonalizationDbContext` owning `assistant_learning_events`.
+- **Migrations**: `__ef_migrations_history_personalization`.
+
+### 6. Administration (Backoffice)
+- **Role**: Non-owning orchestration layer for admin operations.
+- **Reads**: `IAdminDashboardQueries` / `EfAdminDashboardQueries` compose read-only projections across contexts.
+- **Writes**: Dispatched to context-owned services (`ICatalogAdministrationService`, `IUserRepository`).
+- **Atomic Hard Deletions**: Coordinated via `IAdminTitleDeletionCoordinator` and `ITransactionCoordinator`, deleting records in strict dependent order: `Engagement` -> `Analytics` -> `Personalization` -> `Catalog`.
+
+---
+
+## Domain Building Blocks (SeedWork)
+
+All domain primitives are contained in `ZMovie.Domain.Common`:
+- `IEntity<TId>`, `Entity<TId>`: Base identity and equality abstraction for entities.
+- `IAggregateRoot`, `AggregateRoot`: Encapsulates domain event management (`DomainEvents`, `RaiseDomainEvent`, `ClearDomainEvents`).
+- `IDomainEvent`, `DomainEvent`: Structural domain event records with `EventId` and `OccurredAt`.
+- `ValueObject`: Base structural equality for complex value objects.
+
+---
+
+## Domain Event Dispatching & Lifecycle
+
+1. **State Mutation**: Aggregate roots raise domain events when their state changes (e.g. `Title.Create(...)`, `User.RecordSignIn(...)`, `Review.Edit(...)`).
+2. **Interception**: `PublishDomainEventsInterceptor` intercepts `DbContext.SavingChangesAsync`.
+3. **Extraction & Clearing**: All domain events are collected from tracked `IAggregateRoot` entities and cleared.
+4. **Dispatching**: `IDomainEventDispatcher` (`MediatRDomainEventDispatcher`) wraps each `IDomainEvent` into a `DomainEventNotification<T>` and dispatches it via MediatR `IPublisher` to registered `IDomainEventHandler<T>` handlers.
+
+---
+
+## Layer Rules & Dependency Direction
+
+The solution maintains strict unidirectional project references:
 
 ```text
-ConnectionStrings__ZMovie
-FrontendOrigin
-Google__ClientId
-Meilisearch__Url                # optional
-Meilisearch__ApiKey             # optional
+Domain  <---  Application  <---  Infrastructure  <---  API
 ```
 
-The API retrieves the values before dependency injection is configured and never logs
-secret values. Do not put the machine identity client secret, database connection
-string, or any application secret in `appsettings*.json`, container images, source
-control, or CI logs. Scope the machine identity to the exact project, environment,
-and secret path; rotate its client secret through Infisical when required.
+1. **Domain Layer**:
+   - Must NOT reference any other layer or third-party packages.
+   - Domain contexts do NOT reference other domain contexts (`ZMovie.Domain.Common` is the only shared kernel).
+   - Value objects are immutable; aggregates encapsulate business invariants.
+   - Time is never read from static clocks (`DateTime.Now` / `DateTime.UtcNow`). All time values enter as parameters.
 
-## Personalized movie RAG
+2. **Application Layer**:
+   - References `Domain` only.
+   - Organizes features by context into Commands, Queries, Validators, Domain Event Handlers, and Ports.
+   - Returns `ErrorOr<T>` for domain outcomes.
+   - Pipeline behaviors (`ValidationBehavior`, `LoggingBehavior`).
 
-`POST /v1/assistant/context`, `POST /v1/assistant/chat`, and `GET /v1/discovery/for-you`
-require an authenticated session. The assistant retriever combines the request with
-the user's saved titles and watch history, then ranks catalog candidates with the
-local TF-IDF content model. For the demo, the deployed backend sends that context
-to the local AI service at the Mac's address on port `8788`. The generator cannot
-create suggestion IDs, so its text never controls which titles appear in the response.
+3. **Infrastructure Layer**:
+   - References `Application` and `Domain`.
+   - Implements ports using EF Core, PostgreSQL, Meilisearch, and HTTP clients.
+   - Each bounded context has its own independent `DbContext` configured with `PublishDomainEventsInterceptor`.
 
-For local development, install Ollama and pull the small Qwen model:
+4. **API Layer**:
+   - Acts as the composition root.
+   - Translates HTTP requests, routes, cookies, and claims to Application commands/queries.
+   - Consolidates claim extraction in `UserIdentityAdapter`.
 
-```bash
-ollama pull qwen3:0.6b
-```
+---
 
-Development settings enable the local AI service at `http://127.0.0.1:8788`.
-Production keeps it disabled by default; configure `LocalAi__Enabled` and
-`LocalAi__BaseUrl` through the secret/configuration system when a private model
-service is available. The deterministic reply remains the fallback when the model
-service is disabled or unavailable.
+## Multi-Context Transactions & PostgreSQL Ownership
 
-## Authentication direction
+When an administrative operation spans multiple contexts (e.g., deleting a title and its associated reviews, watch history, views, and learning events), atomicity is guaranteed without distributed transactions:
 
-Google OAuth 2.0 / OpenID Connect is the selected identity provider. Authentication has not yet been wired into the API or Nuxt BFF. The future implementation will validate Google ID tokens using Google's issuer, JWKS, and the configured `GOOGLE_CLIENT_ID`; it will provision local users by the stable `sub` claim. ZMovie roles will be stored and managed locally, never inferred from a Google email address.
+1. `ITransactionCoordinator` opens a single PostgreSQL transaction on the root connection (`CatalogDbContext`).
+2. Participating contexts (`IdentityDbContext`, `EngagementDbContext`, `AnalyticsDbContext`, `PersonalizationDbContext`) enlist into the same connection and active `DbTransaction` via `UseTransaction(dbTx)`.
+3. If any step fails, the entire transaction is rolled back cleanly.
 
-Required server-side configuration for that work:
+---
 
-```text
-GOOGLE_CLIENT_ID
-GOOGLE_CLIENT_SECRET
-GOOGLE_REDIRECT_URI
-GOOGLE_POST_LOGOUT_REDIRECT_URI
-```
+## Module Registration & DI Structure
 
-No client secret or Google token may be exposed to browser code, source control, or logs.
+Service registration is partitioned into modular extension methods in `DependencyInjection.cs`:
 
-## Planned modules
+- `services.AddCatalogModule(connectionString)`
+- `services.AddIdentityModule(connectionString)`
+- `services.AddEngagementModule(connectionString)`
+- `services.AddAnalyticsModule(connectionString)`
+- `services.AddPersonalizationModule(connectionString)`
+- `services.AddAdministrationModule(configuration)`
+- `services.AddAssistantModule(configuration)`
+- `services.AddSearchModule()`
 
-Identity, Media, Playback sessions, Engagement, admin CMS, transactional outbox/worker, Redis, object storage, and operational audit endpoints are planned but are not implemented yet. New modules should preserve the existing dependency direction and be added as complete vertical slices, including validation and tests.
+`AddZMovieInfrastructure` composes all module registrations during application startup.
+
+---
+
+## Migration & Deployment Procedure
+
+1. **Fresh Database Deployment**:
+   - Each module's `MigrateAsync()` runs during startup or via explicit migration jobs.
+   - All migrations use idempotent `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` statements.
+   - Dedicated history tables track each module independently.
+
+2. **Legacy Head Upgrade**:
+   - Pre-existing monolithic database schemas upgrade smoothly without table collision.
+
+3. **Testing Suite**:
+   - Unit & Layer Tests: In-memory validation of aggregates, value objects, domain primitives, domain events, validators, queries, and handlers.
+   - PostgreSQL Integration Tests: Run against real PostgreSQL instances via Testcontainers, verifying schema creation, foreign keys, cascades, indexes, and cross-context deletion rollbacks.
+   - HTTP Contract Tests: Verify route templates, status codes, cookies, and API contracts.
+   - Architecture & DDD Tests: Verify layer dependency direction, cross-context isolation, aggregate root contracts, and domain event sealing.

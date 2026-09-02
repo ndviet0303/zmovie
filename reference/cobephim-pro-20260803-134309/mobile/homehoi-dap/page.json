@@ -1,0 +1,11 @@
+{
+  "viewport": "mobile",
+  "route": "/hoi-dap",
+  "url": "https://cobephim.pro/hoi-dap",
+  "files": [
+    "mobile/homehoi-dap/full-page.png",
+    "mobile/homehoi-dap/viewport.png"
+  ],
+  "states": [],
+  "title": "Hỏi Đáp - CôBe Phim"
+}

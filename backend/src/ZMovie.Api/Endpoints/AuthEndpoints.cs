@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using ZMovie.Api;
 using ZMovie.Application.Identity;
 using ZMovie.Application.Engagement;
+using ZMovie.Domain.Identity;
 
 namespace ZMovie.Api.Endpoints;
 
@@ -24,6 +25,7 @@ public static class AuthEndpoints
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Name, user.DisplayName),
                 new Claim("picture", user.AvatarUrl ?? string.Empty),
+                new Claim(ClaimTypes.Role, user.Role),
             };
             await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)));
             return Results.Ok(user);
@@ -31,12 +33,10 @@ public static class AuthEndpoints
 
         endpoints.MapGet("/v1/auth/me", (HttpContext context) =>
         {
-            var user = context.User;
-            return Results.Ok(new AuthenticatedUser(
-                Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!),
-                user.FindFirstValue(ClaimTypes.Email)!,
-                user.FindFirstValue(ClaimTypes.Name)!,
-                user.FindFirstValue("picture")));
+            var authenticatedUser = UserIdentityAdapter.ToAuthenticatedUser(context.User);
+            if (authenticatedUser is null) return Results.Unauthorized();
+
+            return Results.Ok(authenticatedUser);
         }).RequireAuthorization().Produces<AuthenticatedUser>(StatusCodes.Status200OK).ProducesApiErrors();
 
         endpoints.MapPost("/v1/auth/logout", async (HttpContext context) =>
@@ -46,28 +46,32 @@ public static class AuthEndpoints
         }).RequireAuthorization().Produces(StatusCodes.Status204NoContent).ProducesApiErrors();
 
         endpoints.MapGet("/v1/me/library", async (ISender sender, HttpContext context, string? locale, CancellationToken ct) =>
-                (await sender.Send(new GetUserLibraryQuery(UserId(context), locale?.StartsWith("en", StringComparison.OrdinalIgnoreCase) is true ? "en" : "vi"), ct)).ToApiResult())
+                (await sender.Send(new GetUserLibraryQuery(UserIdentityAdapter.GetRequiredUserId(context.User), locale?.StartsWith("en", StringComparison.OrdinalIgnoreCase) is true ? "en" : "vi"), ct)).ToApiResult())
             .RequireAuthorization().Produces<UserLibraryResponse>(StatusCodes.Status200OK).ProducesApiErrors();
         endpoints.MapPut("/v1/me/saved/{slug}", async (ISender sender, HttpContext context, string slug, CancellationToken ct) =>
-                (await sender.Send(new SaveTitleCommand(UserId(context), slug), ct)).ToApiResult())
+                (await sender.Send(new SaveTitleCommand(UserIdentityAdapter.GetRequiredUserId(context.User), slug), ct)).ToApiResult())
             .RequireAuthorization().Produces<bool>(StatusCodes.Status200OK).ProducesApiErrors();
         endpoints.MapDelete("/v1/me/saved/{slug}", async (ISender sender, HttpContext context, string slug, CancellationToken ct) =>
-                (await sender.Send(new RemoveSavedTitleCommand(UserId(context), slug), ct)).ToApiResult())
+                (await sender.Send(new RemoveSavedTitleCommand(UserIdentityAdapter.GetRequiredUserId(context.User), slug), ct)).ToApiResult())
             .RequireAuthorization().Produces<bool>(StatusCodes.Status200OK).ProducesApiErrors();
         endpoints.MapPost("/v1/me/history/{slug}", async (ISender sender, HttpContext context, string slug, WatchProgressRequest request, CancellationToken ct) =>
-                (await sender.Send(new RecordWatchProgressCommand(UserId(context), slug, request.EpisodeNumber, request.ProgressSeconds), ct)).ToApiResult())
+                (await sender.Send(new RecordWatchProgressCommand(UserIdentityAdapter.GetRequiredUserId(context.User), slug, request.EpisodeNumber, request.ProgressSeconds), ct)).ToApiResult())
+            .RequireAuthorization().Produces<bool>(StatusCodes.Status200OK).ProducesApiErrors();
+        endpoints.MapDelete("/v1/me/history/{slug}", async (ISender sender, HttpContext context, string slug, CancellationToken ct) =>
+                (await sender.Send(new RemoveWatchHistoryCommand(UserIdentityAdapter.GetRequiredUserId(context.User), slug), ct)).ToApiResult())
+            .RequireAuthorization().Produces<bool>(StatusCodes.Status200OK).ProducesApiErrors();
+        endpoints.MapDelete("/v1/me/history", async (ISender sender, HttpContext context, CancellationToken ct) =>
+                (await sender.Send(new ClearWatchHistoryCommand(UserIdentityAdapter.GetRequiredUserId(context.User)), ct)).ToApiResult())
             .RequireAuthorization().Produces<bool>(StatusCodes.Status200OK).ProducesApiErrors();
         endpoints.MapPut("/v1/me/titles/{slug}/review", async (ISender sender, HttpContext context, string slug, SubmitTitleReviewRequest request, CancellationToken ct) =>
-                (await sender.Send(new SubmitTitleReviewCommand(UserId(context), context.User.FindFirstValue(ClaimTypes.Name) ?? "ZMovie user", slug, request.Rating, request.Comment), ct)).ToApiResult())
+                (await sender.Send(new SubmitTitleReviewCommand(UserIdentityAdapter.GetRequiredUserId(context.User), UserIdentityAdapter.GetAuthorName(context.User), slug, request.Rating, request.Comment), ct)).ToApiResult())
             .RequireAuthorization().Produces<bool>(StatusCodes.Status200OK).ProducesApiErrors();
         endpoints.MapDelete("/v1/me/titles/{slug}/review", async (ISender sender, HttpContext context, string slug, CancellationToken ct) =>
-                (await sender.Send(new RemoveTitleReviewCommand(UserId(context), slug), ct)).ToApiResult())
+                (await sender.Send(new RemoveTitleReviewCommand(UserIdentityAdapter.GetRequiredUserId(context.User), slug), ct)).ToApiResult())
             .RequireAuthorization().Produces<bool>(StatusCodes.Status200OK).ProducesApiErrors();
 
         return endpoints;
     }
-
-    private static Guid UserId(HttpContext context) => Guid.Parse(context.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 }
 
 public sealed record GoogleCredentialRequest(string Credential);

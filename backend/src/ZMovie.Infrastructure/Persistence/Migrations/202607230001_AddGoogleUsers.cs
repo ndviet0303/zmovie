@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ZMovie.Infrastructure.Persistence.Migrations;
 
 [Migration("202607230001_AddGoogleUsers")]
-[DbContext(typeof(CatalogDbContext))]
+[DbContext(typeof(LegacyCatalogDbContext))]
 public partial class AddGoogleUsers : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)

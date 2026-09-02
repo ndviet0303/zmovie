@@ -1,0 +1,11 @@
+{
+  "viewport": "mobile",
+  "route": "/the-loai/hai-huoc",
+  "url": "https://cobephim.pro/the-loai/hai-huoc",
+  "files": [
+    "mobile/homethe-loai-hai-huoc/full-page.png",
+    "mobile/homethe-loai-hai-huoc/viewport.png"
+  ],
+  "states": [],
+  "title": "Danh sách phim Hài Hước"
+}

@@ -3,12 +3,13 @@ using FluentValidation;
 using MediatR;
 using ZMovie.Application.Catalog;
 using ZMovie.Application.Common;
+using ZMovie.Application.Personalization;
 
 namespace ZMovie.Application.Assistant;
 
 public sealed record AssistantCatalogTitle(TitleSummary Title, string Synopsis);
-public sealed record AssistantReply(string Message, IReadOnlyList<TitleSummary> Suggestions);
-public sealed record AssistantContextResponse(IReadOnlyList<AssistantCatalogTitle> Matches);
+public sealed record AssistantReply(string Message, IReadOnlyList<TitleSummary> Suggestions, Guid? RecommendationId = null);
+public sealed record AssistantContextResponse(IReadOnlyList<AssistantCatalogTitle> Matches, Guid? RecommendationId = null);
 public sealed record AssistantGenerationRequest(string Message, string Locale, IReadOnlyList<AssistantCatalogTitle> Matches);
 
 public interface ICatalogAssistantStore
@@ -23,12 +24,18 @@ public interface IAssistantTextGenerator
 
 public sealed record AskCatalogAssistantQuery(Guid UserId, string Message, string? Locale) : IQuery<AssistantReply>;
 public sealed record GetAssistantContextQuery(Guid UserId, string Message, string? Locale) : IQuery<AssistantContextResponse>;
-public sealed class GetAssistantContextHandler(ICatalogAssistantStore store) : IRequestHandler<GetAssistantContextQuery, ErrorOr<AssistantContextResponse>>
+
+public sealed class GetAssistantContextHandler(
+    ICatalogAssistantStore store,
+    IAssistantImpressionRecorder? impressionRecorder = null) : IRequestHandler<GetAssistantContextQuery, ErrorOr<AssistantContextResponse>>
 {
     public async Task<ErrorOr<AssistantContextResponse>> Handle(GetAssistantContextQuery request, CancellationToken ct)
     {
         var matches = await store.SearchAsync(request.UserId, request.Message, Locale.Normalize(request.Locale), 8, ct);
-        return new AssistantContextResponse(matches);
+        var recommendationId = impressionRecorder is null
+            ? null
+            : await impressionRecorder.RecordImpressionAsync(request.UserId, request.Message, matches.Select(x => x.Title.Slug).ToList(), ct);
+        return new AssistantContextResponse(matches, recommendationId);
     }
 }
 
@@ -36,7 +43,11 @@ public sealed class AskCatalogAssistantValidator : AbstractValidator<AskCatalogA
 {
     public AskCatalogAssistantValidator() => RuleFor(x => x.Message).NotEmpty().MaximumLength(500);
 }
-public sealed class AskCatalogAssistantHandler(ICatalogAssistantStore store, IAssistantTextGenerator generator) : IRequestHandler<AskCatalogAssistantQuery, ErrorOr<AssistantReply>>
+
+public sealed class AskCatalogAssistantHandler(
+    ICatalogAssistantStore store,
+    IAssistantTextGenerator generator,
+    IAssistantImpressionRecorder? impressionRecorder = null) : IRequestHandler<AskCatalogAssistantQuery, ErrorOr<AssistantReply>>
 {
     public async Task<ErrorOr<AssistantReply>> Handle(AskCatalogAssistantQuery request, CancellationToken ct)
     {
@@ -44,13 +55,28 @@ public sealed class AskCatalogAssistantHandler(ICatalogAssistantStore store, IAs
         var matches = await store.SearchAsync(request.UserId, request.Message, locale, 8, ct);
         var suggestions = matches.Take(3).Select(x => x.Title).ToList();
         var generated = matches.Count > 0 ? await generator.GenerateAsync(new AssistantGenerationRequest(request.Message.Trim(), locale, matches), ct) : null;
-        var message = string.IsNullOrWhiteSpace(generated) ? locale == "vi"
-            ? suggestions.Count > 0
-                ? $"Mình tìm được {suggestions.Count} phim hợp với “{request.Message.Trim()}”. Bạn thử xem các lựa chọn bên dưới nhé."
+        var message = string.IsNullOrWhiteSpace(generated)
+            ? FallbackMessage(request.Message, locale, suggestions.Count)
+            : generated.Trim();
+        var recommendationId = impressionRecorder is null
+            ? null
+            : await impressionRecorder.RecordImpressionAsync(request.UserId, request.Message, suggestions.Select(x => x.Slug).ToList(), ct);
+        return new AssistantReply(message, suggestions, recommendationId);
+    }
+
+    private static string FallbackMessage(string request, string locale, int suggestionCount)
+    {
+        if (locale == "vi" && AssistantMood.WantsComfort(request))
+            return suggestionCount > 0
+                ? "Nghe như hôm nay bạn đang cần một bộ phim thật nhẹ nhàng. Mình chọn vài lựa chọn ấm áp và có chút hy vọng để bạn xem nhé."
+                : "Nếu hôm nay bạn đang thấy buồn, hãy cho mình biết bạn muốn một bộ phim nhẹ nhàng, hài hước hay có chút lãng mạn nhé.";
+
+        return locale == "vi"
+            ? suggestionCount > 0
+                ? $"Mình tìm được {suggestionCount} phim hợp với “{request.Trim()}”. Bạn thử xem các lựa chọn bên dưới nhé."
                 : "Mình chưa tìm được phim khớp. Bạn thử nêu thể loại, tâm trạng hoặc tên diễn viên nhé."
-            : suggestions.Count > 0
-                ? $"I found {suggestions.Count} titles that match “{request.Message.Trim()}”. Try these picks."
-                : "I could not find a close match. Try a genre, mood, or actor name." : generated.Trim();
-        return new AssistantReply(message, suggestions);
+            : suggestionCount > 0
+                ? $"I found {suggestionCount} titles that match “{request.Trim()}”. Try these picks."
+                : "I could not find a close match. Try a genre, mood, or actor name.";
     }
 }

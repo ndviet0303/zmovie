@@ -1,245 +1,38 @@
 <script setup lang="ts">
 import { ChevronRight, Flame, Info, Play } from "@lucide/vue";
 
-type Title = {
-  slug: string;
-  title: string;
-  genre: string;
-  year: number;
-  type: string;
-  posterUrl: string;
-};
-
-type HomeResponse = { hero: Title; trending: Title[] };
-type TopTitle = { title: Title; views: number };
-type TopPeriod = "day" | "week" | "month";
-type ContinueWatching = {
-  title: Title;
-  episodeNumber: number | null;
-  progressSeconds: number;
-  updatedAt: string;
-};
-type PersonalizedDiscovery = {
-  continueWatching: ContinueWatching[];
-  recommended: Title[];
-};
-
-function takeUniqueTitles(
-  titles: Title[],
-  excludedSlugs: ReadonlySet<string>,
-  limit = 5,
-) {
-  const seen = new Set(excludedSlugs);
-  return titles.filter((title) => {
-    if (seen.has(title.slug) || seen.size >= excludedSlugs.size + limit)
-      return false;
-    seen.add(title.slug);
-    return true;
-  });
-}
-
-const savedLocale = useCookie<"vi" | "en">("zmovie-locale", {
-  default: () => "vi",
-});
-const activeLocale = ref<"vi" | "en">(savedLocale.value);
-const { $api } = useNuxtApp();
-const { data, error } = await useAsyncData("discovery-home", () =>
-  $api<HomeResponse>("/v1/discovery/home", {
-    query: { locale: activeLocale.value },
-  }),
-);
-
-const home = computed(() => data.value);
-const catalogTitles = computed(() => home.value?.trending ?? []);
-const personalized = ref<PersonalizedDiscovery | null>(null);
-const continueWatching = computed(
-  () => personalized.value?.continueWatching ?? [],
-);
-const recommendedTitles = computed(() =>
-  personalized.value?.recommended.length
-    ? personalized.value.recommended
-    : takeUniqueTitles(catalogTitles.value, new Set()),
-);
-const recommendedSlugs = computed(
-  () => new Set(recommendedTitles.value.map((title) => title.slug)),
-);
-const newReleaseTitles = computed(() =>
-  takeUniqueTitles(
-    [...catalogTitles.value].sort((a, b) => b.year - a.year),
-    recommendedSlugs.value,
-  ),
-);
-const newReleaseSlugs = computed(
-  () => new Set(newReleaseTitles.value.map((title) => title.slug)),
-);
-const titles2026 = computed(() =>
-  takeUniqueTitles(
-    catalogTitles.value.filter((title) => title.year === 2026),
-    new Set([...recommendedSlugs.value, ...newReleaseSlugs.value]),
-  ),
-);
-const titles2026Slugs = computed(
-  () => new Set(titles2026.value.map((title) => title.slug)),
-);
-const moviePicks = computed(() =>
-  takeUniqueTitles(
-    catalogTitles.value.filter((title) => title.type === "movie"),
-    new Set([
-      ...recommendedSlugs.value,
-      ...newReleaseSlugs.value,
-      ...titles2026Slugs.value,
-    ]),
-  ),
-);
-const moviePickSlugs = computed(
-  () => new Set(moviePicks.value.map((title) => title.slug)),
-);
-const seriesPicks = computed(() =>
-  takeUniqueTitles(
-    catalogTitles.value.filter((title) => title.type === "series"),
-    new Set([
-      ...recommendedSlugs.value,
-      ...newReleaseSlugs.value,
-      ...titles2026Slugs.value,
-      ...moviePickSlugs.value,
-    ]),
-  ),
-);
-const topPeriod = ref<TopPeriod>("week");
-const topPeriods: TopPeriod[] = ["day", "week", "month"];
 const {
-  data: topTitles,
-  pending: topPending,
-  refresh: refreshTop,
-} = await useAsyncData("discovery-top", () =>
-  $api<TopTitle[]>(`/v1/discovery/top/${topPeriod.value}`, {
-    query: { locale: activeLocale.value, limit: 10 },
-  }),
-);
-const isVietnamese = computed(() => activeLocale.value === "vi");
-const text = computed(() =>
-  isVietnamese.value
-    ? {
-        nav: [
-          "Trang chủ",
-          "Phim lẻ",
-          "Phim bộ",
-          "Thể loại",
-          "Danh sách của tôi",
-        ],
-        new: "Mới mẻ",
-        movie: "Phim lẻ",
-        description:
-          "Khám phá những câu chuyện điện ảnh được tuyển chọn, đưa bạn vào một thế giới đầy cảm xúc và những hành trình khó quên.",
-        watch: "Xem ngay",
-        details: "Chi tiết",
-        trending: "Top thịnh hành",
-        recommended: "Đề xuất cho bạn",
-        newReleases: "Mới phát hành",
-        year2026: "Phim 2026",
-        moviePicks: "Phim lẻ chọn lọc",
-        seriesPicks: "Phim bộ nổi bật",
-        viewAll: "Xem tất cả",
-        empty: "Chưa có phim thịnh hành để hiển thị.",
-        unavailable: "Không thể tải catalog.",
-        periods: { day: "Hôm nay", week: "Tuần này", month: "Tháng này" },
-        views: "lượt xem",
-      }
-    : {
-        nav: ["Home", "Movies", "Series", "Genres", "My list"],
-        new: "New release",
-        movie: "Movie",
-        description:
-          "Discover carefully selected cinematic stories that bring you into a world of feeling and unforgettable journeys.",
-        watch: "Watch now",
-        details: "Details",
-        trending: "Top trending",
-        recommended: "Recommended for you",
-        newReleases: "New releases",
-        year2026: "2026 movies",
-        moviePicks: "Curated movies",
-        seriesPicks: "Featured series",
-        viewAll: "View all",
-        empty: "There are no trending titles to show yet.",
-        unavailable: "Unable to load the catalog.",
-        periods: { day: "Today", week: "This week", month: "This month" },
-        views: "views",
-      },
-);
+  home,
+  error,
+  activeLocale,
+  messages,
+  continueWatching,
+  recommendedTitles,
+  newReleaseTitles,
+  titles2026,
+  moviePicks,
+  seriesPicks,
+  topPeriod,
+  topPeriods,
+  topTitles,
+  topPending,
+  changeLocale,
+  selectTopPeriod,
+  formatViews,
+  progressPercent,
+} = await useHomePage();
 
-useZMovieSeo({
-  title: computed(() =>
-    isVietnamese.value ? "Xem phim hay online" : "Watch great movies online",
-  ),
-  description: computed(() => text.value.description),
-  image: computed(() => home.value?.hero.posterUrl),
-});
-
-async function setLocale(nextLocale: "vi" | "en") {
-  if (nextLocale === activeLocale.value) return;
-
-  try {
-    const nextHome = await $api<HomeResponse>("/v1/discovery/home", {
-      query: { locale: nextLocale },
-    });
-    data.value = nextHome;
-    activeLocale.value = nextLocale;
-    savedLocale.value = nextLocale;
-    await refreshTop();
-    await loadPersonalized(nextLocale);
-  } catch {
-    // Keep the currently displayed catalog when the locale refresh fails.
-  }
-}
-
-async function loadPersonalized(locale: "vi" | "en") {
-  try {
-    personalized.value = await $api<PersonalizedDiscovery>(
-      "/v1/discovery/for-you",
-      { credentials: "include", query: { locale } },
-    );
-  } catch {
-    personalized.value = null;
-  }
-}
-
-onMounted(() => {
-  void loadPersonalized(activeLocale.value);
-});
-
-function selectTopPeriod(period: TopPeriod) {
-  if (period === topPeriod.value) return;
-  topPeriod.value = period;
-  void refreshTop();
-}
-
-function formatViews(count: number) {
-  if (count >= 1_000_000)
-    return `${(count / 1_000_000).toFixed(count >= 10_000_000 ? 0 : 1)}M`;
-  if (count >= 1_000)
-    return `${(count / 1_000).toFixed(count >= 10_000 ? 0 : 1)}K`;
-  return String(count);
-}
-
-function progressPercent(item: ContinueWatching) {
-  const title = item.title;
-  return Math.min(
-    100,
-    Math.max(
-      3,
-      Math.round(
-        (item.progressSeconds /
-          Math.max(title.type === "series" ? 45 * 60 : 120 * 60, 1)) *
-          100,
-      ),
-    ),
-  );
-}
+const text = computed(() => ({
+  ...messages.value.home,
+  new: messages.value.home.newRelease,
+  watch: messages.value.home.watchNow,
+  empty: messages.value.home.emptyTrending,
+}));
 </script>
 
 <template>
   <main class="min-h-screen overflow-x-hidden bg-background text-foreground">
-    <AppNavbar :locale="activeLocale" @locale-change="setLocale" />
+    <AppNavbar :locale="activeLocale" @locale-change="changeLocale" />
 
     <section
       v-if="home"

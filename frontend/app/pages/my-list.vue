@@ -1,74 +1,22 @@
 <script setup lang="ts">
-import { BookmarkPlus, Clock3, Plus, Play } from "@lucide/vue";
+import { BookmarkPlus, Clock3, Play, Plus, Trash2, X } from "@lucide/vue";
+import type { HistoryItem, LibraryTitle } from "~/types/library";
 
-useHead({ title: "Khu vực cá nhân — ZMovie" });
+const {
+  locale,
+  library,
+  loading,
+  loadError,
+  activeTab,
+  items,
+  messages,
+  progress,
+  retryLoad,
+  removeFromHistory,
+  clearAllHistory,
+} = useMyList();
 
-type Title = {
-  slug: string;
-  title: string;
-  genre: string;
-  year: number;
-  posterUrl: string;
-  runtimeMinutes: number;
-};
-type History = {
-  title: Title;
-  episodeNumber: number | null;
-  progressSeconds: number;
-  updatedAt: string;
-};
-type Library = { saved: Title[]; history: History[] };
-type Tab = "saved" | "history";
-
-const locale = useCookie<"vi" | "en">("zmovie-locale", { default: () => "vi" });
-const library = ref<Library | null>(null);
-const loading = ref(true);
-const loadError = ref("");
-const activeTab = ref<Tab>("saved");
-const { $api } = useNuxtApp();
-const items = computed(() =>
-  activeTab.value === "saved"
-    ? (library.value?.saved ?? [])
-    : (library.value?.history ?? []),
-);
-
-function progress(item: History) {
-  return Math.min(
-    100,
-    Math.round(
-      (item.progressSeconds / Math.max(item.title.runtimeMinutes * 60, 1)) *
-        100,
-    ),
-  );
-}
-function retryLoad() {
-  window.location.reload();
-}
-
-onMounted(async () => {
-  try {
-    library.value = await $api<Library>("/v1/me/library", {
-      credentials: "include",
-      query: { locale: locale.value },
-    });
-  } catch (error: unknown) {
-    const fetchError = error as {
-      status?: number;
-      statusCode?: number;
-      response?: { status?: number };
-    };
-    const status =
-      fetchError.status ?? fetchError.statusCode ?? fetchError.response?.status;
-    if (status === 401) await navigateTo("/login");
-    else
-      loadError.value =
-        status === 404
-          ? "Chức năng thư viện chưa có trên API đang chạy. Hãy khởi động lại API để nhận bản cập nhật mới."
-          : "Không thể tải thư viện của bạn lúc này. Vui lòng thử lại.";
-  } finally {
-    loading.value = false;
-  }
-});
+const copy = computed(() => messages.value.myList);
 </script>
 
 <template>
@@ -78,7 +26,7 @@ onMounted(async () => {
       <h1
         class="font-display text-3xl font-semibold tracking-[-.03em] text-foreground lg:text-4xl"
       >
-        Khu vực cá nhân
+        {{ copy.title }}
       </h1>
       <div class="mt-5 flex items-center gap-6 border-b border-white/8">
         <button
@@ -90,7 +38,8 @@ onMounted(async () => {
           "
           @click="activeTab = 'saved'"
         >
-          Danh sách của tôi<span
+          {{ copy.saved
+          }}<span
             v-if="library?.saved.length"
             class="ml-1.5 text-[10px] opacity-70"
             >{{ library.saved.length }}</span
@@ -108,7 +57,8 @@ onMounted(async () => {
           "
           @click="activeTab = 'history'"
         >
-          Lịch sử xem<span
+          {{ copy.history
+          }}<span
             v-if="library?.history.length"
             class="ml-1.5 text-[10px] opacity-70"
             >{{ library.history.length }}</span
@@ -116,6 +66,15 @@ onMounted(async () => {
             v-if="activeTab === 'history'"
             class="absolute inset-x-0 -bottom-px h-px bg-primary"
           />
+        </button>
+
+        <button
+          v-if="activeTab === 'history' && library?.history.length"
+          class="ml-auto inline-flex items-center gap-1.5 pb-4 text-xs font-semibold text-rose-400/80 transition hover:text-rose-400"
+          @click="clearAllHistory"
+        >
+          <Trash2 class="size-3.5" />
+          Xóa toàn bộ
         </button>
       </div>
 
@@ -140,7 +99,7 @@ onMounted(async () => {
           class="mt-4 text-sm font-semibold text-primary transition hover:text-primary-container"
           @click="retryLoad"
         >
-          Thử lại
+          {{ copy.retry }}
         </button>
       </div>
       <section
@@ -152,16 +111,16 @@ onMounted(async () => {
             v-for="item in items"
             :key="
               activeTab === 'saved'
-                ? (item as Title).slug
-                : (item as History).title.slug
+                ? (item as LibraryTitle).slug
+                : (item as HistoryItem).title.slug
             "
             :to="
               activeTab === 'saved'
-                ? `/movies/${(item as Title).slug}`
+                ? `/movies/${(item as LibraryTitle).slug}`
                 : {
-                    path: `/watch/${(item as History).title.slug}`,
-                    query: (item as History).episodeNumber
-                      ? { episode: (item as History).episodeNumber }
+                    path: `/watch/${(item as HistoryItem).title.slug}`,
+                    query: (item as HistoryItem).episodeNumber
+                      ? { episode: (item as HistoryItem).episodeNumber }
                       : {},
                   }
             "
@@ -170,13 +129,13 @@ onMounted(async () => {
             <img
               :src="
                 activeTab === 'saved'
-                  ? (item as Title).posterUrl
-                  : (item as History).title.posterUrl
+                  ? (item as LibraryTitle).posterUrl
+                  : (item as HistoryItem).title.posterUrl
               "
               :alt="
                 activeTab === 'saved'
-                  ? (item as Title).title
-                  : (item as History).title.title
+                  ? (item as LibraryTitle).title
+                  : (item as HistoryItem).title.title
               "
               class="size-full object-cover opacity-80 transition duration-300 group-hover:scale-105 group-hover:opacity-100"
             />
@@ -188,25 +147,36 @@ onMounted(async () => {
               class="absolute inset-x-0 bottom-0 h-1 bg-black/50"
               ><span
                 class="block h-full bg-primary"
-                :style="{ width: `${progress(item as History)}%` }"
+                :style="{ width: `${progress(item as HistoryItem)}%` }"
             /></span>
             <span
               v-if="activeTab === 'history'"
               class="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-primary-container text-primary-container-foreground"
               ><Play class="size-3 fill-current"
             /></span>
+            <button
+              v-if="activeTab === 'history'"
+              class="absolute left-2 top-2 z-10 grid size-6 place-items-center rounded-full bg-black/70 text-white/70 opacity-0 backdrop-blur-sm transition hover:bg-rose-600 hover:text-white group-hover:opacity-100"
+              title="Xóa khỏi lịch sử"
+              aria-label="Remove from history"
+              @click.prevent.stop="
+                removeFromHistory((item as HistoryItem).title.slug)
+              "
+            >
+              <X class="size-3.5" />
+            </button>
             <span class="absolute inset-x-0 bottom-0 p-2.5"
               ><b class="block truncate text-[11px] font-semibold text-white">{{
                 activeTab === "saved"
-                  ? (item as Title).title
-                  : (item as History).title.title
+                  ? (item as LibraryTitle).title
+                  : (item as HistoryItem).title.title
               }}</b
               ><small
                 class="mt-0.5 block truncate text-[9px] font-medium text-white/70"
                 >{{
                   activeTab === "saved"
-                    ? `${(item as Title).genre} · ${(item as Title).year}`
-                    : `${progress(item as History)}% đã xem`
+                    ? `${(item as LibraryTitle).genre} · ${(item as LibraryTitle).year}`
+                    : `${progress(item as HistoryItem)}% ${copy.watchedPercent}`
                 }}</small
               ></span
             >
@@ -217,7 +187,7 @@ onMounted(async () => {
             ><span
               ><Plus class="mx-auto size-6" /><span
                 class="mt-2 block text-[10px] font-semibold"
-                >Khám phá thêm</span
+                >{{ copy.exploreMore }}</span
               ></span
             ></NuxtLink
           >
@@ -233,21 +203,21 @@ onMounted(async () => {
             <p class="mt-4 text-sm font-medium text-foreground">
               {{
                 activeTab === "saved"
-                  ? "Danh sách của bạn đang trống."
-                  : "Bạn chưa có lịch sử xem."
+                  ? copy.emptySavedTitle
+                  : copy.emptyHistoryTitle
               }}
             </p>
             <p class="mt-1 text-xs text-muted-foreground">
               {{
                 activeTab === "saved"
-                  ? "Lưu những phim bạn muốn xem sau."
-                  : "Bắt đầu xem để theo dõi tiến độ tại đây."
+                  ? copy.emptySavedDesc
+                  : copy.emptyHistoryDesc
               }}
             </p>
             <NuxtLink
               to="/browse"
               class="mt-5 inline-flex rounded-full border border-primary/40 px-4 py-2 text-xs font-semibold text-primary transition hover:bg-primary-container hover:text-primary-container-foreground"
-              >Khám phá phim <span class="ml-1">→</span></NuxtLink
+              >{{ copy.exploreMovies }} <span class="ml-1">→</span></NuxtLink
             >
           </div>
         </div>

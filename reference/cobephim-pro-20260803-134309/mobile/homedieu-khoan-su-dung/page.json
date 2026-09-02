@@ -1,0 +1,11 @@
+{
+  "viewport": "mobile",
+  "route": "/dieu-khoan-su-dung",
+  "url": "https://cobephim.pro/dieu-khoan-su-dung",
+  "files": [
+    "mobile/homedieu-khoan-su-dung/full-page.png",
+    "mobile/homedieu-khoan-su-dung/viewport.png"
+  ],
+  "states": [],
+  "title": "Điều Khoản Sử Dụng - CôBe Phim"
+}

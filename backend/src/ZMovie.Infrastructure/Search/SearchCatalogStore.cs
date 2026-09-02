@@ -4,13 +4,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using ZMovie.Application.Catalog;
 using ZMovie.Application.Search;
-using ZMovie.Infrastructure.Persistence;
+using ZMovie.Infrastructure.Catalog.Persistence;
 
 namespace ZMovie.Infrastructure.Search;
 
 public sealed class SearchCatalogStore(HttpClient http, IConfiguration config, CatalogDbContext db) : ISearchCatalogStore
 {
     private readonly HttpClient _http = Configure(http, config);
+
     public async Task<TitleListResponse> SearchAsync(string query, string? type, string? genre, string locale, CancellationToken ct)
     {
         try
@@ -25,11 +26,15 @@ public sealed class SearchCatalogStore(HttpClient http, IConfiguration config, C
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
-            var titles = await db.Titles.AsNoTracking().Where(x => (string.IsNullOrEmpty(query) || x.EnglishTitle.Contains(query) || x.VietnameseTitle.Contains(query)) && (string.IsNullOrEmpty(type) || x.Type == type) && (string.IsNullOrEmpty(genre) || EF.Functions.ILike(x.Genre, $"%{genre}%"))).ToListAsync(ct);
-            var items = titles.Select(x => new TitleSummary(x.Slug, x.LocalizedTitle(locale), x.Genre, x.Year, x.Type, x.PosterUrl)).ToList();
+            var titles = await db.Titles.AsNoTracking().Where(x =>
+                (string.IsNullOrEmpty(query) || x.EnglishTitle.Contains(query) || x.VietnameseTitle.Contains(query))
+                && (string.IsNullOrEmpty(type) || x.Type.Value == type)
+                && (string.IsNullOrEmpty(genre) || EF.Functions.ILike(x.Genre, $"%{genre}%"))).ToListAsync(ct);
+            var items = titles.Select(x => new TitleSummary(x.Slug.Value, x.LocalizedTitle(locale), x.Genre, x.Year.Value, x.Type.Value, x.PosterUrl)).ToList();
             return new(items, items.Count);
         }
     }
+
     private static HttpClient Configure(HttpClient http, IConfiguration config)
     {
         http.BaseAddress = new Uri(config["Meilisearch:Url"] ?? "http://localhost:7700");
@@ -38,5 +43,6 @@ public sealed class SearchCatalogStore(HttpClient http, IConfiguration config, C
         if (!string.IsNullOrWhiteSpace(key)) http.DefaultRequestHeaders.Add("Authorization", $"Bearer {key}");
         return http;
     }
+
     private sealed record Document(string Slug, string EnglishTitle, string VietnameseTitle, string Genre, int Year, string Type, string PosterUrl);
 }

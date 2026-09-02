@@ -1,0 +1,384 @@
+{
+  "source": "https://cobephim.pro",
+  "capturedAt": "2026-08-03T06:53:38.546Z",
+  "browser": "Google Chrome",
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "routes": [
+    {
+      "viewport": "desktop",
+      "route": "/",
+      "url": "https://cobephim.pro/",
+      "files": [
+        "desktop/home/full-page.png",
+        "desktop/home/viewport.png"
+      ],
+      "states": [],
+      "title": "RoPhim | Rổ Phim Mới | Phim Hay | Xem Phim HD Vietsub, Thuyết Minh Online - CoBePhim"
+    },
+    {
+      "viewport": "desktop",
+      "route": "/phim-bo",
+      "url": "https://cobephim.pro/phim-bo",
+      "files": [
+        "desktop/homephim-bo/full-page.png",
+        "desktop/homephim-bo/viewport.png"
+      ],
+      "states": [],
+      "title": "Xem Phim Bộ - Phim Dài Tập - Top Phim Bộ Mới Hay Nhất | CôBe Phim"
+    },
+    {
+      "viewport": "desktop",
+      "route": "/phim-le",
+      "url": "https://cobephim.pro/phim-le",
+      "files": [
+        "desktop/homephim-le/full-page.png",
+        "desktop/homephim-le/viewport.png"
+      ],
+      "states": [],
+      "title": "Xem Phim Lẻ - Phim Ngắn - Top Phim Lẻ Mới Hay Nhất | CôBe Phim"
+    },
+    {
+      "viewport": "desktop",
+      "route": "/tim-kiem",
+      "url": "https://cobephim.pro/tim-kiem",
+      "files": [
+        "desktop/hometim-kiem/full-page.png",
+        "desktop/hometim-kiem/viewport.png",
+        "desktop/hometim-kiem/state-search-phim.png"
+      ],
+      "states": [
+        "search: phim"
+      ],
+      "title": "Duyệt Tìm Phim - Phim Mới, Phim Hay | CôBe Phim"
+    },
+    {
+      "viewport": "desktop",
+      "route": "/lich-chieu",
+      "url": "https://cobephim.pro/lich-chieu",
+      "files": [
+        "desktop/homelich-chieu/full-page.png",
+        "desktop/homelich-chieu/viewport.png"
+      ],
+      "states": [],
+      "title": "Lịch chiếu - CôBe Phim"
+    },
+    {
+      "viewport": "desktop",
+      "route": "/user/thong-bao",
+      "url": "https://cobephim.pro/user/thong-bao",
+      "files": [
+        "desktop/homeuser-thong-bao/full-page.png",
+        "desktop/homeuser-thong-bao/viewport.png"
+      ],
+      "states": [],
+      "title": "RoPhim | Rổ Phim Mới | Phim Hay | Xem Phim HD Vietsub, Thuyết Minh Online - CoBePhim"
+    },
+    {
+      "viewport": "desktop",
+      "route": "/user/tai-khoan",
+      "url": "https://cobephim.pro/user/tai-khoan",
+      "files": [
+        "desktop/homeuser-tai-khoan/full-page.png",
+        "desktop/homeuser-tai-khoan/viewport.png"
+      ],
+      "states": [],
+      "title": "RoPhim | Rổ Phim Mới | Phim Hay | Xem Phim HD Vietsub, Thuyết Minh Online - CoBePhim"
+    },
+    {
+      "viewport": "desktop",
+      "route": "/hoi-dap",
+      "url": "https://cobephim.pro/hoi-dap",
+      "files": [
+        "desktop/homehoi-dap/full-page.png",
+        "desktop/homehoi-dap/viewport.png"
+      ],
+      "states": [],
+      "title": "Hỏi Đáp - CôBe Phim"
+    },
+    {
+      "viewport": "desktop",
+      "route": "/chinh-sach-bao-mat",
+      "url": "https://cobephim.pro/chinh-sach-bao-mat",
+      "files": [
+        "desktop/homechinh-sach-bao-mat/full-page.png",
+        "desktop/homechinh-sach-bao-mat/viewport.png"
+      ],
+      "states": [],
+      "title": "Chính Sách Bảo Mật - CôBe Phim"
+    },
+    {
+      "viewport": "desktop",
+      "route": "/dieu-khoan-su-dung",
+      "url": "https://cobephim.pro/dieu-khoan-su-dung",
+      "files": [
+        "desktop/homedieu-khoan-su-dung/full-page.png",
+        "desktop/homedieu-khoan-su-dung/viewport.png"
+      ],
+      "states": [],
+      "title": "Điều Khoản Sử Dụng - CôBe Phim"
+    },
+    {
+      "viewport": "desktop",
+      "route": "/gioi-thieu",
+      "url": "https://cobephim.pro/gioi-thieu",
+      "files": [
+        "desktop/homegioi-thieu/full-page.png",
+        "desktop/homegioi-thieu/viewport.png"
+      ],
+      "states": [],
+      "title": "Giới Thiệu - CôBe Phim"
+    },
+    {
+      "viewport": "desktop",
+      "route": "/lien-he",
+      "url": "https://cobephim.pro/lien-he",
+      "files": [
+        "desktop/homelien-he/full-page.png",
+        "desktop/homelien-he/viewport.png"
+      ],
+      "states": [],
+      "title": "Liên Hệ - CôBe Phim"
+    },
+    {
+      "viewport": "desktop",
+      "route": "/phim/phi-vu-chung-cu",
+      "url": "https://cobephim.pro/phim/phi-vu-chung-cu",
+      "files": [
+        "desktop/homephim-phi-vu-chung-cu/full-page.png",
+        "desktop/homephim-phi-vu-chung-cu/viewport.png"
+      ],
+      "states": [],
+      "title": "Phim Phi Vụ Chung Cư FHD Vietsub - The Apartment Job - RoPhim"
+    },
+    {
+      "viewport": "desktop",
+      "route": "/the-loai/hai-huoc",
+      "url": "https://cobephim.pro/the-loai/hai-huoc",
+      "files": [
+        "desktop/homethe-loai-hai-huoc/full-page.png",
+        "desktop/homethe-loai-hai-huoc/viewport.png"
+      ],
+      "states": [],
+      "title": "Danh sách phim Hài Hước"
+    },
+    {
+      "viewport": "desktop",
+      "route": "/the-loai/hinh-su",
+      "url": "https://cobephim.pro/the-loai/hinh-su",
+      "files": [
+        "desktop/homethe-loai-hinh-su/full-page.png",
+        "desktop/homethe-loai-hinh-su/viewport.png"
+      ],
+      "states": [],
+      "title": "Danh sách phim Hình Sự"
+    },
+    {
+      "viewport": "desktop",
+      "route": "/the-loai/tam-ly",
+      "url": "https://cobephim.pro/the-loai/tam-ly",
+      "files": [
+        "desktop/homethe-loai-tam-ly/full-page.png",
+        "desktop/homethe-loai-tam-ly/viewport.png"
+      ],
+      "states": [],
+      "title": "Danh sách phim Tâm Lý"
+    },
+    {
+      "viewport": "mobile",
+      "route": "/",
+      "url": "https://cobephim.pro/",
+      "files": [
+        "mobile/home/full-page.png",
+        "mobile/home/viewport.png"
+      ],
+      "states": [],
+      "title": "RoPhim | Rổ Phim Mới | Phim Hay | Xem Phim HD Vietsub, Thuyết Minh Online - CoBePhim"
+    },
+    {
+      "viewport": "mobile",
+      "route": "/phim-bo",
+      "url": "https://cobephim.pro/phim-bo",
+      "files": [
+        "mobile/homephim-bo/full-page.png",
+        "mobile/homephim-bo/viewport.png"
+      ],
+      "states": [],
+      "title": "Xem Phim Bộ - Phim Dài Tập - Top Phim Bộ Mới Hay Nhất | CôBe Phim"
+    },
+    {
+      "viewport": "mobile",
+      "route": "/phim-le",
+      "url": "https://cobephim.pro/phim-le",
+      "files": [
+        "mobile/homephim-le/full-page.png",
+        "mobile/homephim-le/viewport.png"
+      ],
+      "states": [],
+      "title": "Xem Phim Lẻ - Phim Ngắn - Top Phim Lẻ Mới Hay Nhất | CôBe Phim"
+    },
+    {
+      "viewport": "mobile",
+      "route": "/tim-kiem",
+      "url": "https://cobephim.pro/tim-kiem",
+      "files": [
+        "mobile/hometim-kiem/full-page.png",
+        "mobile/hometim-kiem/viewport.png"
+      ],
+      "states": [],
+      "title": "Duyệt Tìm Phim - Phim Mới, Phim Hay | CôBe Phim",
+      "error": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input').first()\u001b[22m\n\u001b[2m    - locator resolved to <input name=\"q\" value=\"\" id=\"main-search\" autocomplete=\"off\" class=\"search-input\" placeholder=\"Tìm kiếm phim, diễn viên\"/>\u001b[22m\n\u001b[2m    - fill(\"phim\")\u001b[22m\n\u001b[2m  - attempting fill action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and editable\u001b[22m\n\u001b[2m      - element is not visible\u001b[22m\n\u001b[2m    - retrying fill action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and editable\u001b[22m\n\u001b[2m      - element is not visible\u001b[22m\n\u001b[2m    - retrying fill action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    60 × waiting for element to be visible, enabled and editable\u001b[22m\n\u001b[2m       - element is not visible\u001b[22m\n\u001b[2m     - retrying fill action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+    },
+    {
+      "viewport": "mobile",
+      "route": "/lich-chieu",
+      "url": "https://cobephim.pro/lich-chieu",
+      "files": [
+        "mobile/homelich-chieu/full-page.png",
+        "mobile/homelich-chieu/viewport.png"
+      ],
+      "states": [],
+      "title": "Lịch chiếu - CôBe Phim"
+    },
+    {
+      "viewport": "mobile",
+      "route": "/user/thong-bao",
+      "url": "https://cobephim.pro/user/thong-bao",
+      "files": [
+        "mobile/homeuser-thong-bao/full-page.png",
+        "mobile/homeuser-thong-bao/viewport.png"
+      ],
+      "states": [],
+      "title": "RoPhim | Rổ Phim Mới | Phim Hay | Xem Phim HD Vietsub, Thuyết Minh Online - CoBePhim"
+    },
+    {
+      "viewport": "mobile",
+      "route": "/user/tai-khoan",
+      "url": "https://cobephim.pro/user/tai-khoan",
+      "files": [
+        "mobile/homeuser-tai-khoan/full-page.png",
+        "mobile/homeuser-tai-khoan/viewport.png"
+      ],
+      "states": [],
+      "title": "RoPhim | Rổ Phim Mới | Phim Hay | Xem Phim HD Vietsub, Thuyết Minh Online - CoBePhim"
+    },
+    {
+      "viewport": "mobile",
+      "route": "/hoi-dap",
+      "url": "https://cobephim.pro/hoi-dap",
+      "files": [
+        "mobile/homehoi-dap/full-page.png",
+        "mobile/homehoi-dap/viewport.png"
+      ],
+      "states": [],
+      "title": "Hỏi Đáp - CôBe Phim"
+    },
+    {
+      "viewport": "mobile",
+      "route": "/chinh-sach-bao-mat",
+      "url": "https://cobephim.pro/chinh-sach-bao-mat",
+      "files": [
+        "mobile/homechinh-sach-bao-mat/full-page.png",
+        "mobile/homechinh-sach-bao-mat/viewport.png"
+      ],
+      "states": [],
+      "title": "Chính Sách Bảo Mật - CôBe Phim"
+    },
+    {
+      "viewport": "mobile",
+      "route": "/dieu-khoan-su-dung",
+      "url": "https://cobephim.pro/dieu-khoan-su-dung",
+      "files": [
+        "mobile/homedieu-khoan-su-dung/full-page.png",
+        "mobile/homedieu-khoan-su-dung/viewport.png"
+      ],
+      "states": [],
+      "title": "Điều Khoản Sử Dụng - CôBe Phim"
+    },
+    {
+      "viewport": "mobile",
+      "route": "/gioi-thieu",
+      "url": "https://cobephim.pro/gioi-thieu",
+      "files": [
+        "mobile/homegioi-thieu/full-page.png",
+        "mobile/homegioi-thieu/viewport.png"
+      ],
+      "states": [],
+      "title": "Giới Thiệu - CôBe Phim"
+    },
+    {
+      "viewport": "mobile",
+      "route": "/lien-he",
+      "url": "https://cobephim.pro/lien-he",
+      "files": [
+        "mobile/homelien-he/full-page.png",
+        "mobile/homelien-he/viewport.png"
+      ],
+      "states": [],
+      "title": "Liên Hệ - CôBe Phim"
+    },
+    {
+      "viewport": "mobile",
+      "route": "/phim/phi-vu-chung-cu",
+      "url": "https://cobephim.pro/phim/phi-vu-chung-cu",
+      "files": [
+        "mobile/homephim-phi-vu-chung-cu/full-page.png",
+        "mobile/homephim-phi-vu-chung-cu/viewport.png"
+      ],
+      "states": [],
+      "title": "Phim Phi Vụ Chung Cư FHD Vietsub - The Apartment Job - RoPhim"
+    },
+    {
+      "viewport": "mobile",
+      "route": "/the-loai/hai-huoc",
+      "url": "https://cobephim.pro/the-loai/hai-huoc",
+      "files": [
+        "mobile/homethe-loai-hai-huoc/full-page.png",
+        "mobile/homethe-loai-hai-huoc/viewport.png"
+      ],
+      "states": [],
+      "title": "Danh sách phim Hài Hước"
+    },
+    {
+      "viewport": "mobile",
+      "route": "/the-loai/hinh-su",
+      "url": "https://cobephim.pro/the-loai/hinh-su",
+      "files": [
+        "mobile/homethe-loai-hinh-su/full-page.png",
+        "mobile/homethe-loai-hinh-su/viewport.png"
+      ],
+      "states": [],
+      "title": "Danh sách phim Hình Sự"
+    },
+    {
+      "viewport": "mobile",
+      "route": "/the-loai/tam-ly",
+      "url": "https://cobephim.pro/the-loai/tam-ly",
+      "files": [
+        "mobile/homethe-loai-tam-ly/full-page.png",
+        "mobile/homethe-loai-tam-ly/viewport.png"
+      ],
+      "states": [],
+      "title": "Danh sách phim Tâm Lý"
+    }
+  ],
+  "blocked": [
+    {
+      "viewport": "mobile",
+      "route": "/tim-kiem",
+      "error": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input').first()\u001b[22m\n\u001b[2m    - locator resolved to <input name=\"q\" value=\"\" id=\"main-search\" autocomplete=\"off\" class=\"search-input\" placeholder=\"Tìm kiếm phim, diễn viên\"/>\u001b[22m\n\u001b[2m    - fill(\"phim\")\u001b[22m\n\u001b[2m  - attempting fill action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and editable\u001b[22m\n\u001b[2m      - element is not visible\u001b[22m\n\u001b[2m    - retrying fill action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and editable\u001b[22m\n\u001b[2m      - element is not visible\u001b[22m\n\u001b[2m    - retrying fill action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    60 × waiting for element to be visible, enabled and editable\u001b[22m\n\u001b[2m       - element is not visible\u001b[22m\n\u001b[2m     - retrying fill action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+    }
+  ],
+  "routeCount": 16,
+  "screenshotCount": 65
+}

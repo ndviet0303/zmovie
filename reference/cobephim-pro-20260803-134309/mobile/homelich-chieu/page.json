@@ -1,0 +1,11 @@
+{
+  "viewport": "mobile",
+  "route": "/lich-chieu",
+  "url": "https://cobephim.pro/lich-chieu",
+  "files": [
+    "mobile/homelich-chieu/full-page.png",
+    "mobile/homelich-chieu/viewport.png"
+  ],
+  "states": [],
+  "title": "Lịch chiếu - CôBe Phim"
+}

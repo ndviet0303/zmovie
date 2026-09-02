@@ -1,12 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using ZMovie.Application.Analytics;
 using ZMovie.Application.Catalog;
-using ZMovie.Application.Engagement;
 using ZMovie.Domain.Catalog;
-using ZMovie.Infrastructure.Persistence;
+using ZMovie.Infrastructure.Catalog.Persistence;
+using AnalyticsTitleId = ZMovie.Domain.Analytics.TitleId;
 
 namespace ZMovie.Infrastructure.Catalog;
 
-public sealed class EfCatalogReadStore(CatalogDbContext db, IViewAnalyticsStore analytics) : ICatalogReadStore
+public sealed class EfCatalogReadStore(CatalogDbContext db, IViewAnalyticsQueries analytics) : ICatalogReadStore
 {
     private const string NatraHeroBannerUrl = "https://cdnstatic.usheru.com/img/movies/original_8btfz81bOJ2lC7cujYBTw03wzg3.jpg";
 
@@ -14,7 +15,10 @@ public sealed class EfCatalogReadStore(CatalogDbContext db, IViewAnalyticsStore 
     {
         var titles = db.Titles.AsNoTracking().AsQueryable();
         var q = query?.Trim();
-        if (!string.IsNullOrWhiteSpace(q)) titles = titles.Where(x => x.EnglishTitle.Contains(q) || x.VietnameseTitle.Contains(q) || x.Genre.Contains(q));
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            titles = titles.Where(x => x.EnglishTitle.Contains(q) || x.VietnameseTitle.Contains(q) || x.Genre.Contains(q));
+        }
         if (!string.IsNullOrWhiteSpace(genre))
         {
             var selectedGenre = genre.Trim();
@@ -28,9 +32,10 @@ public sealed class EfCatalogReadStore(CatalogDbContext db, IViewAnalyticsStore 
 
     public async Task<TitleDetail?> GetAsync(string slug, string locale, CancellationToken ct)
     {
-        var title = await db.Titles.AsNoTracking().FirstOrDefaultAsync(x => x.Slug == slug, ct);
+        if (!TitleSlug.TryCreate(slug, out var titleSlug)) return null;
+        var title = await db.Titles.AsNoTracking().FirstOrDefaultAsync(x => x.Slug == titleSlug, ct);
         if (title is null) return null;
-        return Detail(title, locale, await analytics.GetViewCountAsync(title.Id, ct));
+        return Detail(title, locale, await analytics.GetViewCountAsync(new AnalyticsTitleId(title.Id.Value), ct));
     }
 
     public async Task<IReadOnlyList<string>> GetGenresAsync(CancellationToken ct)
@@ -38,13 +43,16 @@ public sealed class EfCatalogReadStore(CatalogDbContext db, IViewAnalyticsStore 
         var imported = await db.Genres.AsNoTracking().OrderBy(x => x.Name).Select(x => x.Name).ToListAsync(ct);
         return imported.Count > 0 ? imported : await db.Titles.AsNoTracking().Select(x => x.Genre).Distinct().Order().ToListAsync(ct);
     }
+
     public async Task<PlaybackResponse?> GetPlaybackAsync(string slug, string locale, CancellationToken ct)
     {
-        var title = await db.Titles.AsNoTracking().FirstOrDefaultAsync(x => x.Slug == slug, ct);
+        if (!TitleSlug.TryCreate(slug, out var titleSlug)) return null;
+        var title = await db.Titles.AsNoTracking().FirstOrDefaultAsync(x => x.Slug == titleSlug, ct);
         if (title is null) return null;
-        var episodes = await db.Episodes.AsNoTracking().Where(x => x.TitleId == title.Id).OrderBy(x => x.Number).Select(x => new PlaybackEpisode(x.Number, x.Name, x.HlsUrl)).ToListAsync(ct);
-        return new(title.Slug, title.LocalizedTitle(locale), title.Type == "series", episodes);
+        var episodes = await db.Episodes.AsNoTracking().Where(x => x.TitleId == title.Id).OrderBy(x => x.Number).Select(x => new PlaybackEpisode(x.Number, x.Name, x.HlsUrl, x.SubtitleUrl)).ToListAsync(ct);
+        return new(title.Slug.Value, title.LocalizedTitle(locale), title.Type.IsSeries, episodes);
     }
+
     public async Task<HomeResponse?> GetHomeAsync(string locale, CancellationToken ct)
     {
         var titles = await db.Titles
@@ -53,15 +61,16 @@ public sealed class EfCatalogReadStore(CatalogDbContext db, IViewAnalyticsStore 
             .ThenByDescending(x => x.Year)
             .Take(80)
             .ToListAsync(ct);
-        var hero = titles.FirstOrDefault(x => x.Slug == "natra-2-ma-dong-nao-hai")
+        var natraSlug = TitleSlug.Parse("natra-2-ma-dong-nao-hai");
+        var hero = titles.FirstOrDefault(x => x.Slug == natraSlug)
             ?? titles.FirstOrDefault(x => x.Featured);
         if (hero is null) return null;
 
         var heroSummary = Summary(hero, locale);
-        if (hero.Slug == "natra-2-ma-dong-nao-hai") heroSummary = heroSummary with { PosterUrl = NatraHeroBannerUrl };
+        if (hero.Slug == natraSlug) heroSummary = heroSummary with { PosterUrl = NatraHeroBannerUrl };
         return new(heroSummary, titles.Select(x => Summary(x, locale)).ToList());
     }
 
-    private static TitleSummary Summary(CatalogTitle x, string locale) => new(x.Slug, x.LocalizedTitle(locale), x.Genre, x.Year, x.Type, x.PosterUrl);
-    private static TitleDetail Detail(CatalogTitle x, string locale, long viewCount) => new(x.Slug, x.LocalizedTitle(locale), x.LocalizedSynopsis(locale), x.Genre, x.Year, x.Type, x.PosterUrl, x.RuntimeMinutes, viewCount);
+    private static TitleSummary Summary(Title x, string locale) => new(x.Slug.Value, x.LocalizedTitle(locale), x.Genre, x.Year.Value, x.Type.Value, x.PosterUrl, x.IsR2Hosted, x.Country);
+    private static TitleDetail Detail(Title x, string locale, long viewCount) => new(x.Slug.Value, x.LocalizedTitle(locale), x.LocalizedSynopsis(locale), x.Genre, x.Year.Value, x.Type.Value, x.PosterUrl, x.Runtime.Minutes, viewCount, x.Actors, x.Directors, x.Country, x.TrailerUrl, x.IsR2Hosted);
 }

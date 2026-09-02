@@ -2,207 +2,35 @@
 import { Check, ChevronDown, Search, SlidersHorizontal, X } from "@lucide/vue";
 import { InputField } from "~/components/ui/input";
 
-type Title = {
-  slug: string;
-  title: string;
-  genre: string;
-  year: number;
-  type: string;
-  posterUrl: string;
-};
-type TitleListResponse = { items: Title[]; total: number };
-type PersonalizedDiscovery = { recommended: Title[] };
+const {
+  locale,
+  query,
+  selectedGenre,
+  selectedCountry,
+  selectedYear,
+  selectedFormat,
+  filtersOpen,
+  sortOrder,
+  isRecommended,
+  isLoading,
+  loadError,
+  genres,
+  countries,
+  years,
+  visibleTitles,
+  activeFilterCount,
+  copy,
+  genreLabel,
+  clearFilters,
+  changeLocale,
+} = useBrowse();
 
-const locale = useCookie<"vi" | "en">("zmovie-locale", { default: () => "vi" });
-const route = useRoute();
-const query = ref("");
-const selectedGenre = ref(
-  typeof route.query.genre === "string" ? route.query.genre : "all",
-);
-const filtersOpen = ref(false);
-const sortOrder = ref<"latest" | "oldest" | "title">("latest");
-const selectedType = computed(() =>
-  route.query.type === "series" ? "series" : "all",
-);
-const collection = computed(() =>
-  route.query.collection === "recommended" ? "recommended" : "catalog",
-);
-const isRecommended = computed(() => collection.value === "recommended");
-const { $api } = useNuxtApp();
-const data = ref<TitleListResponse>();
-const isLoading = ref(true);
-const loadError = ref(false);
-
-async function loadBrowseData(requestedLocale = locale.value) {
-  const catalog = await $api<TitleListResponse>("/v1/catalog/titles", {
-    query: { locale: requestedLocale },
-  });
-
-  if (isRecommended.value) {
-    try {
-      const personalized = await $api<PersonalizedDiscovery>(
-        "/v1/discovery/for-you",
-        { credentials: "include", query: { locale: requestedLocale } },
-      );
-      if (personalized.recommended.length) {
-        return {
-          items: personalized.recommended,
-          total: personalized.recommended.length,
-        };
-      }
-    } catch {
-      // Guests fall back to the catalog until they have a recommendation profile.
-    }
-  }
-
-  return catalog;
-}
-
-async function refreshBrowseData(requestedLocale = locale.value) {
-  isLoading.value = true;
-  loadError.value = false;
-  try {
-    data.value = await loadBrowseData(requestedLocale);
-  } catch {
-    data.value = { items: [], total: 0 };
-    loadError.value = true;
-  } finally {
-    isLoading.value = false;
-  }
-}
-
-let searchTimer: ReturnType<typeof setTimeout> | undefined;
-
-onMounted(() => {
-  void refreshBrowseData();
-});
-
-watch(query, (value) => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(async () => {
-    isLoading.value = true;
-    loadError.value = false;
-    try {
-      data.value = value.trim()
-        ? await $api<TitleListResponse>("/v1/search", {
-            query: { q: value.trim(), locale: locale.value },
-          })
-        : await loadBrowseData();
-    } catch {
-      data.value = { items: [], total: 0 };
-      loadError.value = true;
-    } finally {
-      isLoading.value = false;
-    }
-  }, 180);
-});
-
-const copy = computed(() =>
-  locale.value === "vi"
-    ? {
-        title: isRecommended.value
-          ? "Đề xuất cho bạn"
-          : selectedType.value === "series"
-            ? "Phim bộ"
-            : route.query.sort === "latest"
-              ? "Mới phát hành"
-              : "Khám phá",
-        placeholder: "Tìm kiếm phim, diễn viên...",
-        filters: "Lọc kết quả",
-        all: "Tất cả",
-        movies: "Phim lẻ",
-        series: "Phim bộ",
-        latest: "Mới nhất",
-        showMore: "Tải thêm",
-        loading: "Đang tải phim...",
-        error: "Không thể tải catalog. Hãy thử tải lại trang.",
-        empty: "Không tìm thấy phim phù hợp.",
-      }
-    : {
-        title: isRecommended.value
-          ? "Recommended for you"
-          : selectedType.value === "series"
-            ? "Series"
-            : route.query.sort === "latest"
-              ? "New releases"
-              : "Discover",
-        placeholder: "Search films, actors...",
-        filters: "Filter results",
-        all: "All",
-        movies: "Movies",
-        series: "Series",
-        latest: "Latest",
-        showMore: "Load more",
-        loading: "Loading titles...",
-        error: "Unable to load the catalog. Try refreshing the page.",
-        empty: "No titles match your search.",
-      },
-);
-
-useZMovieSeo({
-  title: computed(() => copy.value.title),
-  description: computed(() =>
-    locale.value === "vi"
-      ? "Tìm kiếm và khám phá những bộ phim phù hợp với bạn trên ZMovie."
-      : "Search and discover movies that fit your mood on ZMovie.",
-  ),
-});
-
-function splitGenres(genre: string) {
-  return genre
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-const genres = computed(() => [
-  "all",
-  ...new Set(
-    data.value?.items.flatMap((title) => splitGenres(title.genre)) ?? [],
-  ),
-]);
-const visibleTitles = computed(() =>
-  (() => {
-    const filtered = (data.value?.items ?? []).filter((title) => {
-      const matchesGenre =
-        selectedGenre.value === "all" ||
-        splitGenres(title.genre).includes(selectedGenre.value);
-      const matchesType =
-        selectedType.value === "all" || title.type === selectedType.value;
-      return matchesGenre && matchesType;
-    });
-
-    if (isRecommended.value) return filtered;
-    return filtered.sort((a, b) => {
-      if (sortOrder.value === "oldest") return a.year - b.year;
-      if (sortOrder.value === "title") return a.title.localeCompare(b.title);
-      return b.year - a.year;
-    });
-  })(),
-);
-
-function genreLabel(genre: string) {
-  return genre === "all" ? copy.value.all : genre;
-}
-
-const activeFilterCount = computed(() =>
-  selectedGenre.value === "all" ? 0 : 1,
-);
-
-function clearFilters() {
-  selectedGenre.value = "all";
-}
-
-async function setLocale(nextLocale: "vi" | "en") {
-  if (nextLocale === locale.value) return;
-  await refreshBrowseData(nextLocale);
-  if (!loadError.value) locale.value = nextLocale;
-}
+const activeFilterTab = ref<"genre" | "format" | "country" | "year">("genre");
 </script>
 
 <template>
   <main class="min-h-screen bg-background text-foreground">
-    <AppNavbar :locale="locale" @locale-change="setLocale" />
+    <AppNavbar :locale="locale" @locale-change="changeLocale" />
 
     <section class="mx-auto max-w-360 px-5 pb-24 pt-12 lg:px-12 lg:pt-16">
       <h1 class="font-display text-4xl font-bold tracking-tight sm:text-5xl">
@@ -242,16 +70,49 @@ async function setLocale(nextLocale: "vi" | "en") {
             {{ activeFilterCount }}
           </span>
         </button>
+
+        <!-- Active filter chips -->
         <button
           v-if="selectedGenre !== 'all'"
           class="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-xs text-primary"
-          @click="clearFilters"
+          @click="selectedGenre = 'all'"
         >
           {{ genreLabel(selectedGenre) }}
           <X class="size-3.5" />
         </button>
+        <button
+          v-if="selectedFormat !== 'all'"
+          class="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-400"
+          @click="selectedFormat = 'all'"
+        >
+          {{
+            selectedFormat === "r2"
+              ? "⚡ Cloudflare R2"
+              : selectedFormat === "series"
+                ? "Phim bộ"
+                : "Phim lẻ"
+          }}
+          <X class="size-3.5" />
+        </button>
+        <button
+          v-if="selectedCountry !== 'all'"
+          class="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-xs text-primary"
+          @click="selectedCountry = 'all'"
+        >
+          {{ selectedCountry }}
+          <X class="size-3.5" />
+        </button>
+        <button
+          v-if="selectedYear !== 'all'"
+          class="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-xs text-primary"
+          @click="selectedYear = 'all'"
+        >
+          Năm {{ selectedYear }}
+          <X class="size-3.5" />
+        </button>
+
         <span class="text-xs text-muted-foreground">
-          {{ visibleTitles.length }} {{ locale === "vi" ? "phim" : "titles" }}
+          {{ visibleTitles.length }} {{ copy.titlesCount }}
         </span>
         <label
           v-if="!isRecommended"
@@ -263,12 +124,8 @@ async function setLocale(nextLocale: "vi" | "en") {
             class="h-10 cursor-pointer appearance-none bg-transparent pr-5 text-xs text-foreground outline-none"
           >
             <option value="latest">{{ copy.latest }}</option>
-            <option value="oldest">
-              {{ locale === "vi" ? "Cũ nhất" : "Oldest" }}
-            </option>
-            <option value="title">
-              {{ locale === "vi" ? "Tên A-Z" : "Title A-Z" }}
-            </option>
+            <option value="oldest">{{ copy.oldest }}</option>
+            <option value="title">{{ copy.titleAZ }}</option>
           </select>
           <ChevronDown class="pointer-events-none -ml-5 size-4" />
         </label>
@@ -293,11 +150,7 @@ async function setLocale(nextLocale: "vi" | "en") {
                 {{ copy.filters }}
               </h2>
               <p class="mt-1 text-xs text-muted-foreground">
-                {{
-                  locale === "vi"
-                    ? "Chọn một thể loại để khám phá"
-                    : "Choose a genre to explore"
-                }}
+                Tùy chỉnh tiêu chí tìm kiếm nội dung
               </p>
             </div>
             <button
@@ -309,8 +162,62 @@ async function setLocale(nextLocale: "vi" | "en") {
             </button>
           </div>
 
-          <div class="max-h-[55vh] overflow-y-auto p-5 sm:p-6">
-            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <!-- Filter Category Tabs -->
+          <div
+            class="flex border-b border-white/10 bg-surface-container px-5 text-xs font-semibold sm:px-6"
+          >
+            <button
+              class="border-b-2 px-4 py-3 transition"
+              :class="
+                activeFilterTab === 'genre'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              "
+              @click="activeFilterTab = 'genre'"
+            >
+              Thể loại
+            </button>
+            <button
+              class="border-b-2 px-4 py-3 transition"
+              :class="
+                activeFilterTab === 'format'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              "
+              @click="activeFilterTab = 'format'"
+            >
+              Nguồn & Định dạng
+            </button>
+            <button
+              class="border-b-2 px-4 py-3 transition"
+              :class="
+                activeFilterTab === 'country'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              "
+              @click="activeFilterTab = 'country'"
+            >
+              Quốc gia
+            </button>
+            <button
+              class="border-b-2 px-4 py-3 transition"
+              :class="
+                activeFilterTab === 'year'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              "
+              @click="activeFilterTab = 'year'"
+            >
+              Năm phát hành
+            </button>
+          </div>
+
+          <div class="max-h-[50vh] overflow-y-auto p-5 sm:p-6">
+            <!-- Genre Tab -->
+            <div
+              v-if="activeFilterTab === 'genre'"
+              class="grid grid-cols-2 gap-2 sm:grid-cols-3"
+            >
               <button
                 v-for="genre in genres"
                 :key="genre"
@@ -329,6 +236,85 @@ async function setLocale(nextLocale: "vi" | "en") {
                 />
               </button>
             </div>
+
+            <!-- Format & Source Tab -->
+            <div
+              v-else-if="activeFilterTab === 'format'"
+              class="grid grid-cols-2 gap-2 sm:grid-cols-2"
+            >
+              <button
+                v-for="fmt in [
+                  { id: 'all', label: 'Tất cả định dạng' },
+                  { id: 'r2', label: '⚡ Cloudflare R2 (Ultra HD)' },
+                  { id: 'movie', label: 'Phim lẻ' },
+                  { id: 'series', label: 'Phim bộ' },
+                ]"
+                :key="fmt.id"
+                class="flex min-h-11 items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition"
+                :class="
+                  selectedFormat === fmt.id
+                    ? 'border-amber-500/60 bg-amber-500/15 text-amber-400 font-semibold'
+                    : 'border-white/10 bg-surface-container text-muted-foreground hover:border-white/30 hover:text-foreground'
+                "
+                @click="selectedFormat = fmt.id"
+              >
+                <span>{{ fmt.label }}</span>
+                <Check
+                  v-if="selectedFormat === fmt.id"
+                  class="ml-2 size-4 shrink-0"
+                />
+              </button>
+            </div>
+
+            <!-- Country Tab -->
+            <div
+              v-else-if="activeFilterTab === 'country'"
+              class="grid grid-cols-2 gap-2 sm:grid-cols-3"
+            >
+              <button
+                v-for="country in countries"
+                :key="country"
+                class="flex min-h-11 items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition"
+                :class="
+                  selectedCountry === country
+                    ? 'border-primary/60 bg-primary/15 text-primary'
+                    : 'border-white/10 bg-surface-container text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                "
+                @click="selectedCountry = country"
+              >
+                <span>{{
+                  country === "all" ? "Tất cả quốc gia" : country
+                }}</span>
+                <Check
+                  v-if="selectedCountry === country"
+                  class="ml-2 size-4 shrink-0"
+                />
+              </button>
+            </div>
+
+            <!-- Year Tab -->
+            <div
+              v-else-if="activeFilterTab === 'year'"
+              class="grid grid-cols-2 gap-2 sm:grid-cols-4"
+            >
+              <button
+                v-for="year in years"
+                :key="year"
+                class="flex min-h-11 items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition"
+                :class="
+                  selectedYear === year
+                    ? 'border-primary/60 bg-primary/15 text-primary'
+                    : 'border-white/10 bg-surface-container text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                "
+                @click="selectedYear = year"
+              >
+                <span>{{ year === "all" ? "Tất cả năm" : year }}</span>
+                <Check
+                  v-if="selectedYear === year"
+                  class="ml-2 size-4 shrink-0"
+                />
+              </button>
+            </div>
           </div>
 
           <div
@@ -338,13 +324,13 @@ async function setLocale(nextLocale: "vi" | "en") {
               class="text-xs font-medium text-muted-foreground transition hover:text-foreground"
               @click="clearFilters"
             >
-              {{ locale === "vi" ? "Xóa bộ lọc" : "Clear filters" }}
+              {{ copy.clearFilters }}
             </button>
             <button
               class="rounded-xl bg-primary px-5 py-3 text-xs font-semibold text-primary-container-foreground transition hover:opacity-90"
               @click="filtersOpen = false"
             >
-              {{ locale === "vi" ? "Xem kết quả" : "Show results" }}
+              {{ copy.showResults }}
             </button>
           </div>
         </section>
