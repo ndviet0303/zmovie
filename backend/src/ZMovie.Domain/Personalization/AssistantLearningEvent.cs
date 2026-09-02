@@ -1,6 +1,8 @@
+using ZMovie.Domain.Common;
+
 namespace ZMovie.Domain.Personalization;
 
-public sealed class AssistantLearningEvent
+public sealed class AssistantLearningEvent : AggregateRoot, IEntity<LearningEventId>
 {
     public const int MaxFeaturesLength = 2000;
 
@@ -27,7 +29,7 @@ public sealed class AssistantLearningEvent
     {
         ValidateCommon(id, recommendationId, userId, titleId, features, rank, createdAt);
 
-        return new AssistantLearningEvent
+        var learningEvent = new AssistantLearningEvent
         {
             Id = id,
             RecommendationId = recommendationId,
@@ -39,6 +41,9 @@ public sealed class AssistantLearningEvent
             Reward = 0.0,
             CreatedAt = createdAt,
         };
+
+        learningEvent.RaiseDomainEvent(new AssistantImpressionRecordedDomainEvent(id, recommendationId, userId, titleId, features, rank, createdAt));
+        return learningEvent;
     }
 
     public static AssistantLearningEvent RecordFeedback(
@@ -59,7 +64,7 @@ public sealed class AssistantLearningEvent
             throw new ArgumentException("Feedback event cannot have 'impression' type.", nameof(eventType));
         }
 
-        return new AssistantLearningEvent
+        var learningEvent = new AssistantLearningEvent
         {
             Id = id,
             RecommendationId = recommendationId,
@@ -71,6 +76,9 @@ public sealed class AssistantLearningEvent
             Reward = reward,
             CreatedAt = createdAt,
         };
+
+        learningEvent.RaiseDomainEvent(new PersonalizationFeedbackRecordedDomainEvent(id, recommendationId, userId, titleId, features, rank, eventType, reward, createdAt));
+        return learningEvent;
     }
 
     private static void ValidateCommon(

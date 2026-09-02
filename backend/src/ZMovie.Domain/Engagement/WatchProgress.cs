@@ -1,6 +1,8 @@
+using ZMovie.Domain.Common;
+
 namespace ZMovie.Domain.Engagement;
 
-public sealed class WatchProgress
+public sealed class WatchProgress : AggregateRoot
 {
     private WatchProgress() { }
 
@@ -33,13 +35,19 @@ public sealed class WatchProgress
         TitleId titleId,
         int? episodeNumber,
         WatchPosition position,
-        DateTimeOffset updatedAt) =>
-        new(userId, playableId, titleId, episodeNumber, position, updatedAt);
+        DateTimeOffset updatedAt)
+    {
+        var progress = new WatchProgress(userId, playableId, titleId, episodeNumber, position, updatedAt);
+        progress.RaiseDomainEvent(new WatchProgressRecordedDomainEvent(userId, playableId, titleId, episodeNumber, position.Seconds, updatedAt));
+        return progress;
+    }
 
     public void UpdateProgress(int? episodeNumber, WatchPosition position, DateTimeOffset updatedAt)
     {
         EpisodeNumber = episodeNumber;
         Position = position;
         UpdatedAt = updatedAt;
+
+        RaiseDomainEvent(new WatchProgressRecordedDomainEvent(UserId, PlayableId, TitleId, episodeNumber, position.Seconds, updatedAt));
     }
 }

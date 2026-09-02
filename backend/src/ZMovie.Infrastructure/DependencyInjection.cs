@@ -39,6 +39,9 @@ public static class DependencyInjection
         services.AddMemoryCache(options => options.SizeLimit = 10_000);
         services.AddHttpClient();
 
+        services.AddScoped<IDomainEventDispatcher, MediatRDomainEventDispatcher>();
+        services.AddScoped<PublishDomainEventsInterceptor>();
+
         var connectionString = configuration.GetConnectionString("ZMovie")
             ?? throw new InvalidOperationException("ConnectionStrings:ZMovie must be configured.");
 
@@ -56,10 +59,11 @@ public static class DependencyInjection
 
     public static IServiceCollection AddCatalogModule(this IServiceCollection services, string connectionString)
     {
-        services.AddDbContext<CatalogDbContext>(options => options.UseNpgsql(
+        services.AddDbContext<CatalogDbContext>((sp, options) => options.UseNpgsql(
             connectionString,
             npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history_catalog", "public"))
-            .UseSnakeCaseNamingConvention());
+            .UseSnakeCaseNamingConvention()
+            .AddInterceptors(sp.GetRequiredService<PublishDomainEventsInterceptor>()));
 
         services.AddScoped<ICatalogReadStore, EfCatalogReadStore>();
         services.AddScoped<ITitleRepository, EfTitleRepository>();
@@ -75,10 +79,11 @@ public static class DependencyInjection
 
     public static IServiceCollection AddIdentityModule(this IServiceCollection services, string connectionString)
     {
-        services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(
+        services.AddDbContext<IdentityDbContext>((sp, options) => options.UseNpgsql(
             connectionString,
             npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history_identity", "public"))
-            .UseSnakeCaseNamingConvention());
+            .UseSnakeCaseNamingConvention()
+            .AddInterceptors(sp.GetRequiredService<PublishDomainEventsInterceptor>()));
 
         services.AddScoped<IUserRepository, EfUserRepository>();
         services.AddScoped<IUserQueries, EfUserQueries>();
@@ -89,10 +94,11 @@ public static class DependencyInjection
 
     public static IServiceCollection AddEngagementModule(this IServiceCollection services, string connectionString)
     {
-        services.AddDbContext<EngagementDbContext>(options => options.UseNpgsql(
+        services.AddDbContext<EngagementDbContext>((sp, options) => options.UseNpgsql(
             connectionString,
             npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history_engagement", "public"))
-            .UseSnakeCaseNamingConvention());
+            .UseSnakeCaseNamingConvention()
+            .AddInterceptors(sp.GetRequiredService<PublishDomainEventsInterceptor>()));
 
         services.AddScoped<ISavedTitleRepository, EfSavedTitleRepository>();
         services.AddScoped<IWatchProgressRepository, EfWatchProgressRepository>();
@@ -108,10 +114,11 @@ public static class DependencyInjection
 
     public static IServiceCollection AddAnalyticsModule(this IServiceCollection services, string connectionString)
     {
-        services.AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(
+        services.AddDbContext<AnalyticsDbContext>((sp, options) => options.UseNpgsql(
             connectionString,
             npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history_analytics", "public"))
-            .UseSnakeCaseNamingConvention());
+            .UseSnakeCaseNamingConvention()
+            .AddInterceptors(sp.GetRequiredService<PublishDomainEventsInterceptor>()));
 
         services.AddScoped<IViewEventRepository, EfViewEventRepository>();
         services.AddScoped<EfViewAnalyticsQueries>();
@@ -124,10 +131,11 @@ public static class DependencyInjection
 
     public static IServiceCollection AddPersonalizationModule(this IServiceCollection services, string connectionString)
     {
-        services.AddDbContext<PersonalizationDbContext>(options => options.UseNpgsql(
+        services.AddDbContext<PersonalizationDbContext>((sp, options) => options.UseNpgsql(
             connectionString,
             npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history_personalization", "public"))
-            .UseSnakeCaseNamingConvention());
+            .UseSnakeCaseNamingConvention()
+            .AddInterceptors(sp.GetRequiredService<PublishDomainEventsInterceptor>()));
 
         services.AddScoped<IPersonalizationLearningRepository, EfPersonalizationLearningRepository>();
         services.AddScoped<IPersonalizationQueries, EfPersonalizationQueries>();

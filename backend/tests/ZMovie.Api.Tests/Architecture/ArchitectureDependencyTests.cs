@@ -263,7 +263,7 @@ public sealed partial class ArchitectureDependencyTests
 
     private static bool IsCrossContext(string source, string target)
     {
-        if (source == target || target == "ZMovie.Application.Common") return false;
+        if (source == target || target is "ZMovie.Application.Common" or "ZMovie.Domain.Common") return false;
         return ModuleName(source) != ModuleName(target);
     }
 

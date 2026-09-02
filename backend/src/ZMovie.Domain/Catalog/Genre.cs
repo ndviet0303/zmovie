@@ -1,6 +1,8 @@
+using ZMovie.Domain.Common;
+
 namespace ZMovie.Domain.Catalog;
 
-public sealed class Genre
+public sealed class Genre : AggregateRoot, IEntity<GenreId>
 {
     private Genre() { }
 
@@ -15,18 +17,27 @@ public sealed class Genre
         string name,
         DateTimeOffset occurredAt)
     {
-        return new Genre
+        var normalizedSlug = slug?.Trim().ToLowerInvariant() ?? string.Empty;
+        var normalizedName = name?.Trim() ?? string.Empty;
+
+        var genre = new Genre
         {
             Id = id,
-            Slug = slug?.Trim().ToLowerInvariant() ?? string.Empty,
-            Name = name?.Trim() ?? string.Empty,
+            Slug = normalizedSlug,
+            Name = normalizedName,
             UpdatedAt = occurredAt,
         };
+
+        genre.RaiseDomainEvent(new GenreCreatedDomainEvent(id, normalizedSlug, normalizedName, occurredAt));
+        return genre;
     }
 
     public void Rename(string name, DateTimeOffset occurredAt)
     {
-        Name = name?.Trim() ?? string.Empty;
+        var normalizedName = name?.Trim() ?? string.Empty;
+        Name = normalizedName;
         UpdatedAt = occurredAt;
+
+        RaiseDomainEvent(new GenreRenamedDomainEvent(Id, normalizedName, occurredAt));
     }
 }

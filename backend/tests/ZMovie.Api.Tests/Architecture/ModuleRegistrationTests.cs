@@ -15,6 +15,7 @@ using ZMovie.Infrastructure;
 using ZMovie.Infrastructure.Analytics;
 using ZMovie.Infrastructure.Analytics.Persistence;
 using ZMovie.Infrastructure.Catalog.Persistence;
+using ZMovie.Infrastructure.Common;
 using ZMovie.Infrastructure.Engagement.Persistence;
 using ZMovie.Infrastructure.Identity.Persistence;
 using ZMovie.Infrastructure.Personalization.Persistence;
@@ -40,6 +41,8 @@ public sealed class ModuleRegistrationTests
         services.AddZMovieInfrastructure(configuration);
 
         AssertLifetime<TimeProvider>(services, ServiceLifetime.Singleton);
+        AssertLifetime<IDomainEventDispatcher>(services, ServiceLifetime.Scoped);
+        AssertLifetime<PublishDomainEventsInterceptor>(services, ServiceLifetime.Scoped);
         AssertLifetime<DbContextOptions<CatalogDbContext>>(services, ServiceLifetime.Scoped);
         AssertLifetime<DbContextOptions<IdentityDbContext>>(services, ServiceLifetime.Scoped);
         AssertLifetime<DbContextOptions<EngagementDbContext>>(services, ServiceLifetime.Scoped);

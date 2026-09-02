@@ -1,6 +1,8 @@
+using ZMovie.Domain.Common;
+
 namespace ZMovie.Domain.Engagement;
 
-public sealed class SavedTitle
+public sealed class SavedTitle : AggregateRoot
 {
     private SavedTitle() { }
 
@@ -15,6 +17,10 @@ public sealed class SavedTitle
     public TitleId TitleId { get; private set; }
     public DateTimeOffset SavedAt { get; private set; }
 
-    public static SavedTitle Create(UserId userId, TitleId titleId, DateTimeOffset savedAt) =>
-        new(userId, titleId, savedAt);
+    public static SavedTitle Create(UserId userId, TitleId titleId, DateTimeOffset savedAt)
+    {
+        var savedTitle = new SavedTitle(userId, titleId, savedAt);
+        savedTitle.RaiseDomainEvent(new TitleSavedDomainEvent(userId, titleId, savedAt));
+        return savedTitle;
+    }
 }

@@ -1,6 +1,8 @@
+using ZMovie.Domain.Common;
+
 namespace ZMovie.Domain.Identity;
 
-public sealed class User
+public sealed class User : AggregateRoot, IEntity<UserId>
 {
     private User()
     {
@@ -43,8 +45,12 @@ public sealed class User
         string displayName,
         string? avatarUrl,
         Role role,
-        DateTimeOffset occurredAt) =>
-        new(id, externalIdentity, email, displayName, avatarUrl, role, occurredAt);
+        DateTimeOffset occurredAt)
+    {
+        var user = new User(id, externalIdentity, email, displayName, avatarUrl, role, occurredAt);
+        user.RaiseDomainEvent(new UserCreatedDomainEvent(id, externalIdentity, email, role, occurredAt));
+        return user;
+    }
 
     public void RecordSignIn(string email, string displayName, string? avatarUrl, DateTimeOffset occurredAt)
     {
@@ -52,15 +58,29 @@ public sealed class User
         DisplayName = displayName;
         AvatarUrl = avatarUrl;
         LastSignedInAt = occurredAt;
+
+        RaiseDomainEvent(new UserSignedInDomainEvent(Id, occurredAt));
     }
 
     public void PromoteToAdmin()
     {
+        var oldRole = Role;
         Role = Role.Admin;
+
+        if (oldRole != Role.Admin)
+        {
+            RaiseDomainEvent(new UserRoleChangedDomainEvent(Id, oldRole, Role.Admin, LastSignedInAt));
+        }
     }
 
     public void ChangeRole(Role newRole)
     {
+        var oldRole = Role;
         Role = newRole;
+
+        if (oldRole != newRole)
+        {
+            RaiseDomainEvent(new UserRoleChangedDomainEvent(Id, oldRole, newRole, LastSignedInAt));
+        }
     }
 }

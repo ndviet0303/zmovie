@@ -1,6 +1,8 @@
+using ZMovie.Domain.Common;
+
 namespace ZMovie.Domain.Catalog;
 
-public sealed class Episode
+public sealed class Episode : IEntity<EpisodeId>
 {
     private Episode() { }
 

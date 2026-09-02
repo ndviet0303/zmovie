@@ -1,3 +1,5 @@
+using ZMovie.Domain.Common;
+
 namespace ZMovie.Domain.Engagement;
 
 public readonly record struct ReviewId(Guid Value) : IComparable<ReviewId>, IComparable
@@ -74,7 +76,7 @@ public readonly record struct ReviewDecision
     internal static ReviewDecision Reject(ReviewRejection rejection) => new(null, rejection);
 }
 
-public sealed class Review
+public sealed class Review : AggregateRoot, IEntity<ReviewId>
 {
     public const int MaximumAuthorNameLength = 300;
     public const int MaximumCommentLength = 2_000;
@@ -122,9 +124,14 @@ public sealed class Review
         DateTimeOffset occurredAt)
     {
         var rejection = Validate(authorName, rating, comment, out var validatedRating, out var normalizedComment);
-        return rejection is { } reason
-            ? ReviewDecision.Reject(reason)
-            : ReviewDecision.Accept(new Review(id, titleId, userId, authorName, validatedRating, normalizedComment, occurredAt));
+        if (rejection is { } reason)
+        {
+            return ReviewDecision.Reject(reason);
+        }
+
+        var review = new Review(id, titleId, userId, authorName, validatedRating, normalizedComment, occurredAt);
+        review.RaiseDomainEvent(new ReviewSubmittedDomainEvent(id, titleId, userId, validatedRating.Value, occurredAt));
+        return ReviewDecision.Accept(review);
     }
 
     public ReviewDecision Edit(string authorName, int rating, string? comment, DateTimeOffset occurredAt)
@@ -135,11 +142,13 @@ public sealed class Review
             return ReviewDecision.Reject(reason);
         }
 
+        var oldRating = Rating.Value;
         AuthorName = authorName;
         Rating = validatedRating;
         Comment = normalizedComment;
         UpdatedAt = occurredAt;
 
+        RaiseDomainEvent(new ReviewEditedDomainEvent(Id, TitleId, UserId, oldRating, validatedRating.Value, occurredAt));
         return ReviewDecision.Accept(this);
     }
 

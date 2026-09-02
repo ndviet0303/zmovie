@@ -1,6 +1,8 @@
+using ZMovie.Domain.Common;
+
 namespace ZMovie.Domain.Analytics;
 
-public sealed class TitleViewEvent
+public sealed class TitleViewEvent : AggregateRoot, IEntity<ViewEventId>
 {
     private TitleViewEvent() { }
 
@@ -35,7 +37,7 @@ public sealed class TitleViewEvent
             throw new ArgumentException("Viewed timestamp must be specified.", nameof(viewedAt));
         }
 
-        return new TitleViewEvent
+        var viewEvent = new TitleViewEvent
         {
             Id = id,
             TitleId = titleId,
@@ -44,5 +46,8 @@ public sealed class TitleViewEvent
             SessionId = normalizedSessionId,
             ViewedAt = viewedAt,
         };
+
+        viewEvent.RaiseDomainEvent(new TitleViewRecordedDomainEvent(id, titleId, userId, normalizedSessionId, episodeNumber, viewedAt));
+        return viewEvent;
     }
 }

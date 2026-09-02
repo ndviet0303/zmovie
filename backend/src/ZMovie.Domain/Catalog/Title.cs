@@ -1,6 +1,8 @@
+using ZMovie.Domain.Common;
+
 namespace ZMovie.Domain.Catalog;
 
-public sealed class Title
+public sealed class Title : AggregateRoot, IEntity<TitleId>
 {
     private Title() { }
 
@@ -52,7 +54,7 @@ public sealed class Title
         bool featured,
         DateTimeOffset occurredAt)
     {
-        return new Title
+        var title = new Title
         {
             Id = id,
             Slug = slug,
@@ -67,6 +69,9 @@ public sealed class Title
             CreatedAt = occurredAt,
             UpdatedAt = occurredAt,
         };
+
+        title.RaiseDomainEvent(new TitleCreatedDomainEvent(id, slug, occurredAt));
+        return title;
     }
 
     public void UpdateMetadata(
@@ -89,12 +94,16 @@ public sealed class Title
         Runtime = runtime;
         Featured = featured;
         UpdatedAt = occurredAt;
+
+        RaiseDomainEvent(new TitleMetadataUpdatedDomainEvent(Id, Slug, occurredAt));
     }
 
     public void SetFeatured(bool featured, DateTimeOffset occurredAt)
     {
         Featured = featured;
         UpdatedAt = occurredAt;
+
+        RaiseDomainEvent(new TitleFeaturedChangedDomainEvent(Id, featured, occurredAt));
     }
 
     public string LocalizedTitle(string? locale) => TitleName.Localize(locale);

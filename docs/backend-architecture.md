@@ -3,8 +3,8 @@
 ZMovie is a .NET 10 modular-monolith adhering to strict Domain-Driven Design (DDD) principles and a clean four-layer architecture:
 
 - `ZMovie.Domain`: Pure domain logic containing aggregates, entities, value objects, domain events, and domain rules. Zero third-party dependencies, zero framework dependencies, and zero system wall-clock access (`TimeProvider` / `DateTimeOffset` are passed explicitly).
-- `ZMovie.Application`: Application use cases, MediatR commands/queries, FluentValidation validators, error contracts (`ErrorOr`), and domain ports/interfaces.
-- `ZMovie.Infrastructure`: Persistence adapters (EF Core with PostgreSQL), isolated DbContexts per bounded context, Meilisearch client, external identity verifiers, AI text generators, caching, and background coordinators.
+- `ZMovie.Application`: Application use cases, MediatR commands/queries, FluentValidation validators, error contracts (`ErrorOr`), domain event notifications, and domain ports/interfaces.
+- `ZMovie.Infrastructure`: Persistence adapters (EF Core with PostgreSQL), isolated DbContexts per bounded context, `PublishDomainEventsInterceptor`, `MediatRDomainEventDispatcher`, Meilisearch client, external identity verifiers, AI text generators, caching, and background coordinators.
 - `ZMovie.Api`: Minimal API endpoints, OpenAPI/Scalar, CORS, Problem Details, authentication cookies, claim translation adapters (`UserIdentityAdapter`), and ASP.NET Core composition root.
 
 ---
@@ -33,26 +33,36 @@ The application is decomposed into isolated bounded contexts, each owning its do
 
 ### 1. Catalog Context
 - **Ownership**: Titles, episodes, genres, localized metadata (Vietnamese / English), runtime, and playback links.
+- **Aggregate Roots & Entities**: `Title` (AggregateRoot), `Genre` (AggregateRoot), `Episode` (Entity).
+- **Domain Events**: `TitleCreatedDomainEvent`, `TitleMetadataUpdatedDomainEvent`, `TitleFeaturedChangedDomainEvent`, `EpisodeCreatedDomainEvent`, `EpisodeUpdatedDomainEvent`, `GenreCreatedDomainEvent`, `GenreRenamedDomainEvent`.
 - **Persistence**: `CatalogDbContext` owning `titles`, `episodes`, `genres`, and `title_genres`.
 - **Migrations**: `__ef_migrations_history_catalog`.
 
 ### 2. Identity & Access Context
 - **Ownership**: User aggregate, external identity (`sub`), role value object (`Role`), display info, and last-admin demotion protection policy.
+- **Aggregate Roots**: `User` (AggregateRoot).
+- **Domain Events**: `UserCreatedDomainEvent`, `UserSignedInDomainEvent`, `UserRoleChangedDomainEvent`.
 - **Persistence**: `IdentityDbContext` owning `users`.
 - **Migrations**: `__ef_migrations_history_identity`.
 
 ### 3. Engagement Context
 - **Ownership**: User library (`saved_titles`), watch progress (`watch_history`), and user ratings/reviews (`title_reviews`).
+- **Aggregate Roots**: `Review` (AggregateRoot), `SavedTitle` (AggregateRoot), `WatchProgress` (AggregateRoot).
+- **Domain Events**: `ReviewSubmittedDomainEvent`, `ReviewEditedDomainEvent`, `TitleSavedDomainEvent`, `WatchProgressRecordedDomainEvent`.
 - **Persistence**: `EngagementDbContext` owning `saved_titles`, `watch_history`, and `title_reviews`.
 - **Migrations**: `__ef_migrations_history_engagement`.
 
 ### 4. Analytics Context
 - **Ownership**: Title view facts (`title_view_events`), session deduplication, view counts, and time-windowed top-ranking aggregations.
+- **Aggregate Roots**: `TitleViewEvent` (AggregateRoot).
+- **Domain Events**: `TitleViewRecordedDomainEvent`.
 - **Persistence**: `AnalyticsDbContext` owning `title_view_events`.
 - **Migrations**: `__ef_migrations_history_analytics`.
 
 ### 5. Personalization & Assistant Context
 - **Ownership**: Recommendation feedback, assistant learning impressions (`assistant_learning_events`), learned ranking weights, and TinyContent TF-IDF candidate ranking.
+- **Aggregate Roots**: `AssistantLearningEvent` (AggregateRoot).
+- **Domain Events**: `AssistantImpressionRecordedDomainEvent`, `PersonalizationFeedbackRecordedDomainEvent`.
 - **Persistence**: `PersonalizationDbContext` owning `assistant_learning_events`.
 - **Migrations**: `__ef_migrations_history_personalization`.
 
@@ -61,6 +71,25 @@ The application is decomposed into isolated bounded contexts, each owning its do
 - **Reads**: `IAdminDashboardQueries` / `EfAdminDashboardQueries` compose read-only projections across contexts.
 - **Writes**: Dispatched to context-owned services (`ICatalogAdministrationService`, `IUserRepository`).
 - **Atomic Hard Deletions**: Coordinated via `IAdminTitleDeletionCoordinator` and `ITransactionCoordinator`, deleting records in strict dependent order: `Engagement` -> `Analytics` -> `Personalization` -> `Catalog`.
+
+---
+
+## Domain Building Blocks (SeedWork)
+
+All domain primitives are contained in `ZMovie.Domain.Common`:
+- `IEntity<TId>`, `Entity<TId>`: Base identity and equality abstraction for entities.
+- `IAggregateRoot`, `AggregateRoot`: Encapsulates domain event management (`DomainEvents`, `RaiseDomainEvent`, `ClearDomainEvents`).
+- `IDomainEvent`, `DomainEvent`: Structural domain event records with `EventId` and `OccurredAt`.
+- `ValueObject`: Base structural equality for complex value objects.
+
+---
+
+## Domain Event Dispatching & Lifecycle
+
+1. **State Mutation**: Aggregate roots raise domain events when their state changes (e.g. `Title.Create(...)`, `User.RecordSignIn(...)`, `Review.Edit(...)`).
+2. **Interception**: `PublishDomainEventsInterceptor` intercepts `DbContext.SavingChangesAsync`.
+3. **Extraction & Clearing**: All domain events are collected from tracked `IAggregateRoot` entities and cleared.
+4. **Dispatching**: `IDomainEventDispatcher` (`MediatRDomainEventDispatcher`) wraps each `IDomainEvent` into a `DomainEventNotification<T>` and dispatches it via MediatR `IPublisher` to registered `IDomainEventHandler<T>` handlers.
 
 ---
 
@@ -74,19 +103,20 @@ Domain  <---  Application  <---  Infrastructure  <---  API
 
 1. **Domain Layer**:
    - Must NOT reference any other layer or third-party packages.
-   - Domain contexts do NOT reference other domain contexts.
+   - Domain contexts do NOT reference other domain contexts (`ZMovie.Domain.Common` is the only shared kernel).
    - Value objects are immutable; aggregates encapsulate business invariants.
    - Time is never read from static clocks (`DateTime.Now` / `DateTime.UtcNow`). All time values enter as parameters.
 
 2. **Application Layer**:
    - References `Domain` only.
-   - Organizes features by context into Commands, Queries, Validators, and Ports.
+   - Organizes features by context into Commands, Queries, Validators, Domain Event Handlers, and Ports.
    - Returns `ErrorOr<T>` for domain outcomes.
+   - Pipeline behaviors (`ValidationBehavior`, `LoggingBehavior`).
 
 3. **Infrastructure Layer**:
    - References `Application` and `Domain`.
    - Implements ports using EF Core, PostgreSQL, Meilisearch, and HTTP clients.
-   - Each bounded context has its own independent `DbContext`. DbSets and database configurations are never shared across contexts.
+   - Each bounded context has its own independent `DbContext` configured with `PublishDomainEventsInterceptor`.
 
 4. **API Layer**:
    - Acts as the composition root.
@@ -133,6 +163,7 @@ Service registration is partitioned into modular extension methods in `Dependenc
    - Pre-existing monolithic database schemas upgrade smoothly without table collision.
 
 3. **Testing Suite**:
-   - Unit & Layer Tests: In-memory validation of aggregates, validators, queries, and handlers.
+   - Unit & Layer Tests: In-memory validation of aggregates, value objects, domain primitives, domain events, validators, queries, and handlers.
    - PostgreSQL Integration Tests: Run against real PostgreSQL instances via Testcontainers, verifying schema creation, foreign keys, cascades, indexes, and cross-context deletion rollbacks.
    - HTTP Contract Tests: Verify route templates, status codes, cookies, and API contracts.
+   - Architecture & DDD Tests: Verify layer dependency direction, cross-context isolation, aggregate root contracts, and domain event sealing.
