@@ -109,6 +109,31 @@ public sealed class InfrastructureTests
     }
 
     [Fact]
+    public async Task Catalog_playback_normalizes_stale_direct_video_source_format()
+    {
+        using var database = new TestDatabase();
+        var title = MakeTitle("direct-video", "Direct Video", "Video trực tiếp", "movie", featured: true);
+        var episode = Episode.Create(
+            EpisodeId.New(),
+            title.Id,
+            1,
+            "Tập 1",
+            "https://cdn.example.com/movie.mp4");
+        var source = episode.Sources.Single();
+        source.UpdateDetails("https://cdn.example.com/movie.mp4", "embed", 1);
+        database.Db.Titles.Add(title);
+        database.Db.Episodes.Add(episode);
+        await database.Db.SaveChangesAsync();
+
+        var playback = await new EfCatalogReadStore(database.Db, new FakeAnalytics())
+            .GetPlaybackAsync("direct-video", "vi", default);
+
+        playback.Should().NotBeNull();
+        playback!.Episodes.Single().Sources.Should().ContainSingle()
+            .Which.Format.Should().Be(StreamFormat.Video);
+    }
+
+    [Fact]
     public async Task Recommendation_engine_recommends_candidates_based_on_tfidf_similarity()
     {
         var a = Guid.NewGuid();

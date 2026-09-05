@@ -86,6 +86,7 @@ onMounted(() => {
           @play="player.isPlaying.value = true"
           @pause="player.isPlaying.value = false"
           @ended="player.onEnded"
+          @loadedmetadata="player.onLoadedMetadata"
           @video-ref="(el) => (player.video.value = el)"
         >
           <!-- Danmaku Canvas Layer -->

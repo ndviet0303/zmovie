@@ -156,6 +156,15 @@ public sealed class CatalogDomainTests
         episode.HlsUrl.Should().Be("https://hls.test/1-hd.m3u8");
     }
 
+    [Theory]
+    [InlineData("https://cdn.example.com/stream.m3u8?token=abc", "hls")]
+    [InlineData("https://cdn.example.com/movie.MP4?token=abc", "video")]
+    [InlineData("https://player.example.com/embed/movie-1", "embed")]
+    public void StreamFormat_infers_media_type_from_url(string url, string expected)
+    {
+        StreamFormat.Infer(url).Should().Be(expected);
+    }
+
     [Fact]
     public void Genre_create_and_rename_maintains_fields()
     {
@@ -281,4 +290,3 @@ public sealed class CatalogDomainTests
         }
     }
 }
-

@@ -69,7 +69,7 @@ public sealed class Episode : IEntity<EpisodeId>
                 id,
                 "Primary",
                 hlsUrl,
-                hlsUrl.Contains(".m3u8", StringComparison.OrdinalIgnoreCase) ? "hls" : "embed",
+                StreamFormat.Infer(hlsUrl),
                 1,
                 true,
                 subtitleUrl));

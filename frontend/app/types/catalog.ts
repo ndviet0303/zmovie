@@ -22,7 +22,7 @@ export type TitleListResponse = {
 export type PlaybackSource = {
   provider: string;
   url: string;
-  format: "hls" | "embed";
+  format: "hls" | "video" | "embed";
   priority: number;
   subtitleUrl?: string;
   audioTrack?: string;
