@@ -53,7 +53,7 @@ export function useWatchParty() {
     username.value = clientUsername;
 
     const config = useRuntimeConfig();
-    const hubUrl = `${config.public.apiBase || ""}/hubs/watch-party`;
+    const hubUrl = `${config.public.apiBaseUrl || ""}/hubs/watch-party`;
 
     connection = new HubConnectionBuilder()
       .withUrl(hubUrl)

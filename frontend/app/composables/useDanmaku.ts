@@ -38,7 +38,7 @@ export function useDanmaku(
     if (hubConnection) await disconnectHub();
 
     const config = useRuntimeConfig();
-    const hubUrl = `${config.public.apiBase || ""}/hubs/danmaku`;
+    const hubUrl = `${config.public.apiBaseUrl || ""}/hubs/danmaku`;
 
     try {
       const connection = new HubConnectionBuilder()
