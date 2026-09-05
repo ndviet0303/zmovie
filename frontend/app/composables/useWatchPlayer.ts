@@ -15,6 +15,7 @@ import {
   fetchUserLibrary,
   recordWatchHistory,
 } from "~/services/library.service";
+import { getPlaybackSourceKind, inferPlaybackFormat } from "~/utils/playback";
 
 const LOCAL_PROGRESS_KEY = "zmovie.watch-progress.v1";
 const LOCAL_PROGRESS_TTL_MS = 90 * 24 * 60 * 60 * 1000;
@@ -68,7 +69,7 @@ export function useWatchPlayer(slug: string) {
     if (ep.sources && ep.sources.length > 0) {
       return [...ep.sources].sort((a, b) => a.priority - b.priority);
     }
-    const defaultFormat = ep.hlsUrl.includes(".m3u8") ? "hls" : "embed";
+    const defaultFormat = inferPlaybackFormat(ep.hlsUrl);
     return [
       {
         provider: "Default",
@@ -87,7 +88,7 @@ export function useWatchPlayer(slug: string) {
   });
 
   const isEmbed = computed(() => {
-    return currentSource.value?.format === "embed";
+    return getPlaybackSourceKind(currentSource.value) === "embed";
   });
 
   const milestones = computed(() => {
@@ -188,7 +189,8 @@ export function useWatchPlayer(slug: string) {
 
   async function initPlayer() {
     const src = currentSource.value;
-    if (!src || src.format === "embed") return;
+    const sourceKind = getPlaybackSourceKind(src);
+    if (!src || sourceKind === "embed") return;
 
     if (!import.meta.client) return;
 
@@ -196,6 +198,26 @@ export function useWatchPlayer(slug: string) {
 
     const videoEl = video.value;
     if (!videoEl) return;
+
+    playerError.value = "";
+    qualityOptions.value = [];
+    subtitleOptions.value = [];
+    selectedQuality.value = -1;
+    selectedSubtitle.value = -1;
+    currentTime.value = 0;
+    duration.value = 0;
+    videoEl.pause();
+    videoEl.removeAttribute("src");
+    videoEl.load();
+    videoEl.volume = volume.value;
+    videoEl.muted = isMuted.value;
+    videoEl.playbackRate = playbackRate.value;
+
+    if (sourceKind === "video") {
+      videoEl.src = src.url;
+      videoEl.load();
+      return;
+    }
 
     try {
       const { default: Hls } = await import("hls.js");
@@ -218,14 +240,7 @@ export function useWatchPlayer(slug: string) {
           }));
           selectedQuality.value = hls.currentLevel;
 
-          // Resume saved position
-          const resumePos = getLocalProgress(
-            slug,
-            currentEpisode.value?.number ?? null,
-          );
-          if (resumePos > 5 && resumePos < videoEl.duration - 30) {
-            videoEl.currentTime = resumePos;
-          }
+          resumeSavedPosition(videoEl);
         });
 
         hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => {
@@ -286,6 +301,28 @@ export function useWatchPlayer(slug: string) {
     if (idx === activeSourceIndex.value) return;
     activeSourceIndex.value = idx;
     initPlayer();
+  }
+
+  function resumeSavedPosition(videoEl: HTMLVideoElement) {
+    const resumePos = getLocalProgress(
+      slug,
+      currentEpisode.value?.number ?? null,
+    );
+    if (
+      resumePos > 5 &&
+      Number.isFinite(videoEl.duration) &&
+      resumePos < videoEl.duration - 30
+    ) {
+      videoEl.currentTime = resumePos;
+    }
+  }
+
+  function onLoadedMetadata() {
+    const el = video.value;
+    if (!el) return;
+    duration.value = Number.isFinite(el.duration) ? el.duration : 0;
+    currentTime.value = el.currentTime;
+    resumeSavedPosition(el);
   }
 
   function togglePlay() {
@@ -400,7 +437,19 @@ export function useWatchPlayer(slug: string) {
     scrollObserver.observe(playerFrame.value);
   }
 
-  watch(currentSource, () => {
+  watch([currentSource, video], () => {
+    if (isEmbed.value) {
+      destroyHls();
+      const el = video.value;
+      if (el) {
+        el.pause();
+        el.removeAttribute("src");
+        el.load();
+      }
+      currentTime.value = 0;
+      duration.value = 0;
+      return;
+    }
     initPlayer();
   });
 
@@ -451,6 +500,7 @@ export function useWatchPlayer(slug: string) {
     toggleTheater,
     skipIntro,
     onTimeUpdate,
+    onLoadedMetadata,
     onEnded,
     setupIntersectionObserver,
   };

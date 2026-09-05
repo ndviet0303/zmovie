@@ -61,7 +61,7 @@ public sealed class EfCatalogReadStore(CatalogDbContext db, IViewAnalyticsQuerie
             var sources = x.Sources
                 .Where(s => s.IsActive)
                 .OrderBy(s => s.Priority)
-                .Select(s => new PlaybackSource(s.Provider, s.Url, s.Format, s.Priority, s.SubtitleUrl, s.AudioTrack))
+                .Select(s => new PlaybackSource(s.Provider, s.Url, StreamFormat.Infer(s.Url, s.Format), s.Priority, s.SubtitleUrl, s.AudioTrack))
                 .ToList();
 
             if (sources.Count == 0 && !string.IsNullOrWhiteSpace(x.HlsUrl))
@@ -69,7 +69,7 @@ public sealed class EfCatalogReadStore(CatalogDbContext db, IViewAnalyticsQuerie
                 sources.Add(new PlaybackSource(
                     "Primary",
                     x.HlsUrl,
-                    x.HlsUrl.Contains(".m3u8", StringComparison.OrdinalIgnoreCase) ? "hls" : "embed",
+                    StreamFormat.Infer(x.HlsUrl),
                     1,
                     x.SubtitleUrl));
             }
@@ -78,7 +78,7 @@ public sealed class EfCatalogReadStore(CatalogDbContext db, IViewAnalyticsQuerie
                 ? new PlaybackMilestonesDto(x.Milestones.IntroStart, x.Milestones.IntroEnd, x.Milestones.OutroStart, x.Milestones.OutroEnd)
                 : null;
 
-            var primaryHls = sources.FirstOrDefault(s => s.Format == "hls")?.Url ?? x.HlsUrl;
+            var primaryHls = sources.FirstOrDefault(s => s.Format == StreamFormat.Hls)?.Url ?? x.HlsUrl;
 
             return new PlaybackEpisode(x.Number, x.Name, primaryHls, x.SubtitleUrl, sources, milestones);
         }).ToList();
