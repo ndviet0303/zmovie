@@ -119,23 +119,27 @@ if (args.Contains("--seed-r2-demo", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+// Keep the deployed schema in lockstep with the API before accepting requests.
+// Test hosts use an in-memory provider, so they intentionally skip migrations.
+await using (var migrationScope = app.Services.CreateAsyncScope())
+{
+    var catalogDb = migrationScope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+    if (string.Equals(catalogDb.Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.OrdinalIgnoreCase))
+    {
+        await catalogDb.Database.MigrateAsync();
+        await migrationScope.ServiceProvider.GetRequiredService<IdentityDbContext>().Database.MigrateAsync();
+        await migrationScope.ServiceProvider.GetRequiredService<EngagementDbContext>().Database.MigrateAsync();
+        await migrationScope.ServiceProvider.GetRequiredService<AnalyticsDbContext>().Database.MigrateAsync();
+        await migrationScope.ServiceProvider.GetRequiredService<PersonalizationDbContext>().Database.MigrateAsync();
+    }
+}
+
 if (app.Environment.IsDevelopment())
 {
     await using var scope = app.Services.CreateAsyncScope();
     var catalogDb = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
     if (string.Equals(catalogDb.Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.OrdinalIgnoreCase))
     {
-        var identityDb = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-        var engagementDb = scope.ServiceProvider.GetRequiredService<EngagementDbContext>();
-        var analyticsDb = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
-        var personalizationDb = scope.ServiceProvider.GetRequiredService<PersonalizationDbContext>();
-
-        await catalogDb.Database.MigrateAsync();
-        await identityDb.Database.MigrateAsync();
-        await engagementDb.Database.MigrateAsync();
-        await analyticsDb.Database.MigrateAsync();
-        await personalizationDb.Database.MigrateAsync();
-
         await CatalogSeed.SeedAsync(catalogDb);
         var r2Storage = scope.ServiceProvider.GetRequiredService<ICloudflareR2Storage>();
         await R2DemoCatalogSeed.SeedAsync(catalogDb, r2Storage.GetPublicStreamUrl);
