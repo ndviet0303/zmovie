@@ -54,6 +54,10 @@ public sealed class LegacyCatalogDbContext(DbContextOptions<LegacyCatalogDbConte
         modelBuilder.Entity<Episode>().Ignore(x => x.OutroEnd);
         modelBuilder.Entity<User>().Ignore(x => x.VipExpiresAt);
         modelBuilder.Entity<User>().Ignore(x => x.SubscriptionTier);
+        modelBuilder.Entity<User>().Ignore(x => x.Username);
+        modelBuilder.Entity<User>().Ignore(x => x.PasswordHash);
+        modelBuilder.Entity<User>().Ignore(x => x.PasswordResetTokenHash);
+        modelBuilder.Entity<User>().Ignore(x => x.PasswordResetExpiresAt);
     }
 }
 

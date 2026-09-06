@@ -23,6 +23,11 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired()
             .HasConversion(identity => identity.Subject, value => new ExternalIdentity(value));
 
+        builder.Property(user => user.Username)
+            .HasColumnName("username")
+            .HasMaxLength(64)
+            .IsRequired();
+
         builder.Property(user => user.Email)
             .HasColumnName("email")
             .HasMaxLength(320)
@@ -37,6 +42,17 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnName("avatar_url")
             .HasMaxLength(2000)
             .IsRequired(false);
+
+        builder.Property(user => user.PasswordHash)
+            .HasColumnName("password_hash")
+            .HasMaxLength(1000);
+
+        builder.Property(user => user.PasswordResetTokenHash)
+            .HasColumnName("password_reset_token_hash")
+            .HasMaxLength(128);
+
+        builder.Property(user => user.PasswordResetExpiresAt)
+            .HasColumnName("password_reset_expires_at");
 
         builder.Property(user => user.Role)
             .HasColumnName("role")
@@ -57,9 +73,14 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .IsUnique()
             .HasDatabaseName("ix_users_google_subject");
 
-        builder.HasIndex(user => user.Email)
-            .HasDatabaseName("ix_users_email");
+        builder.HasIndex(user => user.Username)
+            .IsUnique()
+            .HasDatabaseName("ix_users_username");
 
+        builder.HasIndex(user => user.Email)
+            .IsUnique()
+            .HasFilter("password_hash IS NOT NULL")
+            .HasDatabaseName("ix_users_email");
         builder.HasIndex(user => new { user.Role, user.CreatedAt })
             .HasDatabaseName("ix_users_role_created_at");
 

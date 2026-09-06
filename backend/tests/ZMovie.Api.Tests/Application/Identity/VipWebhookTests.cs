@@ -158,6 +158,12 @@ public sealed class VipWebhookTests
         public Task<User?> FindByExternalIdentityAsync(ExternalIdentity externalIdentity, CancellationToken ct) =>
             Task.FromResult(StoredUser?.ExternalIdentity == externalIdentity ? StoredUser : null);
 
+        public Task<User?> FindByLoginAsync(string login, CancellationToken ct) =>
+            Task.FromResult(StoredUser is not null && (StoredUser.Username == login || StoredUser.Email == login) ? StoredUser : null);
+
+        public Task<User?> FindByEmailAsync(string email, CancellationToken ct) =>
+            Task.FromResult(StoredUser?.Email == email ? StoredUser : null);
+
         public void Add(User user) => StoredUser = user;
 
         public Task SaveChangesAsync(CancellationToken ct) => Task.CompletedTask;

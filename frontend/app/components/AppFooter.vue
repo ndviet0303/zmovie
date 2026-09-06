@@ -1,22 +1,16 @@
 <script setup lang="ts">
 import { Send } from "@lucide/vue";
 
-const socialLinks = [
-  { name: "Telegram", icon: "telegram", href: "https://t.me/motchilltv" },
-  { name: "Discord", icon: "discord", href: "#" },
-  { name: "X", icon: "x", href: "#" },
-  { name: "Facebook", icon: "facebook", href: "#" },
-  { name: "TikTok", icon: "tiktok", href: "#" },
-  { name: "YouTube", icon: "youtube", href: "#" },
-  { name: "Instagram", icon: "instagram", href: "#" },
-];
-
 const quickLinks = [
-  { label: "Hồi-Đáp", to: "/privacy" },
-  { label: "Chính sách bảo mật", to: "/privacy" },
+  { label: "Giới thiệu", to: "/about" },
+  { label: "Liên hệ & Hỗ trợ", to: "/contact" },
+  { label: "Khiếu nại DMCA", to: "/dmca" },
   { label: "Điều khoản sử dụng", to: "/terms" },
-  { label: "Giới thiệu", to: "/privacy" },
-  { label: "Liên hệ", to: "https://t.me/motchilltv", external: true },
+  { label: "Chính sách bảo mật", to: "/privacy" },
+  { label: "Cài ứng dụng", to: "/app" },
+  { label: "Lịch chiếu phim", to: "/schedule" },
+  { label: "Danh bạ nghệ sĩ", to: "/actors" },
+  { label: "Xem chung", to: "/party" },
 ];
 </script>
 

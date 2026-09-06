@@ -19,6 +19,38 @@ export type TitleListResponse = {
   total: number | string;
 };
 
+export type ScheduleEntry = {
+  slug: string;
+  title: string;
+  posterUrl: string;
+  date: string;
+  episodeNumber?: number | null;
+};
+
+export type ScheduleResponse = {
+  weekStart: string;
+  items: ScheduleEntry[];
+};
+
+export type PersonSummary = {
+  slug: string;
+  name: string;
+  roles: string[];
+  titleCount: number;
+};
+
+export type PeopleResponse = {
+  items: PersonSummary[];
+  total: number;
+};
+
+export type PersonDetail = {
+  slug: string;
+  name: string;
+  roles: string[];
+  titles: TitleSummary[];
+};
+
 export type PlaybackSource = {
   provider: string;
   url: string;

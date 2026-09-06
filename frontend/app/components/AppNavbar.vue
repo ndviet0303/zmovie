@@ -7,14 +7,21 @@ import {
   LogOut,
 } from "@lucide/vue";
 
-const props = defineProps<{ locale?: "vi" | "en" }>();
-const emit = defineEmits<{ localeChange: [locale: "vi" | "en"] }>();
+defineProps<{ locale?: "vi" | "en" }>();
+defineEmits<{ localeChange: [locale: "vi" | "en"] }>();
 
 const isDrawerOpen = ref(false);
-const { user, logout } = useAuthSession();
-const router = useRouter();
-
-const searchQuery = ref("");
+const { user, signOut } = useAuthSession();
+const {
+  query: searchQuery,
+  results: searchResults,
+  isOpen: isSearchOpen,
+  isLoading: isSearchLoading,
+  open: openSearch,
+  blur: blurSearch,
+  submit: submitSearch,
+  select: selectSearchResult,
+} = useGlobalSearch();
 const isTheLoaiOpen = ref(false);
 const isQuocGiaOpen = ref(false);
 const isThemOpen = ref(false);
@@ -54,22 +61,19 @@ const countries = [
 ];
 
 const moreItems = [
+  { name: "Lướt Shorts", path: "/shorts" },
+  { name: "AI Movie Bot", path: "/assistant" },
+  { name: "Cài đặt ứng dụng", path: "/app" },
   { name: "Top IMDb", path: "/browse?sort=rating" },
   { name: "Phim Chiếu Rạp", path: "/browse?genre=Chiếu%20Rạp" },
   { name: "Anime", path: "/browse?genre=Hoạt%20Hình" },
   { name: "Netflix", path: "/browse?country=Âu%20Mỹ" },
   { name: "Phim 4K", path: "/browse?collection=recommended" },
-  { name: "Thuyết Minh", path: "/browse?genre=Thuyết%20Minh" },
 ];
 
-function handleSearch() {
-  if (!searchQuery.value.trim()) return;
-  router.push({ path: "/browse", query: { query: searchQuery.value.trim() } });
-}
-
-function handleLogout() {
-  logout();
-  router.push("/");
+async function handleLogout() {
+  await signOut();
+  await navigateTo("/");
 }
 </script>
 
@@ -101,7 +105,12 @@ function handleLogout() {
         </NuxtLink>
 
         <!-- Desktop Search Input (Clean Pill) -->
-        <form class="relative hidden md:block" @submit.prevent="handleSearch">
+        <form
+          class="relative hidden md:block"
+          @submit.prevent="submitSearch"
+          @focusin="openSearch"
+          @focusout="blurSearch"
+        >
           <Search
             class="pointer-events-none absolute left-4 top-1/2 size-4.5 -translate-y-1/2 text-gray-400"
           />
@@ -111,6 +120,51 @@ function handleLogout() {
             placeholder="Tìm kiếm phim, diễn viên..."
             class="h-11 w-56 lg:w-72 xl:w-88 rounded-full border border-white/12 bg-black/40 pl-11 pr-5 text-sm font-medium text-white placeholder-gray-400/80 backdrop-blur-md transition focus:border-primary/60 focus:bg-black/60 focus:outline-none focus:ring-1 focus:ring-primary/40"
           />
+          <div
+            v-if="isSearchOpen && searchQuery.trim().length >= 2"
+            class="absolute left-0 top-[calc(100%+0.5rem)] z-50 w-96 overflow-hidden rounded-2xl border border-white/10 bg-[#191b24]/98 p-2 shadow-2xl backdrop-blur-xl"
+          >
+            <p
+              v-if="isSearchLoading"
+              class="px-3 py-4 text-center text-xs text-gray-400"
+            >
+              Đang tìm kiếm…
+            </p>
+            <template v-else-if="searchResults.length">
+              <button
+                v-for="result in searchResults"
+                :key="result.slug"
+                type="button"
+                class="flex w-full items-center gap-3 rounded-xl p-2 text-left transition hover:bg-white/10"
+                @mousedown.prevent
+                @click="selectSearchResult(result.slug)"
+              >
+                <img
+                  :src="result.posterUrl"
+                  :alt="result.title"
+                  class="h-14 w-10 shrink-0 rounded-md object-cover"
+                />
+                <span class="min-w-0">
+                  <span class="block truncate text-sm font-semibold text-white">
+                    {{ result.title }}
+                  </span>
+                  <span class="mt-1 block truncate text-[11px] text-gray-400">
+                    {{ result.year }} · {{ result.genre }}
+                  </span>
+                </span>
+              </button>
+              <button
+                type="submit"
+                class="mt-1 w-full rounded-xl px-3 py-2 text-center text-xs font-semibold text-primary transition hover:bg-primary/10"
+                @mousedown.prevent
+              >
+                Xem tất cả kết quả
+              </button>
+            </template>
+            <p v-else class="px-3 py-4 text-center text-xs text-gray-400">
+              Không tìm thấy phim phù hợp.
+            </p>
+          </div>
         </form>
 
         <!-- Desktop Navigation Bar -->
@@ -156,7 +210,7 @@ function handleLogout() {
 
           <!-- 2. Phim Lẻ Link -->
           <NuxtLink
-            to="/browse?type=movie"
+            to="/browse?format=movie"
             class="rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
           >
             Phim Lẻ
@@ -164,12 +218,35 @@ function handleLogout() {
 
           <!-- 3. Phim Bộ Link -->
           <NuxtLink
-            to="/browse?type=series"
+            to="/browse?format=series"
             class="rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
           >
             Phim Bộ
           </NuxtLink>
 
+          <!-- 4. Lịch Chiếu Link -->
+          <NuxtLink
+            to="/schedule"
+            class="rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
+          >
+            Lịch Chiếu
+          </NuxtLink>
+
+          <!-- 5. Xem Chung Link -->
+          <NuxtLink
+            to="/party"
+            class="rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
+          >
+            Xem Chung
+          </NuxtLink>
+
+          <!-- 6. Nghệ Sĩ Link -->
+          <NuxtLink
+            to="/actors"
+            class="rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
+          >
+            Nghệ Sĩ
+          </NuxtLink>
           <!-- 4. Quốc gia Dropdown -->
           <div
             class="relative"

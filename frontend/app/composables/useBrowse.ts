@@ -1,25 +1,16 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { fetchCatalogTitles } from "~/services/catalog.service";
 import { fetchPersonalizedDiscovery } from "~/services/discovery.service";
-import { searchCatalogTitles } from "~/services/search.service";
-import type {
-  SortOrder,
-  TitleListResponse,
-  TitleSummary,
-} from "~/types/catalog";
-
-function splitGenres(genre: string): string[] {
-  return genre
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
+import type { SortOrder, TitleListResponse } from "~/types/catalog";
 
 export function useBrowse() {
   const route = useRoute();
+  const router = useRouter();
   const { locale, messages, setLocale: setGlobalLocale } = useLocale();
 
-  const query = ref("");
+  const query = ref(
+    typeof route.query.query === "string" ? route.query.query : "",
+  );
   const selectedGenre = ref(
     typeof route.query.genre === "string" ? route.query.genre : "all",
   );
@@ -30,14 +21,20 @@ export function useBrowse() {
     typeof route.query.year === "string" ? route.query.year : "all",
   );
   const selectedFormat = ref(
-    typeof route.query.format === "string" ? route.query.format : "all",
+    typeof route.query.format === "string"
+      ? route.query.format
+      : typeof route.query.type === "string"
+        ? route.query.type
+        : "all",
   );
   const filtersOpen = ref(false);
-  const sortOrder = ref<SortOrder>("latest");
-
-  const selectedType = computed(() =>
-    route.query.type === "series" ? "series" : "all",
+  const sortOrder = ref<SortOrder>(
+    route.query.sort === "oldest" || route.query.sort === "title"
+      ? route.query.sort
+      : "latest",
   );
+  const page = ref(Math.max(1, Number(route.query.page) || 1));
+  const pageSize = 30;
   const collection = computed(() =>
     route.query.collection === "recommended" ? "recommended" : "catalog",
   );
@@ -48,23 +45,34 @@ export function useBrowse() {
   const loadError = ref(false);
 
   async function loadBrowseData(requestedLocale = locale.value) {
-    const catalog = await fetchCatalogTitles({ locale: requestedLocale });
-
     if (isRecommended.value) {
       try {
         const personalized = await fetchPersonalizedDiscovery(requestedLocale);
         if (personalized.recommended.length) {
+          const offset = (page.value - 1) * pageSize;
           return {
-            items: personalized.recommended,
+            items: personalized.recommended.slice(offset, offset + pageSize),
             total: personalized.recommended.length,
           };
         }
       } catch {
-        // Guests fall back to catalog
+        // Guests fall back to catalog.
       }
     }
 
-    return catalog;
+    return fetchCatalogTitles({
+      q: query.value.trim() || undefined,
+      genre: selectedGenre.value === "all" ? undefined : selectedGenre.value,
+      country:
+        selectedCountry.value === "all" ? undefined : selectedCountry.value,
+      year:
+        selectedYear.value === "all" ? undefined : Number(selectedYear.value),
+      type: selectedFormat.value === "all" ? undefined : selectedFormat.value,
+      sort: sortOrder.value,
+      page: page.value,
+      pageSize,
+      locale: requestedLocale,
+    });
   }
 
   async function refreshBrowseData(requestedLocale = locale.value) {
@@ -80,105 +88,103 @@ export function useBrowse() {
     }
   }
 
-  let searchTimer: ReturnType<typeof setTimeout> | undefined;
+  let refreshTimer: number | undefined;
+  let routeTimer: number | undefined;
 
-  watch(query, (value) => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(async () => {
-      isLoading.value = true;
-      loadError.value = false;
-      try {
-        data.value = value.trim()
-          ? await searchCatalogTitles({
-              q: value.trim(),
-              locale: locale.value,
-            })
-          : await loadBrowseData();
-      } catch {
-        data.value = { items: [], total: 0 };
-        loadError.value = true;
-      } finally {
-        isLoading.value = false;
-      }
-    }, 180);
-  });
+  watch(
+    [
+      query,
+      selectedGenre,
+      selectedCountry,
+      selectedYear,
+      selectedFormat,
+      sortOrder,
+      page,
+    ],
+    () => {
+      if (!import.meta.client) return;
+      clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        void refreshBrowseData();
+      }, 180);
+    },
+  );
 
   onMounted(() => {
     void refreshBrowseData();
   });
 
   onBeforeUnmount(() => {
-    clearTimeout(searchTimer);
+    clearTimeout(refreshTimer);
+    clearTimeout(routeTimer);
   });
 
-  const genres = computed(() => [
+  const years = [
     "all",
-    ...new Set(
-      data.value?.items.flatMap((title) => splitGenres(title.genre)) ?? [],
+    ...Array.from({ length: new Date().getFullYear() - 1970 + 1 }, (_, index) =>
+      String(new Date().getFullYear() - index),
     ),
-  ]);
+  ];
+  const totalResults = computed(() => Number(data.value?.total ?? 0));
+  const totalPages = computed(() =>
+    Math.max(1, Math.ceil(totalResults.value / pageSize)),
+  );
+  const visibleTitles = computed(() => data.value?.items ?? []);
 
-  const countries = computed(() => [
-    "all",
-    ...new Set(
-      data.value?.items
-        .map((title) => title.country?.trim())
-        .filter((c): c is string => Boolean(c)) ?? [],
-    ),
-  ]);
+  watch(
+    [
+      query,
+      selectedGenre,
+      selectedCountry,
+      selectedYear,
+      selectedFormat,
+      sortOrder,
+    ],
+    () => {
+      page.value = 1;
+    },
+  );
 
-  const years = computed(() => [
-    "all",
-    ...Array.from(
-      new Set(
-        data.value?.items
-          .map((title) => String(title.year))
-          .filter((y) => Boolean(y)) ?? [],
-      ),
-    ).sort((a, b) => Number(b) - Number(a)),
-  ]);
+  watch(
+    [
+      query,
+      selectedGenre,
+      selectedCountry,
+      selectedYear,
+      selectedFormat,
+      sortOrder,
+      page,
+    ],
+    () => {
+      if (!import.meta.client) return;
+      clearTimeout(routeTimer);
+      routeTimer = window.setTimeout(() => {
+        void router.replace({
+          query: {
+            ...route.query,
+            query: query.value.trim() || undefined,
+            genre:
+              selectedGenre.value === "all" ? undefined : selectedGenre.value,
+            country:
+              selectedCountry.value === "all"
+                ? undefined
+                : selectedCountry.value,
+            year: selectedYear.value === "all" ? undefined : selectedYear.value,
+            format:
+              selectedFormat.value === "all" ? undefined : selectedFormat.value,
+            type: undefined,
+            sort: sortOrder.value === "latest" ? undefined : sortOrder.value,
+            page: page.value > 1 ? String(page.value) : undefined,
+          },
+        });
+      }, 100);
+    },
+  );
 
-  const visibleTitles = computed<TitleSummary[]>(() => {
-    const filtered = (data.value?.items ?? []).filter((title) => {
-      const matchesGenre =
-        selectedGenre.value === "all" ||
-        splitGenres(title.genre).includes(selectedGenre.value);
-
-      const matchesType =
-        selectedType.value === "all" || title.type === selectedType.value;
-
-      const matchesCountry =
-        selectedCountry.value === "all" ||
-        title.country?.trim().toLowerCase() ===
-          selectedCountry.value.toLowerCase();
-
-      const matchesYear =
-        selectedYear.value === "all" ||
-        String(title.year) === selectedYear.value;
-
-      const matchesFormat =
-        selectedFormat.value === "all" ||
-        (selectedFormat.value === "r2" && title.isR2Hosted) ||
-        (selectedFormat.value === "movie" && title.type === "movie") ||
-        (selectedFormat.value === "series" && title.type === "series");
-
-      return (
-        matchesGenre &&
-        matchesType &&
-        matchesCountry &&
-        matchesYear &&
-        matchesFormat
-      );
-    });
-
-    if (isRecommended.value) return filtered;
-
-    return filtered.sort((a, b) => {
-      if (sortOrder.value === "oldest") return Number(a.year) - Number(b.year);
-      if (sortOrder.value === "title") return a.title.localeCompare(b.title);
-      return Number(b.year) - Number(a.year);
-    });
-  });
+  function goToPage(nextPage: number) {
+    page.value = Math.max(1, Math.min(nextPage, totalPages.value));
+    if (import.meta.client) window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   const activeFilterCount = computed(() => {
     let count = 0;
@@ -209,11 +215,13 @@ export function useBrowse() {
     return {
       title: isRecommended.value
         ? b.recommendedTitle
-        : selectedType.value === "series"
+        : selectedFormat.value === "series"
           ? b.seriesTitle
-          : route.query.sort === "latest"
-            ? b.latestTitle
-            : b.title,
+          : selectedFormat.value === "movie"
+            ? b.movies
+            : route.query.sort === "latest"
+              ? b.latestTitle
+              : b.title,
       placeholder: b.placeholder,
       filters: b.filters,
       all: b.all,
@@ -248,12 +256,14 @@ export function useBrowse() {
     selectedYear,
     selectedFormat,
     filtersOpen,
+    page,
+    pageSize,
+    totalResults,
+    totalPages,
     sortOrder,
     isRecommended,
     isLoading,
     loadError,
-    genres,
-    countries,
     years,
     visibleTitles,
     activeFilterCount,
@@ -261,5 +271,6 @@ export function useBrowse() {
     genreLabel,
     clearFilters,
     changeLocale,
+    goToPage,
   };
 }

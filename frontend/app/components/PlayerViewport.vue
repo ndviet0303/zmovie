@@ -15,6 +15,9 @@ const emit = defineEmits<{
   pause: [];
   ended: [];
   loadedmetadata: [];
+  "loading-start": [];
+  "loading-end": [];
+  seeked: [];
   "video-ref": [el: HTMLVideoElement | null];
 }>();
 
@@ -26,7 +29,10 @@ watch(videoEl, (el) => {
 </script>
 
 <template>
-  <div class="relative aspect-video w-full overflow-hidden bg-black">
+  <div
+    class="relative aspect-video w-full overflow-hidden bg-black"
+    :aria-busy="isLoading"
+  >
     <!-- Embed Iframe Mode -->
     <iframe
       v-if="isEmbed && source"
@@ -41,6 +47,7 @@ watch(videoEl, (el) => {
         picture-in-picture;
       "
       allowfullscreen
+      @load="emit('loading-end')"
     />
 
     <!-- Native HLS Video Mode -->
@@ -52,21 +59,46 @@ watch(videoEl, (el) => {
       crossorigin="anonymous"
       @timeupdate="emit('timeupdate')"
       @play="emit('play')"
+      @canplay="emit('loading-end')"
+      @playing="emit('loading-end')"
       @pause="emit('pause')"
       @ended="emit('ended')"
       @loadedmetadata="emit('loadedmetadata')"
+      @loadstart="emit('loading-start')"
+      @waiting="emit('loading-start')"
+      @stalled="emit('loading-start')"
+      @seeking="emit('loading-start')"
+      @seeked="emit('seeked')"
     />
 
     <!-- Overlays Slot (Danmaku, DualSub, SkipIntro) -->
     <slot />
 
     <!-- Loading Spinner -->
-    <div
-      v-if="isLoading"
-      class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/50"
+    <Transition
+      enter-active-class="transition-opacity duration-150"
+      enter-from-class="opacity-0"
+      leave-active-class="transition-opacity duration-150"
+      leave-to-class="opacity-0"
     >
-      <LoaderCircle class="h-10 w-10 animate-spin text-amber-500" />
-    </div>
+      <div
+        v-if="isLoading"
+        class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/55 backdrop-blur-[1px]"
+        role="status"
+        aria-label="Đang tải phim"
+      >
+        <div
+          class="relative flex h-16 w-16 items-center justify-center rounded-full bg-black/45 shadow-lg shadow-black/40"
+        >
+          <span
+            class="absolute inset-2 animate-ping rounded-full border border-amber-400/35"
+          />
+          <LoaderCircle
+            class="relative h-10 w-10 animate-spin text-amber-500 drop-shadow-[0_0_10px_rgba(245,158,11,0.45)]"
+          />
+        </div>
+      </div>
+    </Transition>
 
     <!-- Error Message -->
     <div

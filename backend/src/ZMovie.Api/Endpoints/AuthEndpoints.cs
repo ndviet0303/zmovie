@@ -16,20 +16,30 @@ public static class AuthEndpoints
         endpoints.MapPost("/v1/auth/google", async (ISender sender, HttpContext context, GoogleCredentialRequest request, CancellationToken ct) =>
         {
             var result = await sender.Send(new SignInWithGoogleCommand(request.Credential), ct);
-            if (result.IsError) return result.ToApiResult();
-
-            var user = result.Value;
-            var claims = new[]
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Name, user.DisplayName),
-                new Claim("picture", user.AvatarUrl ?? string.Empty),
-                new Claim(ClaimTypes.Role, user.Role),
-            };
-            await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)));
-            return Results.Ok(user);
+            return result.IsError ? result.ToApiResult() : await SignInAsync(context, result.Value);
         }).Produces<AuthenticatedUser>(StatusCodes.Status200OK).ProducesApiErrors();
+
+        endpoints.MapPost("/v1/auth/register", async (ISender sender, HttpContext context, LocalRegistrationRequest request, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new RegisterLocalUserCommand(request.Username, request.DisplayName, request.Email, request.Password), ct);
+            return result.IsError ? result.ToApiResult() : await SignInAsync(context, result.Value);
+        }).Produces<AuthenticatedUser>(StatusCodes.Status200OK).ProducesApiErrors();
+
+        endpoints.MapPost("/v1/auth/login", async (ISender sender, HttpContext context, PasswordLoginRequest request, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new SignInWithPasswordCommand(request.Login, request.Password), ct);
+            return result.IsError ? result.ToApiResult() : await SignInAsync(context, result.Value);
+        }).Produces<AuthenticatedUser>(StatusCodes.Status200OK).ProducesApiErrors();
+
+        endpoints.MapPost("/v1/auth/forgot-password", async (ISender sender, PasswordResetRequest request, CancellationToken ct) =>
+                (await sender.Send(new RequestPasswordResetCommand(request.Email), ct)).ToApiResult())
+            .Produces<bool>(StatusCodes.Status200OK)
+            .ProducesApiErrors();
+
+        endpoints.MapPost("/v1/auth/reset-password", async (ISender sender, CompletePasswordResetRequest request, CancellationToken ct) =>
+                (await sender.Send(new ResetPasswordCommand(request.Login, request.Token, request.Password), ct)).ToApiResult())
+            .Produces<bool>(StatusCodes.Status200OK)
+            .ProducesApiErrors();
 
         endpoints.MapGet("/v1/auth/me", (HttpContext context) =>
         {
@@ -72,8 +82,28 @@ public static class AuthEndpoints
 
         return endpoints;
     }
+
+    private static async Task<IResult> SignInAsync(HttpContext context, AuthenticatedUser user)
+    {
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Name, user.DisplayName),
+            new Claim("picture", user.AvatarUrl ?? string.Empty),
+            new Claim(ClaimTypes.Role, user.Role),
+        };
+        await context.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)));
+        return Results.Ok(user);
+    }
 }
 
 public sealed record GoogleCredentialRequest(string Credential);
+public sealed record LocalRegistrationRequest(string Username, string DisplayName, string Email, string Password);
+public sealed record PasswordLoginRequest(string Login, string Password);
+public sealed record PasswordResetRequest(string Email);
+public sealed record CompletePasswordResetRequest(string Login, string Token, string Password);
 public sealed record WatchProgressRequest(int? EpisodeNumber, double ProgressSeconds);
 public sealed record SubmitTitleReviewRequest(int Rating, string? Comment);

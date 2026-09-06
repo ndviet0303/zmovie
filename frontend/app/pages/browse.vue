@@ -9,14 +9,17 @@ const {
   selectedYear,
   selectedFormat,
   filtersOpen,
+  sortOrder,
+  page,
+  totalResults,
+  totalPages,
+  years,
   isLoading,
   visibleTitles,
   changeLocale,
   genreLabel,
+  goToPage,
 } = useBrowse();
-
-// Search mode tab: 'phim' vs 'dien-vien'
-const searchTab = ref<"phim" | "dien-vien">("phim");
 
 // Filter options matching CôBéPhim
 const countryOptions = [
@@ -44,16 +47,6 @@ const formatOptions = [
   { label: "Phim lẻ", value: "movie" },
   { label: "Phim bộ", value: "series" },
 ];
-
-const ratingOptions = [
-  "Tất cả",
-  "P (Mọi lứa tuổi)",
-  "K (Dưới 13 tuổi)",
-  "T13 (13 tuổi trở lên)",
-  "T16 (16 tuổi trở lên)",
-  "T18 (18 tuổi trở lên)",
-];
-const selectedRating = ref("Tất cả");
 
 const genreOptions = [
   "Tất cả",
@@ -139,32 +132,18 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Search Tabs (Phim vs Diễn viên) when searching -->
       <div v-if="query" class="mt-5 flex items-center gap-2">
-        <button
-          type="button"
-          class="rounded-full px-5 py-2 text-xs font-bold transition"
-          :class="
-            searchTab === 'phim'
-              ? 'bg-white text-black shadow-md'
-              : 'bg-white/10 text-white/80 hover:bg-white/15'
-          "
-          @click="searchTab = 'phim'"
+        <span
+          class="rounded-full bg-white px-5 py-2 text-xs font-bold text-black shadow-md"
         >
           Phim
-        </button>
-        <button
-          type="button"
-          class="rounded-full px-5 py-2 text-xs font-bold transition"
-          :class="
-            searchTab === 'dien-vien'
-              ? 'bg-white text-black shadow-md'
-              : 'bg-white/10 text-white/80 hover:bg-white/15'
-          "
-          @click="searchTab = 'dien-vien'"
+        </span>
+        <NuxtLink
+          :to="{ path: '/actors', query: { query } }"
+          class="rounded-full bg-white/10 px-5 py-2 text-xs font-bold text-white/80 transition hover:bg-white/15"
         >
           Diễn viên
-        </button>
+        </NuxtLink>
       </div>
 
       <!-- Filter Toggle Trigger Button -->
@@ -259,25 +238,25 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- Row 3: Xếp hạng -->
+          <!-- Row 3: Năm phát hành -->
           <div
             class="grid grid-cols-1 sm:grid-cols-[100px_1fr] items-start gap-2 sm:gap-4 pb-4 border-b border-white/5"
           >
-            <span class="font-bold text-white/70 pt-1.5">Xếp hạng:</span>
-            <div class="flex flex-wrap gap-1.5">
+            <span class="font-bold text-white/70 pt-1.5">Năm:</span>
+            <div class="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">
               <button
-                v-for="r in ratingOptions"
-                :key="r"
+                v-for="year in years"
+                :key="year"
                 type="button"
                 class="rounded-lg px-3 py-1.5 font-semibold transition"
                 :class="
-                  selectedRating === r
+                  selectedYear === year
                     ? 'bg-primary text-black font-bold shadow-sm'
                     : 'bg-white/5 text-white/80 hover:bg-white/10 hover:text-white'
                 "
-                @click="selectedRating = r"
+                @click="selectedYear = year"
               >
-                {{ r }}
+                {{ year === "all" ? "Tất cả" : year }}
               </button>
             </div>
           </div>
@@ -302,6 +281,33 @@ onMounted(() => {
                 @click="selectedGenre = g === 'Tất cả' ? 'all' : g"
               >
                 {{ g }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Row 5: Sắp xếp -->
+          <div
+            class="grid grid-cols-1 sm:grid-cols-[100px_1fr] items-start gap-2 sm:gap-4"
+          >
+            <span class="font-bold text-white/70 pt-1.5">Sắp xếp:</span>
+            <div class="flex flex-wrap gap-1.5">
+              <button
+                v-for="option in [
+                  { value: 'latest', label: 'Mới nhất' },
+                  { value: 'oldest', label: 'Cũ nhất' },
+                  { value: 'title', label: 'Tên A-Z' },
+                ]"
+                :key="option.value"
+                type="button"
+                class="rounded-lg px-3 py-1.5 font-semibold transition"
+                :class="
+                  sortOrder === option.value
+                    ? 'bg-primary text-black font-bold shadow-sm'
+                    : 'bg-white/5 text-white/80 hover:bg-white/10 hover:text-white'
+                "
+                @click="sortOrder = option.value"
+              >
+                {{ option.label }}
               </button>
             </div>
           </div>
@@ -331,6 +337,33 @@ onMounted(() => {
             :title="item"
             variant="vertical"
           />
+        </div>
+
+        <div
+          v-if="!isLoading && totalResults"
+          class="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-white/8 pt-6"
+        >
+          <p class="text-xs text-white/50">
+            {{ totalResults }} phim · Trang {{ page }} / {{ totalPages }}
+          </p>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold transition hover:border-primary/50 disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="page <= 1"
+              @click="goToPage(page - 1)"
+            >
+              Trang trước
+            </button>
+            <button
+              type="button"
+              class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold transition hover:border-primary/50 disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="page >= totalPages"
+              @click="goToPage(page + 1)"
+            >
+              Trang sau
+            </button>
+          </div>
         </div>
 
         <!-- Empty State -->

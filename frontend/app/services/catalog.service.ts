@@ -1,6 +1,9 @@
 import type { ApiFetch } from "~/types/api-fetch";
 import type {
+  PeopleResponse,
+  PersonDetail,
   PlaybackResponse,
+  ScheduleResponse,
   TitleDetail,
   TitleListResponse,
 } from "~/types/catalog";
@@ -12,7 +15,17 @@ function resolveApi(api?: ApiFetch): ApiFetch {
 }
 
 export function fetchCatalogTitles(
-  params?: { q?: string; genre?: string; locale?: string },
+  params?: {
+    q?: string;
+    genre?: string;
+    country?: string;
+    year?: number;
+    type?: string;
+    sort?: string;
+    page?: number;
+    pageSize?: number;
+    locale?: string;
+  },
   api?: ApiFetch,
 ): Promise<TitleListResponse> {
   return resolveApi(api)<TitleListResponse>("/v1/catalog/titles", {
@@ -37,6 +50,36 @@ export function fetchCatalogGenres(api?: ApiFetch): Promise<string[]> {
   return resolveApi(api)<string[]>("/v1/catalog/genres");
 }
 
+export function fetchCatalogSchedule(
+  params?: { weekStart?: string; locale?: string },
+  api?: ApiFetch,
+): Promise<ScheduleResponse> {
+  return resolveApi(api)<ScheduleResponse>("/v1/catalog/schedule", {
+    query: params,
+  });
+}
+
+export function fetchCatalogPeople(
+  params?: { q?: string; page?: number; pageSize?: number },
+  api?: ApiFetch,
+): Promise<PeopleResponse> {
+  return resolveApi(api)<PeopleResponse>("/v1/catalog/people", {
+    query: params,
+  });
+}
+
+export function fetchCatalogPerson(
+  slug: string,
+  locale?: string,
+  api?: ApiFetch,
+): Promise<PersonDetail> {
+  return resolveApi(api)<PersonDetail>(
+    `/v1/catalog/people/${encodeURIComponent(slug)}`,
+    {
+      query: locale ? { locale } : undefined,
+    },
+  );
+}
 export function fetchCatalogPlayback(
   slug: string,
   locale?: string,

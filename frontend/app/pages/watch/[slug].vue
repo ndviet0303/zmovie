@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
 import { ChevronLeft } from "@lucide/vue";
-import { useWatchPlayer } from "~/composables/useWatchPlayer";
-import { usePlayerHotkeys } from "~/composables/usePlayerHotkeys";
+import { computed, onMounted, ref } from "vue";
 import { useDanmaku } from "~/composables/useDanmaku";
 import { useDualSub } from "~/composables/useDualSub";
-
+import { usePlayerHotkeys } from "~/composables/usePlayerHotkeys";
+import { useWatchPlayer } from "~/composables/useWatchPlayer";
+import {
+  removeTitleFromLibrary,
+  saveTitleToLibrary,
+} from "~/services/library.service";
 const route = useRoute();
 const slug = computed(() => String(route.params.slug || ""));
 
@@ -13,6 +16,48 @@ const player = useWatchPlayer(slug.value);
 const episodeNumber = computed(() => player.currentEpisode.value?.number ?? 1);
 const danmaku = useDanmaku(slug, episodeNumber);
 const dualSub = useDualSub();
+
+const isReportOpen = ref(false);
+const autoNext = ref(true);
+const isSaved = ref(false);
+
+async function toggleSaved() {
+  try {
+    if (isSaved.value) {
+      await removeTitleFromLibrary(slug.value);
+      isSaved.value = false;
+    } else {
+      await saveTitleToLibrary(slug.value);
+      isSaved.value = true;
+    }
+  } catch {
+    // Ignore for guests
+  }
+}
+
+function handlePrevEpisode() {
+  if (player.selectedEpisodeIndex.value > 0) {
+    player.selectEpisode(player.selectedEpisodeIndex.value - 1);
+  }
+}
+
+function handleNextEpisode() {
+  const total = player.playback.value?.episodes.length || 0;
+  if (player.selectedEpisodeIndex.value < total - 1) {
+    player.selectEpisode(player.selectedEpisodeIndex.value + 1);
+  }
+}
+
+function handleVideoEnded() {
+  player.onEnded();
+  if (autoNext.value) {
+    handleNextEpisode();
+  }
+}
+
+async function handleSendDanmaku(content: string, color: string) {
+  await danmaku.submitDanmaku(player.currentTime.value, content, color);
+}
 
 usePlayerHotkeys({
   togglePlay: player.togglePlay,
@@ -85,8 +130,11 @@ onMounted(() => {
           @timeupdate="player.onTimeUpdate"
           @play="player.isPlaying.value = true"
           @pause="player.isPlaying.value = false"
-          @ended="player.onEnded"
+          @ended="handleVideoEnded"
           @loadedmetadata="player.onLoadedMetadata"
+          @loading-start="player.onMediaLoading"
+          @loading-end="player.onMediaReady"
+          @seeked="player.onSeeked"
           @video-ref="(el) => (player.video.value = el)"
         >
           <!-- Danmaku Canvas Layer -->
@@ -167,6 +215,26 @@ onMounted(() => {
           </div>
         </PlayerViewport>
       </div>
+
+      <!-- Action Bar (Danmaku, Report, Navigation, Watch Party) -->
+      <PlayerActionBar
+        :slug="slug"
+        :episode-number="episodeNumber"
+        :total-episodes="player.playback.value?.episodes.length || 1"
+        :current-time="player.currentTime.value"
+        :is-danmaku-enabled="danmaku.isEnabled.value"
+        :auto-next="autoNext"
+        :is-saved="isSaved"
+        :is-theater="player.isTheaterMode.value"
+        @prev-episode="handlePrevEpisode"
+        @next-episode="handleNextEpisode"
+        @toggle-danmaku="danmaku.isEnabled.value = !danmaku.isEnabled.value"
+        @send-danmaku="handleSendDanmaku"
+        @toggle-auto-next="autoNext = !autoNext"
+        @toggle-saved="toggleSaved"
+        @toggle-theater="player.toggleTheater"
+        @open-report="isReportOpen = true"
+      />
     </div>
 
     <!-- Scrolled Floating Mini-Player -->
@@ -252,5 +320,15 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- Report Issue Modal -->
+    <PlayerReportModal
+      :is-open="isReportOpen"
+      :movie-slug="slug"
+      :movie-title="player.title.value?.title || ''"
+      :episode-number="episodeNumber"
+      :current-time="player.currentTime.value"
+      @close="isReportOpen = false"
+    />
   </div>
 </template>

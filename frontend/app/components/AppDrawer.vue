@@ -2,18 +2,22 @@
 import {
   Bookmark,
   Bot,
+  CalendarDays,
   ChevronDown,
+  Download,
   Film,
   Globe,
   Layers,
-  LogOut,
   ShieldCheck,
+  Smartphone,
   Tv,
   User,
+  Users,
+  UsersRound,
   X,
 } from "@lucide/vue";
 
-const props = defineProps<{
+defineProps<{
   isOpen: boolean;
 }>();
 
@@ -185,7 +189,7 @@ async function handleLogout() {
 
           <!-- Phim Lẻ -->
           <NuxtLink
-            to="/browse?type=single"
+            to="/browse?format=movie"
             class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/90 hover:bg-white/10 hover:text-primary transition"
             @click="emit('close')"
           >
@@ -195,7 +199,7 @@ async function handleLogout() {
 
           <!-- Phim Bộ -->
           <NuxtLink
-            to="/browse?type=series"
+            to="/browse?format=series"
             class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/90 hover:bg-white/10 hover:text-primary transition"
             @click="emit('close')"
           >
@@ -203,6 +207,55 @@ async function handleLogout() {
             <span>Phim Bộ</span>
           </NuxtLink>
 
+          <!-- Lịch Chiếu -->
+          <NuxtLink
+            to="/schedule"
+            class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/90 hover:bg-white/10 hover:text-primary transition"
+            @click="emit('close')"
+          >
+            <CalendarDays class="size-4 text-primary" />
+            <span>Lịch Chiếu</span>
+          </NuxtLink>
+
+          <!-- Xem Chung -->
+          <NuxtLink
+            to="/party"
+            class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/90 hover:bg-white/10 hover:text-primary transition"
+            @click="emit('close')"
+          >
+            <Users class="size-4 text-primary" />
+            <span>Xem Chung</span>
+          </NuxtLink>
+
+          <!-- Nghệ Sĩ -->
+          <NuxtLink
+            to="/actors"
+            class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/90 hover:bg-white/10 hover:text-primary transition"
+            @click="emit('close')"
+          >
+            <UsersRound class="size-4 text-primary" />
+            <span>Nghệ Sĩ</span>
+          </NuxtLink>
+
+          <!-- Lướt Shorts -->
+          <NuxtLink
+            to="/shorts"
+            class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/90 hover:bg-white/10 hover:text-primary transition"
+            @click="emit('close')"
+          >
+            <Smartphone class="size-4 text-primary" />
+            <span>Lướt Shorts</span>
+          </NuxtLink>
+
+          <!-- Cài đặt ứng dụng -->
+          <NuxtLink
+            to="/app"
+            class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/90 hover:bg-white/10 hover:text-primary transition"
+            @click="emit('close')"
+          >
+            <Download class="size-4 text-primary" />
+            <span>Cài đặt ứng dụng</span>
+          </NuxtLink>
           <!-- Quốc gia Dropdown -->
           <div>
             <button

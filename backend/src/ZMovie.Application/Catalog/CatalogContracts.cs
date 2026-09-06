@@ -18,14 +18,22 @@ public sealed record PlaybackEpisode(
     string SubtitleUrl = "",
     IReadOnlyList<PlaybackSource>? Sources = null,
     PlaybackMilestonesDto? Milestones = null);
+public sealed record ScheduleEntry(string Slug, string Title, string PosterUrl, DateOnly Date, int? EpisodeNumber);
+public sealed record ScheduleResponse(DateOnly WeekStart, IReadOnlyList<ScheduleEntry> Items);
+public sealed record PersonSummary(string Slug, string Name, IReadOnlyList<string> Roles, int TitleCount);
+public sealed record PeopleResponse(IReadOnlyList<PersonSummary> Items, int Total);
+public sealed record PersonDetail(string Slug, string Name, IReadOnlyList<string> Roles, IReadOnlyList<TitleSummary> Titles);
 
 public interface ICatalogReadStore
 {
-    Task<TitleListResponse> ListAsync(string? query, string? genre, string locale, CancellationToken ct);
+    Task<TitleListResponse> ListAsync(string? query, string? genre, string? country, int? year, string? type, string? sort, int page, int pageSize, string locale, CancellationToken ct);
     Task<TitleDetail?> GetAsync(string slug, string locale, CancellationToken ct);
     Task<IReadOnlyList<string>> GetGenresAsync(CancellationToken ct);
     Task<PlaybackResponse?> GetPlaybackAsync(string slug, string locale, CancellationToken ct);
     Task<HomeResponse?> GetHomeAsync(string locale, CancellationToken ct);
+    Task<ScheduleResponse> GetScheduleAsync(DateOnly weekStart, string locale, CancellationToken ct);
+    Task<PeopleResponse> ListPeopleAsync(string? query, int page, int pageSize, CancellationToken ct);
+    Task<PersonDetail?> GetPersonAsync(string slug, string locale, CancellationToken ct);
 }
 
 public interface ITitleRepository

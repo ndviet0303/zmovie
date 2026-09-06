@@ -9,8 +9,6 @@ import {
   Share2,
   Smile,
   Star,
-  ThumbsDown,
-  ThumbsUp,
   X,
 } from "@lucide/vue";
 import { useMovieSeo } from "~/composables/useMovieSeo";
@@ -21,9 +19,11 @@ const {
   error,
   reviews,
   isSaved,
+  actionNotice,
+  reviewRating,
   reviewComment,
   isSubmittingReview,
-  related,
+  formattedDate,
   catalog,
   setLocale,
   toggleSaved,
@@ -71,57 +71,26 @@ const activeAudio = ref<"sub" | "dual" | "dub">("sub");
 // Is spoiler checkbox
 const isSpoiler = ref(false);
 
-// Format actors with fallback avatars
+function personSlug(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-|-$/g, "");
+}
+
 const actorList = computed(() => {
   const rawActors = title.value?.actors;
-  let names: string[] = [];
-  if (Array.isArray(rawActors)) {
-    names = rawActors;
-  } else if (typeof rawActors === "string" && rawActors.trim()) {
-    names = rawActors
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }
-
-  if (!names.length) {
-    return [
-      {
-        name: "Gong Hyo Jin",
-        avatar:
-          "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-      },
-      {
-        name: "Choi Woo-sung",
-        avatar:
-          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-      },
-      {
-        name: "Sung Dong-il",
-        avatar:
-          "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
-      },
-      {
-        name: "Lee Eun-saem",
-        avatar:
-          "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
-      },
-      {
-        name: "Moo Jin-sung",
-        avatar:
-          "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80",
-      },
-      {
-        name: "Lee Sang-yi",
-        avatar:
-          "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
-      },
-    ];
-  }
-  return names.map((name, i) => ({
-    name,
-    avatar: `https://images.unsplash.com/photo-${1500000000000 + ((i * 12345678) % 50000000)}?w=150&auto=format&fit=crop&q=80`,
-  }));
+  const names = Array.isArray(rawActors)
+    ? rawActors
+    : typeof rawActors === "string"
+      ? rawActors.split(",")
+      : [];
+  return names
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .map((name) => ({ name, slug: personSlug(name) }));
 });
 
 // Episodes list
@@ -281,22 +250,23 @@ const genreList = computed(() => {
                 Diễn viên
               </h3>
               <div class="grid grid-cols-3 gap-3 text-center">
-                <div
+                <NuxtLink
                   v-for="actor in actorList.slice(0, 6)"
                   :key="actor.name"
+                  :to="`/actors/${actor.slug}`"
                   class="flex flex-col items-center"
                 >
-                  <img
-                    :src="actor.avatar"
-                    :alt="actor.name"
-                    class="size-14 rounded-full object-cover border border-white/15 shadow-sm transition hover:scale-105"
-                  />
                   <span
-                    class="mt-1.5 text-[11px] font-medium text-gray-200 line-clamp-1"
+                    class="grid size-14 place-items-center rounded-full border border-white/15 bg-primary/10 text-sm font-bold text-primary shadow-sm transition hover:scale-105"
+                  >
+                    {{ actor.name.slice(0, 2).toUpperCase() }}
+                  </span>
+                  <span
+                    class="mt-1.5 line-clamp-1 text-[11px] font-medium text-gray-200"
                   >
                     {{ actor.name }}
                   </span>
-                </div>
+                </NuxtLink>
               </div>
             </div>
 
@@ -558,23 +528,24 @@ const genreList = computed(() => {
               v-else-if="activeTab === 'actors'"
               class="grid grid-cols-2 sm:grid-cols-4 gap-4"
             >
-              <div
+              <NuxtLink
                 v-for="actor in actorList"
                 :key="actor.name"
-                class="flex flex-col items-center p-4 rounded-2xl bg-[#191b24] border border-white/10 text-center"
+                :to="`/actors/${actor.slug}`"
+                class="flex flex-col items-center rounded-2xl border border-white/10 bg-[#191b24] p-4 text-center transition hover:border-primary/50"
               >
-                <img
-                  :src="actor.avatar"
-                  :alt="actor.name"
-                  class="size-16 rounded-full object-cover border border-primary/50 shadow"
-                />
+                <span
+                  class="grid size-16 place-items-center rounded-full border border-primary/50 bg-primary/10 text-lg font-bold text-primary shadow"
+                >
+                  {{ actor.name.slice(0, 2).toUpperCase() }}
+                </span>
                 <h4 class="mt-2 text-xs font-bold text-white">
                   {{ actor.name }}
                 </h4>
-                <p class="text-[11px] text-muted-foreground mt-0.5">
-                  Diễn viên chính
+                <p class="mt-0.5 text-[11px] text-muted-foreground">
+                  Diễn viên
                 </p>
-              </div>
+              </NuxtLink>
             </div>
 
             <!-- Tab 4: Đề xuất -->
@@ -598,7 +569,11 @@ const genreList = computed(() => {
                   class="text-base sm:text-lg font-bold text-white flex items-center gap-2 font-display"
                 >
                   <MessageSquare class="size-5 text-primary" />
-                  <span>Bình luận ({{ reviews?.length || 2 }})</span>
+                  <span
+                    >Bình luận & Đánh giá ({{
+                      reviews?.items?.length || 0
+                    }})</span
+                  >
                 </h3>
 
                 <div
@@ -635,6 +610,41 @@ const genreList = computed(() => {
               <div
                 class="rounded-3xl border border-white/10 bg-[#141622] p-4 sm:p-5 shadow-lg"
               >
+                <!-- Star Rating selector when in Rating tab -->
+                <div
+                  v-if="commentTab === 'rating'"
+                  class="mb-4 flex flex-wrap items-center gap-2 border-b border-white/8 pb-3 text-xs"
+                >
+                  <span class="font-semibold text-white/80"
+                    >Điểm đánh giá:</span
+                  >
+                  <div class="flex items-center gap-1">
+                    <button
+                      v-for="star in 10"
+                      :key="star"
+                      type="button"
+                      class="text-sm transition hover:scale-125"
+                      :class="
+                        star <= (reviewRating || 10)
+                          ? 'text-amber-400'
+                          : 'text-white/20'
+                      "
+                      @click="reviewRating = star"
+                    >
+                      ★
+                    </button>
+                  </div>
+                  <span class="font-bold text-amber-400"
+                    >{{ reviewRating || 10 }}/10</span
+                  >
+                </div>
+
+                <p
+                  v-if="actionNotice"
+                  class="mb-3 rounded-xl bg-primary/10 px-3 py-2 text-xs font-semibold text-primary"
+                >
+                  {{ actionNotice }}
+                </p>
                 <textarea
                   v-model="reviewComment"
                   rows="3"
@@ -686,95 +696,52 @@ const genreList = computed(() => {
               </div>
 
               <!-- Comments List -->
-              <div class="mt-6 flex flex-col gap-4">
-                <!-- Fallback Mock Comments if empty -->
-                <div
+              <!-- Real Dynamic Comments List -->
+              <div
+                v-if="reviews?.items?.length"
+                class="mt-6 flex flex-col gap-4"
+              >
+                <article
+                  v-for="review in reviews.items"
+                  :key="review.id"
                   class="flex items-start gap-3.5 rounded-2xl bg-[#191b24]/60 p-4 border border-white/5"
                 >
-                  <img
-                    src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80"
-                    alt="Tuymh"
-                    class="size-10 rounded-full object-cover border border-primary/40"
-                  />
+                  <span
+                    class="grid size-10 shrink-0 place-items-center rounded-full bg-primary/20 text-xs font-bold text-primary"
+                  >
+                    {{ (review.authorName || "U").slice(0, 2).toUpperCase() }}
+                  </span>
                   <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 text-xs">
-                      <span class="font-bold text-white">Tuymh</span>
-                      <span class="text-primary font-bold">∞</span>
-                      <span class="text-white/40">5 ngày trước</span>
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                      <span class="font-bold text-white">{{
+                        review.authorName
+                      }}</span>
                       <span
-                        class="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/70"
-                        >P.1 - Tập 1</span
+                        class="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-400"
                       >
+                        ★ {{ review.rating }}/10
+                      </span>
+                      <span class="text-white/40">{{
+                        formattedDate(review.updatedAt)
+                      }}</span>
                     </div>
-                    <p class="mt-1 text-xs sm:text-sm text-gray-200">
-                      ra hết chưa mn? Phim xem cuốn quá trời luôn
-                    </p>
-                    <div
-                      class="mt-2.5 flex items-center gap-4 text-xs text-white/60 font-semibold"
+                    <p
+                      class="mt-1.5 text-xs sm:text-sm text-gray-200 leading-relaxed"
                     >
-                      <button
-                        type="button"
-                        class="flex items-center gap-1 hover:text-primary"
-                      >
-                        <ThumbsUp class="size-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        class="flex items-center gap-1 hover:text-red-400"
-                      >
-                        <ThumbsDown class="size-3.5" />
-                      </button>
-                      <button type="button" class="hover:text-white">
-                        Trả lời
-                      </button>
-                      <button type="button" class="hover:text-white">
-                        ··· Thêm
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  class="flex items-start gap-3.5 rounded-2xl bg-[#191b24]/60 p-4 border border-white/5"
-                >
-                  <img
-                    src="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80"
-                    alt="Nhuu qnhuy"
-                    class="size-10 rounded-full object-cover border border-primary/40"
-                  />
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 text-xs">
-                      <span class="font-bold text-white">Nhuu qnhuy</span>
-                      <span class="text-primary font-bold">∞</span>
-                      <span class="text-white/40">10:58 18/8/2026</span>
-                    </div>
-                    <p class="mt-1 text-xs sm:text-sm text-gray-200">
-                      Phimm hayy quá điii, nữ chính diễn xuất đỉnh nóc kịch trần
+                      {{
+                        review.comment ||
+                        `Đã chấm điểm ${review.rating}/10 cho bộ phim.`
+                      }}
                     </p>
-                    <div
-                      class="mt-2.5 flex items-center gap-4 text-xs text-white/60 font-semibold"
-                    >
-                      <button
-                        type="button"
-                        class="flex items-center gap-1 hover:text-primary"
-                      >
-                        <ThumbsUp class="size-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        class="flex items-center gap-1 hover:text-red-400"
-                      >
-                        <ThumbsDown class="size-3.5" />
-                      </button>
-                      <button type="button" class="hover:text-white">
-                        Trả lời
-                      </button>
-                      <button type="button" class="hover:text-white">
-                        ··· Thêm
-                      </button>
-                    </div>
                   </div>
-                </div>
+                </article>
+              </div>
+              <div
+                v-else
+                class="mt-6 rounded-2xl border border-dashed border-white/10 p-8 text-center text-xs text-muted-foreground"
+              >
+                Chưa có bình luận nào. Hãy là người đầu tiên chia sẻ cảm nghĩ về
+                bộ phim!
               </div>
             </section>
           </div>

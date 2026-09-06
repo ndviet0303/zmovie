@@ -28,3 +28,53 @@ export function googleAuth(
     body: { credential },
   });
 }
+
+export function passwordAuth(
+  login: string,
+  password: string,
+  api?: ApiFetch,
+): Promise<SessionUser> {
+  return resolveApi(api)<SessionUser>("/v1/auth/login", {
+    method: "POST",
+    credentials: "include",
+    body: { login, password },
+  });
+}
+
+export function registerAuth(
+  payload: {
+    username: string;
+    displayName: string;
+    email: string;
+    password: string;
+  },
+  api?: ApiFetch,
+): Promise<SessionUser> {
+  return resolveApi(api)<SessionUser>("/v1/auth/register", {
+    method: "POST",
+    credentials: "include",
+    body: payload,
+  });
+}
+
+export function requestPasswordReset(
+  email: string,
+  api?: ApiFetch,
+): Promise<void> {
+  return resolveApi(api)("/v1/auth/forgot-password", {
+    method: "POST",
+    body: { email },
+  }).then(() => undefined);
+}
+
+export function resetPassword(
+  login: string,
+  token: string,
+  password: string,
+  api?: ApiFetch,
+): Promise<void> {
+  return resolveApi(api)("/v1/auth/reset-password", {
+    method: "POST",
+    body: { login, token, password },
+  }).then(() => undefined);
+}

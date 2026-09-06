@@ -13,8 +13,19 @@ public static class CatalogEndpoints
     {
         var catalog = endpoints.MapGroup("/v1/catalog").WithTags("Catalog");
 
-        catalog.MapGet("/titles", async (ISender sender, string? q, string? genre, string? locale, CancellationToken ct) =>
-                (await sender.Send(new ListTitlesQuery(q, genre, locale), ct)).ToApiResult())
+        catalog.MapGet("/titles", async (
+                ISender sender,
+                string? q,
+                string? genre,
+                string? country,
+                int? year,
+                string? type,
+                string? sort,
+                int page = 1,
+                int pageSize = 30,
+                string? locale = null,
+                CancellationToken ct = default) =>
+                (await sender.Send(new ListTitlesQuery(q, genre, country, year, type, sort, page, pageSize, locale), ct)).ToApiResult())
             .WithName("ListCatalogTitles")
             .Produces<TitleListResponse>(StatusCodes.Status200OK)
             .ProducesApiErrors();
@@ -26,6 +37,21 @@ public static class CatalogEndpoints
         catalog.MapGet("/genres", async (ISender sender, CancellationToken ct) =>
                 (await sender.Send(new GetGenresQuery(), ct)).ToApiResult())
             .Produces<List<string>>(StatusCodes.Status200OK)
+            .ProducesApiErrors();
+        catalog.MapGet("/schedule", async (ISender sender, DateOnly? weekStart, string? locale, CancellationToken ct) =>
+                (await sender.Send(new GetScheduleQuery(weekStart, locale), ct)).ToApiResult())
+            .WithName("GetCatalogSchedule")
+            .Produces<ScheduleResponse>(StatusCodes.Status200OK)
+            .ProducesApiErrors();
+        catalog.MapGet("/people", async (ISender sender, string? q, int page = 1, int pageSize = 30, CancellationToken ct = default) =>
+                (await sender.Send(new ListPeopleQuery(q, page, pageSize), ct)).ToApiResult())
+            .WithName("ListCatalogPeople")
+            .Produces<PeopleResponse>(StatusCodes.Status200OK)
+            .ProducesApiErrors();
+        catalog.MapGet("/people/{slug}", async (ISender sender, string slug, string? locale, CancellationToken ct) =>
+                (await sender.Send(new GetPersonQuery(slug, locale), ct)).ToApiResult())
+            .WithName("GetCatalogPerson")
+            .Produces<PersonDetail>(StatusCodes.Status200OK)
             .ProducesApiErrors();
         catalog.MapGet("/titles/{slug}/playback", async (ISender sender, string slug, string? locale, CancellationToken ct) =>
                 (await sender.Send(new GetPlaybackQuery(slug, locale), ct)).ToApiResult())
