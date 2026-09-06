@@ -5,6 +5,8 @@
 # typos and dead links are not turned into indexable soft-404s.
 /movies/*  /index.html  200
 /watch/*   /index.html  200
+/actors/* /index.html  200
+/party/*  /index.html  200
 /genres/*  /index.html  200
 /admin     /index.html  200
 /admin/*   /index.html  200
