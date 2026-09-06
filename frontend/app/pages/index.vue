@@ -5,13 +5,10 @@ import type { TitleSummary } from "~/types/catalog";
 const {
   home,
   activeLocale,
-  messages,
   continueWatching,
   newReleaseTitles,
   titles2026,
   moviePicks,
-  seriesPicks,
-  topTitles,
   changeLocale,
   progressPercent,
 } = await useHomePage();
@@ -112,6 +109,35 @@ const heroGenres = computed(() => {
     .map((g) => g.trim())
     .filter(Boolean);
 });
+
+const lazyGenres = [
+  { genre: "Hành Động", title: "Hành Động", color: "text-amber-400" },
+  { genre: "Cổ Trang", title: "Cổ Trang", color: "text-rose-400" },
+  { genre: "Hoạt Hình", title: "Hoạt Hình & Anime", color: "text-cyan-400" },
+  { genre: "Tình Cảm", title: "Tình Cảm & Lãng Mạn", color: "text-pink-400" },
+  { genre: "Kinh Dị", title: "Kinh Dị", color: "text-red-500" },
+  { genre: "Hài Hước", title: "Hài Hước", color: "text-yellow-300" },
+  {
+    genre: "Khoa Học Viễn Tưởng",
+    title: "Khoa Học Viễn Tưởng",
+    color: "text-blue-400",
+  },
+  { genre: "Tâm Lý", title: "Tâm Lý", color: "text-purple-400" },
+  { genre: "Võ Thuật", title: "Võ Thuật", color: "text-orange-400" },
+  { genre: "Hình Sự", title: "Hình Sự & Tội Phạm", color: "text-emerald-400" },
+  {
+    genre: "Học Đường",
+    title: "Học Đường & Thanh Xuân",
+    color: "text-teal-400",
+  },
+  { genre: "Gia Đình", title: "Gia Đình", color: "text-indigo-400" },
+  { genre: "Chiếu Rạp", title: "Điện Ảnh Chiếu Rạp", color: "text-amber-300" },
+  {
+    genre: "Chiến Tranh",
+    title: "Chiến Tranh & Lịch Sử",
+    color: "text-stone-300",
+  },
+];
 </script>
 
 <template>
@@ -440,6 +466,16 @@ const heroGenres = computed(() => {
           />
         </div>
       </section>
+
+      <!-- 5. Lazy-loaded Genre Sections -->
+      <GenreShelf
+        v-for="item in lazyGenres"
+        :key="item.genre"
+        :genre="item.genre"
+        :title="item.title"
+        :color="item.color"
+        :locale="activeLocale"
+      />
     </div>
 
     <!-- 4. FOOTER -->
