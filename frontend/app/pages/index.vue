@@ -9,6 +9,7 @@ const {
   newReleaseTitles,
   titles2026,
   moviePicks,
+  seriesPicks,
   changeLocale,
   progressPercent,
 } = await useHomePage();
@@ -378,7 +379,7 @@ const lazyGenres = [
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           <MovieCard
-            v-for="item in seriesPicks.slice(0, 3)"
+            v-for="item in (seriesPicks || []).slice(0, 3)"
             :key="item.slug"
             :title="item"
             variant="horizontal"
