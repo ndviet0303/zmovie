@@ -1,0 +1,24 @@
+{
+  "name": "ZMovie — Nền tảng xem phim trực tuyến",
+  "short_name": "ZMovie",
+  "description": "Xem phim lẻ, phim bộ, hoạt hình chất lượng cao, phòng xem chung thời gian thực và lịch chiếu liên tục.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f111a",
+  "theme_color": "#181A20",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

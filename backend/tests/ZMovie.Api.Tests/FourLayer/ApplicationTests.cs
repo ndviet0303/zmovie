@@ -103,13 +103,16 @@ public sealed class ApplicationTests
             Playback = new("first", "First", false, []),
             Home = new(new("first", "First", "Drama", 2026, "movie", "poster"), [])
         };
-        (await new ListTitlesHandler(catalogStore).Handle(new(" q ", "Drama", "en-US"), default)).Value.Total.Should().Be(1);
+        (await new ListTitlesHandler(catalogStore).Handle(new(" q ", "Drama", null, null, null, null, 1, 30, "en-US"), default)).Value.Total.Should().Be(1);
         (await new GetTitleHandler(catalogStore).Handle(new("first", null), default)).Value.Slug.Should().Be("first");
         (await new GetTitleHandler(new FakeCatalogStore()).Handle(new("missing", null), default)).FirstError.Code.Should().Be("catalog.title.not_found");
         (await new GetGenresHandler(catalogStore).Handle(new(), default)).Value.Should().ContainSingle();
         (await new GetPlaybackHandler(catalogStore).Handle(new("first", null), default)).Value.Slug.Should().Be("first");
         (await new GetPlaybackHandler(new FakeCatalogStore()).Handle(new("missing", null), default)).FirstError.Code.Should().Be("catalog.playback.not_found");
         (await new GetHomeHandler(catalogStore).Handle(new(null), default)).Value.Hero.Slug.Should().Be("first");
+        var schedule = await new GetScheduleHandler(catalogStore, new FixedTimeProvider(new DateTimeOffset(2026, 8, 31, 9, 30, 0, TimeSpan.Zero)))
+            .Handle(new(null, "en-US"), default);
+        schedule.Value.WeekStart.Should().Be(new DateOnly(2026, 8, 31));
 
         var searchStore = new FakeSearchStore { Result = new([new("first", "First", "Drama", 2026, "movie", "poster")], 1) };
         (await new SearchCatalogHandler(searchStore).Handle(new("a", null, null, null), default)).Value.Total.Should().Be(1);
@@ -131,7 +134,7 @@ public sealed class ApplicationTests
     [Fact]
     public async Task Validators_and_validation_behavior_return_errors_or_call_next()
     {
-        new ListTitlesValidator().Validate(new ListTitlesQuery(new string('x', 201), null, null)).IsValid.Should().BeFalse();
+        new ListTitlesValidator().Validate(new ListTitlesQuery(new string('x', 201), null, null, null, null, null, 1, 30, null)).IsValid.Should().BeFalse();
         new RecordTitleViewValidator().Validate(new RecordTitleViewCommand("", null, "", 0)).IsValid.Should().BeFalse();
         new SubmitTitleReviewValidator().Validate(new SubmitTitleReviewCommand(UserId, "", "", 11, new string('x', 2001))).IsValid.Should().BeFalse();
         new AskCatalogAssistantValidator().Validate(new AskCatalogAssistantQuery(UserId, "", null)).IsValid.Should().BeFalse();
@@ -297,11 +300,17 @@ public sealed class ApplicationTests
         public TitleDetail? Detail { get; set; }
         public PlaybackResponse? Playback { get; set; }
         public HomeResponse? Home { get; set; }
-        public Task<TitleListResponse> ListAsync(string? query, string? genre, string locale, CancellationToken ct) => Task.FromResult(List);
+        public ScheduleResponse Schedule { get; set; } = new(new DateOnly(2026, 8, 31), []);
+        public PeopleResponse People { get; set; } = new([], 0);
+        public PersonDetail? Person { get; set; }
+        public Task<TitleListResponse> ListAsync(string? query, string? genre, string? country, int? year, string? type, string? sort, int page, int pageSize, string locale, CancellationToken ct) => Task.FromResult(List);
         public Task<TitleDetail?> GetAsync(string slug, string locale, CancellationToken ct) => Task.FromResult(Detail);
         public Task<IReadOnlyList<string>> GetGenresAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<string>>(["Drama"]);
         public Task<PlaybackResponse?> GetPlaybackAsync(string slug, string locale, CancellationToken ct) => Task.FromResult(Playback);
         public Task<HomeResponse?> GetHomeAsync(string locale, CancellationToken ct) => Task.FromResult(Home);
+        public Task<ScheduleResponse> GetScheduleAsync(DateOnly weekStart, string locale, CancellationToken ct) => Task.FromResult(Schedule with { WeekStart = weekStart });
+        public Task<PeopleResponse> ListPeopleAsync(string? query, int page, int pageSize, CancellationToken ct) => Task.FromResult(People);
+        public Task<PersonDetail?> GetPersonAsync(string slug, string locale, CancellationToken ct) => Task.FromResult(Person);
     }
 
     private sealed class FakeSearchStore : ISearchCatalogStore
@@ -337,6 +346,12 @@ public sealed class ApplicationTests
 
         public Task<ZMovie.Domain.Identity.User?> FindByExternalIdentityAsync(ZMovie.Domain.Identity.ExternalIdentity externalIdentity, CancellationToken ct) =>
             Task.FromResult(StoredUser?.ExternalIdentity == externalIdentity ? StoredUser : null);
+
+        public Task<ZMovie.Domain.Identity.User?> FindByLoginAsync(string login, CancellationToken ct) =>
+            Task.FromResult(StoredUser is not null && (StoredUser.Username == login || StoredUser.Email == login) ? StoredUser : null);
+
+        public Task<ZMovie.Domain.Identity.User?> FindByEmailAsync(string email, CancellationToken ct) =>
+            Task.FromResult(StoredUser?.Email == email ? StoredUser : null);
 
         public void Add(ZMovie.Domain.Identity.User user) => StoredUser = user;
 

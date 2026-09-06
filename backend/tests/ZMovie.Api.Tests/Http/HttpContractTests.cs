@@ -21,15 +21,25 @@ public sealed class HttpContractTests(ZMovieWebApplicationFactory factory) : ICl
         "GET /v1/catalog/titles|Anonymous",
         "GET /v1/catalog/titles/{slug}|Anonymous",
         "GET /v1/catalog/genres|Anonymous",
+        "GET /v1/catalog/schedule|Anonymous",
+        "GET /v1/catalog/people|Anonymous",
+        "GET /v1/catalog/people/{slug}|Anonymous",
         "GET /v1/catalog/titles/{slug}/playback|Anonymous",
         "POST /v1/catalog/titles/{slug}/views|Anonymous",
         "GET /v1/catalog/titles/{slug}/reviews|Anonymous",
+        "GET /v1/watch-parties|Anonymous",
+        "POST /v1/watch-parties|Anonymous",
+        "DELETE /v1/watch-parties/{roomId}|Anonymous",
         "POST /v1/catalog/titles/{slug}/reports|Anonymous",
         "GET /v1/discovery/home|Anonymous",
         "GET /v1/discovery/top/{period}|Anonymous",
         "GET /v1/discovery/for-you|Authenticated",
         "GET /v1/search|Anonymous",
         "POST /v1/auth/google|Anonymous",
+        "POST /v1/auth/register|Anonymous",
+        "POST /v1/auth/login|Anonymous",
+        "POST /v1/auth/forgot-password|Anonymous",
+        "POST /v1/auth/reset-password|Anonymous",
         "GET /v1/auth/me|Authenticated",
         "POST /v1/auth/logout|Authenticated",
         "GET /v1/me/library|Authenticated",
@@ -87,7 +97,7 @@ public sealed class HttpContractTests(ZMovieWebApplicationFactory factory) : ICl
         }).Order().ToArray();
 
         Assert.Equal(ExpectedRoutes.Order().ToArray(), actual);
-        Assert.Equal(14, actual.Count(route => route.EndsWith("|Anonymous", StringComparison.Ordinal)));
+        Assert.Equal(24, actual.Count(route => route.EndsWith("|Anonymous", StringComparison.Ordinal)));
         Assert.Equal(18, actual.Count(route => route.EndsWith("|Authenticated", StringComparison.Ordinal)));
         Assert.Equal(17, actual.Count(route => route.EndsWith("|Admin", StringComparison.Ordinal)));
     }

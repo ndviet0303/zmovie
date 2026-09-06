@@ -16,6 +16,20 @@ public sealed class EfUserRepository(IdentityDbContext db) : IUserRepository
     public Task<User?> FindByExternalIdentityAsync(ExternalIdentity externalIdentity, CancellationToken ct) =>
         Users.SingleOrDefaultAsync(user => user.ExternalIdentity == externalIdentity, ct);
 
+    public Task<User?> FindByLoginAsync(string login, CancellationToken ct)
+    {
+        var normalized = login.Trim().ToLowerInvariant();
+        return Users.SingleOrDefaultAsync(
+            user => user.Username == normalized || user.Email == normalized,
+            ct);
+    }
+
+    public Task<User?> FindByEmailAsync(string email, CancellationToken ct)
+    {
+        var normalized = email.Trim().ToLowerInvariant();
+        return Users.SingleOrDefaultAsync(user => user.Email == normalized, ct);
+    }
+
     public void Add(User user) => Users.Add(user);
 
     public async Task SaveChangesAsync(CancellationToken ct)

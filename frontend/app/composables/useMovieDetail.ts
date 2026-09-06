@@ -180,13 +180,15 @@ export async function useMovieDetail() {
   }
 
   async function submitReview() {
-    if (!title.value || reviewRating.value < 1 || isSubmittingReview.value)
-      return;
+    if (!title.value || isSubmittingReview.value) return;
+    const commentText = reviewComment.value.trim();
+    const ratingValue = reviewRating.value > 0 ? reviewRating.value : 10;
+    if (!commentText && reviewRating.value < 1) return;
     isSubmittingReview.value = true;
     try {
       await submitTitleReview(title.value.slug, {
-        rating: reviewRating.value,
-        comment: reviewComment.value || null,
+        rating: ratingValue,
+        comment: commentText || null,
       });
       reviewComment.value = "";
       actionNotice.value = copy.value.submitted;

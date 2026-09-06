@@ -60,6 +60,20 @@ namespace ZMovie.Infrastructure.Identity.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_signed_in_at");
 
+                    b.Property<string>("PasswordHash")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("password_hash");
+
+                    b.Property<DateTimeOffset?>("PasswordResetExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("password_reset_expires_at");
+
+                    b.Property<string>("PasswordResetTokenHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("password_reset_token_hash");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -76,6 +90,12 @@ namespace ZMovie.Infrastructure.Identity.Persistence.Migrations
                         .HasDefaultValue("Free")
                         .HasColumnName("subscription_tier");
 
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("username");
+
                     b.Property<DateTimeOffset?>("VipExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("vip_expires_at");
@@ -84,11 +104,17 @@ namespace ZMovie.Infrastructure.Identity.Persistence.Migrations
                         .HasName("pk_users");
 
                     b.HasIndex("Email")
-                        .HasDatabaseName("ix_users_email");
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_email")
+                        .HasFilter("password_hash IS NOT NULL");
 
                     b.HasIndex("ExternalIdentity")
                         .IsUnique()
                         .HasDatabaseName("ix_users_google_subject");
+
+                    b.HasIndex("Username")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_username");
 
                     b.HasIndex("Role", "CreatedAt")
                         .HasDatabaseName("ix_users_role_created_at");

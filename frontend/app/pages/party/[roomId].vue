@@ -2,15 +2,10 @@
 import {
   Check,
   Copy,
-  Flame,
-  Laugh,
+  Maximize2,
   MessageCircle,
-  Play,
   Send,
-  Share2,
   Users,
-  Volume2,
-  VolumeX,
 } from "@lucide/vue";
 import Hls from "hls.js";
 import {
@@ -34,7 +29,6 @@ const movieSlug = computed(() => String(route.query.movie || "sintel"));
 const episodeNum = computed(() => Number(route.query.episode || 1));
 
 const {
-  isConnected,
   activeUsers,
   chatMessages,
   connect,
@@ -49,6 +43,7 @@ const {
 } = useWatchParty();
 
 const video = ref<HTMLVideoElement | null>(null);
+const playerContainer = ref<HTMLElement | null>(null);
 const title = ref<TitleDetail | null>(null);
 const playback = ref<PlaybackResponse | null>(null);
 const isPlaying = ref(false);
@@ -62,7 +57,7 @@ const chatScroll = ref<HTMLElement | null>(null);
 const partyDanmakus = ref<DanmakuItem[]>([]);
 const isDanmakuEnabled = ref(true);
 const hudNotice = ref("");
-let hudTimeout: ReturnType<typeof setTimeout> | null = null;
+let hudTimeout: number | null = null;
 let isRemoteAction = false;
 let hls: Hls | null = null;
 
@@ -86,7 +81,7 @@ const quickReactions = [
 function showHud(text: string) {
   hudNotice.value = text;
   if (hudTimeout) clearTimeout(hudTimeout);
-  hudTimeout = setTimeout(() => {
+  hudTimeout = window.setTimeout(() => {
     hudNotice.value = "";
   }, 2000);
 }
@@ -147,7 +142,7 @@ onSyncPlayback((action, targetTime) => {
     showHud("Bạn cùng phòng đã Tạm dừng");
   }
 
-  setTimeout(() => {
+  window.setTimeout(() => {
     isRemoteAction = false;
   }, 500);
 });
@@ -213,10 +208,19 @@ function copyInviteLink() {
   if (import.meta.client) {
     void navigator.clipboard.writeText(window.location.href);
     isCopied.value = true;
-    setTimeout(() => {
+    window.setTimeout(() => {
       isCopied.value = false;
     }, 2000);
   }
+}
+
+async function toggleFullscreen() {
+  if (!playerContainer.value) return;
+  if (document.fullscreenElement) {
+    await document.exitFullscreen();
+    return;
+  }
+  await playerContainer.value.requestFullscreen();
 }
 
 function scrollToChatBottom() {
@@ -298,6 +302,13 @@ onBeforeUnmount(() => {
           />
           <span>{{ isCopied ? "Đã chép link!" : "Mời bạn" }}</span>
         </button>
+        <button
+          class="grid size-8 place-items-center rounded-xl border border-white/10 bg-surface-container text-foreground transition hover:border-primary/40"
+          aria-label="Toàn màn hình"
+          @click="toggleFullscreen"
+        >
+          <Maximize2 class="size-3.5" />
+        </button>
       </div>
     </header>
 
@@ -308,6 +319,7 @@ onBeforeUnmount(() => {
         class="flex-1 flex flex-col bg-black relative justify-center items-center"
       >
         <div
+          ref="playerContainer"
           class="relative w-full aspect-video max-h-[82vh] flex items-center justify-center bg-black"
         >
           <video

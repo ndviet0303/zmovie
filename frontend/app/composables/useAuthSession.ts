@@ -53,11 +53,17 @@ export function useAuthSession() {
     isResolved.value = true;
   }
 
+  function setUser(newUser: SessionUser) {
+    user.value = newUser;
+    isResolved.value = true;
+  }
+
   return {
     user,
     isResolved,
     isAdmin: computed(() => user.value?.role === "admin"),
     fetchSession,
     signOut,
+    setUser,
   };
 }

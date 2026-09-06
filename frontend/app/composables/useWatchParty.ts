@@ -5,6 +5,7 @@ import {
 } from "@microsoft/signalr";
 import { onBeforeUnmount, ref } from "vue";
 import type { DanmakuItem } from "~/components/DanmakuCanvas.vue";
+import type { PartyDanmakuEvent, RoomJoinedEvent } from "~/types/watch-party";
 
 export interface PartyChatMessage {
   username: string;
@@ -61,7 +62,7 @@ export function useWatchParty() {
       .configureLogging(LogLevel.Warning)
       .build();
 
-    connection.on("RoomJoined", (data: any) => {
+    connection.on("RoomJoined", (data: RoomJoinedEvent) => {
       isConnected.value = true;
       roomState.value = {
         roomId: data.roomId,
@@ -100,7 +101,7 @@ export function useWatchParty() {
       chatMessages.value.push(data);
     });
 
-    connection.on("DanmakuReceived", (data: any) => {
+    connection.on("DanmakuReceived", (data: PartyDanmakuEvent) => {
       if (onDanmakuCallback) {
         onDanmakuCallback({
           id: `${data.timeSeconds}-${data.content}-${Date.now()}`,

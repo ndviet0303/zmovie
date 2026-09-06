@@ -164,7 +164,7 @@ export function useWatchPlayer(slug: string) {
       playerError.value =
         err instanceof Error ? err.message : "Failed to load movie playback";
     } finally {
-      isLoading.value = false;
+      if (!currentSource.value || playerError.value) isLoading.value = false;
     }
   }
 
@@ -190,9 +190,13 @@ export function useWatchPlayer(slug: string) {
   async function initPlayer() {
     const src = currentSource.value;
     const sourceKind = getPlaybackSourceKind(src);
-    if (!src || sourceKind === "embed") return;
+    if (!src) {
+      isLoading.value = false;
+      return;
+    }
 
-    if (!import.meta.client) return;
+    isLoading.value = true;
+    if (sourceKind === "embed" || !import.meta.client) return;
 
     destroyHls();
 
@@ -263,6 +267,7 @@ export function useWatchPlayer(slug: string) {
         videoEl.src = src.url;
       }
     } catch (e: unknown) {
+      isLoading.value = false;
       playerError.value =
         e instanceof Error ? e.message : "Error initializing player";
     }
@@ -274,6 +279,7 @@ export function useWatchPlayer(slug: string) {
       activeSourceIndex.value++;
       initPlayer();
     } else {
+      isLoading.value = false;
       playerError.value =
         "Tất cả nguồn phát đều không khả dụng. Vui lòng báo lỗi để đội ngũ hỗ trợ sửa chữa.";
     }
@@ -325,6 +331,21 @@ export function useWatchPlayer(slug: string) {
     resumeSavedPosition(el);
   }
 
+  function onMediaLoading() {
+    isLoading.value = true;
+  }
+
+  function onMediaReady() {
+    isLoading.value = false;
+  }
+
+  function onSeeked() {
+    const el = video.value;
+    if (el && el.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+      isLoading.value = false;
+    }
+  }
+
   function togglePlay() {
     const el = video.value;
     if (!el) return;
@@ -338,7 +359,10 @@ export function useWatchPlayer(slug: string) {
   function seek(targetSeconds: number) {
     const el = video.value;
     if (!el) return;
-    el.currentTime = Math.max(0, Math.min(targetSeconds, duration.value || 0));
+    const target = Math.max(0, Math.min(targetSeconds, duration.value || 0));
+    if (Math.abs(el.currentTime - target) < 0.01) return;
+    isLoading.value = true;
+    el.currentTime = target;
   }
 
   function setVolume(v: number) {
@@ -501,6 +525,9 @@ export function useWatchPlayer(slug: string) {
     skipIntro,
     onTimeUpdate,
     onLoadedMetadata,
+    onMediaLoading,
+    onMediaReady,
+    onSeeked,
     onEnded,
     setupIntersectionObserver,
   };

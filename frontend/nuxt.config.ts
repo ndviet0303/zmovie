@@ -13,11 +13,16 @@ export default defineNuxtConfig({
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
         { rel: 'apple-touch-icon', href: '/favicon.svg' },
+        { rel: 'manifest', href: '/manifest.webmanifest' },
       ],
       meta: [
         { name: 'referrer', content: 'no-referrer' },
         { name: 'theme-color', content: '#181A20' },
         { property: 'og:site_name', content: 'ZMovie' },
+        { name: 'mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
+        { name: 'apple-mobile-web-app-title', content: 'ZMovie' },
         { property: 'og:type', content: 'website' },
         { property: 'og:locale', content: 'vi_VN' },
         { property: 'og:image', content: 'https://movie.ziet.dev/og-image.svg' },

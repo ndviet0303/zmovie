@@ -188,7 +188,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapApiEndpoints();
-app.MapHub<ZMovie.Infrastructure.Realtime.WatchPartyHub>("/hubs/watch-party");
+app.MapHub<ZMovie.Infrastructure.WatchParty.WatchPartyHub>("/hubs/watch-party");
 app.MapHub<ZMovie.Infrastructure.Realtime.DanmakuHub>("/hubs/danmaku");
 
 app.Run();

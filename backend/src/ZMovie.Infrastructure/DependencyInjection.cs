@@ -12,6 +12,7 @@ using ZMovie.Application.Engagement;
 using ZMovie.Application.Identity;
 using ZMovie.Application.Personalization;
 using ZMovie.Application.Search;
+using ZMovie.Application.WatchParty;
 using ZMovie.Infrastructure.Administration;
 using ZMovie.Infrastructure.Analytics;
 using ZMovie.Infrastructure.Analytics.Persistence;
@@ -27,6 +28,7 @@ using ZMovie.Infrastructure.Personalization;
 using ZMovie.Infrastructure.Personalization.Persistence;
 using ZMovie.Infrastructure.Recommendations;
 using ZMovie.Infrastructure.Search;
+using ZMovie.Infrastructure.WatchParty;
 
 namespace ZMovie.Infrastructure;
 
@@ -54,6 +56,7 @@ public static class DependencyInjection
         services.AddAssistantModule(configuration);
         services.AddSearchModule();
         services.AddStorageModule(configuration);
+        services.AddSingleton<IWatchPartyRegistry, InMemoryWatchPartyRegistry>();
 
         return services;
     }
@@ -92,6 +95,8 @@ public static class DependencyInjection
         services.AddScoped<IUserQueries, EfUserQueries>();
         services.AddScoped<IVipSubscriptionRepository, EfVipSubscriptionRepository>();
         services.AddScoped<IGoogleIdentityVerifier, GoogleIdentityVerifier>();
+        services.AddSingleton<IPasswordService, IdentityPasswordService>();
+        services.AddSingleton<IIdentityEmailSender, SmtpIdentityEmailSender>();
 
 
         return services;

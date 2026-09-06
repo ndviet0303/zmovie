@@ -26,6 +26,8 @@ using ZMovie.Infrastructure.Identity;
 using ZMovie.Infrastructure.Persistence;
 using ZMovie.Infrastructure.Personalization;
 using ZMovie.Infrastructure.Recommendations;
+using ZMovie.Infrastructure.Realtime;
+using ZMovie.Infrastructure.WatchParty;
 using ZMovie.Infrastructure.Recommendations.Models;
 using ZMovie.Infrastructure.Search;
 using ZMovie.Infrastructure.Seed;
@@ -68,10 +70,10 @@ public sealed class InfrastructureTests
 
         var analytics = new FakeAnalytics { Counts = new Dictionary<Guid, long> { [title.Id.Value] = 7 } };
         var store = new EfCatalogReadStore(database.Db, analytics);
-        (await store.ListAsync("First", null, "en", default)).Items.Should().ContainSingle();
-        var genreQuery = () => store.ListAsync(null, "Drama", "vi", default);
+        (await store.ListAsync("First", null, null, null, null, null, 1, 30, "en", default)).Items.Should().ContainSingle();
+        var genreQuery = () => store.ListAsync(null, "Drama", null, null, null, null, 1, 30, "vi", default);
         await genreQuery.Should().ThrowAsync<InvalidOperationException>();
-        (await store.ListAsync(null, null, "vi", default)).Should().BeOfType<TitleListResponse>();
+        (await store.ListAsync(null, null, null, null, null, null, 1, 30, "vi", default)).Should().BeOfType<TitleListResponse>();
         var detail = await store.GetAsync("first", "en", default);
         detail.Should().NotBeNull();
         detail!.ViewCount.Should().Be(7);
@@ -90,6 +92,23 @@ public sealed class InfrastructureTests
         database.Db.Genres.RemoveRange(database.Db.Genres);
         await database.Db.SaveChangesAsync();
         (await store.GetGenresAsync(default)).Should().Contain("Drama");
+    }
+
+    [Fact]
+    public void Watch_party_registry_lists_joins_updates_and_requires_management_token()
+    {
+        var registry = new InMemoryWatchPartyRegistry(
+            new FixedTimeProvider(new DateTimeOffset(2026, 8, 31, 10, 0, 0, TimeSpan.Zero)));
+        var created = registry.Create("first", 2);
+        var joined = registry.Join(created.Room.RoomId, "connection", "Lan", "first", 2);
+        registry.UpdatePlayback(created.Room.RoomId, true, 42);
+
+        joined.ActiveUsers.Should().ContainSingle().Which.Should().Be("Lan");
+        registry.List().Should().ContainSingle().Which.Should().Match<ZMovie.Application.WatchParty.WatchPartyRoom>(
+            room => room.ActiveUserCount == 1 && room.IsPlaying && room.CurrentTime == 42);
+        registry.Delete(created.Room.RoomId, "wrong").Should().BeFalse();
+        registry.Delete(created.Room.RoomId, created.ManagementToken).Should().BeTrue();
+        registry.List().Should().BeEmpty();
     }
 
     [Fact]
