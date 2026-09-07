@@ -95,7 +95,7 @@ public sealed class UserLevelHandlers(IUserExpRepository repo, TimeProvider time
     public async Task<ErrorOr<UserLevelDto>> Handle(GetUserLevelQuery request, CancellationToken ct)
     {
         var totalExp = await repo.GetTotalExpAsync(request.UserId, ct);
-        var (level, title, current, next) = BilibiliLevelCalculator.Calculate(totalExp);
+        var (level, title, current, next) = UserLevelPolicy.Calculate(totalExp);
         var progress = next > 0 ? Math.Min(100.0, (double)current / next * 100.0) : 100.0;
 
         return new UserLevelDto(level, title, current, next, progress);
@@ -113,7 +113,7 @@ public sealed class UserLevelHandlers(IUserExpRepository repo, TimeProvider time
         await repo.AddAsync(ledger, ct);
 
         var totalExp = await repo.GetTotalExpAsync(request.UserId, ct);
-        var (level, title, current, next) = BilibiliLevelCalculator.Calculate(totalExp);
+        var (level, title, current, next) = UserLevelPolicy.Calculate(totalExp);
         var progress = next > 0 ? Math.Min(100.0, (double)current / next * 100.0) : 100.0;
 
         return new UserLevelDto(level, title, current, next, progress);

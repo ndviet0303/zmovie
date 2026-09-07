@@ -4,6 +4,7 @@ import type { TitleSummary } from "~/types/catalog";
 
 const {
   home,
+  isLoading,
   activeLocale,
   continueWatching,
   newReleaseTitles,
@@ -12,7 +13,7 @@ const {
   seriesPicks,
   changeLocale,
   progressPercent,
-} = await useHomePage();
+} = useHomePage();
 
 // Reactive spotlight title in Hero Banner
 const selectedHero = ref<TitleSummary | null>(null);
@@ -147,8 +148,100 @@ const lazyGenres = [
     <AppNavbar :locale="activeLocale" @locale-change="changeLocale" />
 
     <!-- 1. HERO SPOTLIGHT BANNER -->
+    <!-- 1. HERO SPOTLIGHT SKELETON (when loading / activeHero not ready) -->
     <section
-      v-if="activeHero"
+      v-if="isLoading || !activeHero"
+      class="relative -mt-22 h-[80vh] min-h-[560px] max-h-[700px] w-full flex items-end overflow-hidden pb-5 pt-26 bg-gradient-to-b from-[#141724] via-[#10121c] to-[#0f111a]"
+    >
+      <!-- Background shimmer effect -->
+      <div
+        class="absolute inset-0 bg-gradient-to-r from-white/[0.02] via-white/[0.05] to-transparent animate-pulse pointer-events-none"
+      />
+
+      <!-- Gradient Masks matching real hero -->
+      <div
+        class="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/85 via-black/40 to-transparent pointer-events-none"
+      />
+      <div
+        class="absolute inset-y-0 left-0 w-full lg:w-3/5 bg-gradient-to-r from-[#0f111a] via-[#0f111a]/85 to-transparent pointer-events-none"
+      />
+      <div
+        class="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#0f111a] via-[#0f111a]/70 to-transparent pointer-events-none"
+      />
+
+      <!-- Hero Content Skeleton Container -->
+      <div
+        class="relative mx-auto flex w-full max-w-360 flex-col px-4 sm:px-6 lg:px-10 z-10"
+      >
+        <div class="max-w-2xl space-y-3.5">
+          <!-- Title Skeleton -->
+          <div
+            class="h-9 sm:h-11 lg:h-12 w-3/4 max-w-md rounded-xl bg-white/10 animate-pulse"
+          />
+          <!-- Subtitle Skeleton -->
+          <div class="h-4 sm:h-5 w-48 rounded-md bg-white/10 animate-pulse" />
+
+          <!-- Metadata Chips Row Skeleton -->
+          <div class="flex flex-wrap items-center gap-2 pt-1">
+            <div
+              class="h-5 w-16 rounded border border-white/10 bg-white/5 animate-pulse"
+            />
+            <div
+              class="h-5 w-10 rounded border border-white/10 bg-white/5 animate-pulse"
+            />
+            <div
+              class="h-5 w-12 rounded border border-white/10 bg-white/5 animate-pulse"
+            />
+            <div
+              class="h-5 w-14 rounded border border-white/10 bg-white/5 animate-pulse"
+            />
+          </div>
+
+          <!-- Genre Pills Skeleton -->
+          <div class="flex flex-wrap items-center gap-2 pt-0.5">
+            <div class="h-5 w-18 rounded-full bg-white/5 animate-pulse" />
+            <div class="h-5 w-22 rounded-full bg-white/5 animate-pulse" />
+            <div class="h-5 w-16 rounded-full bg-white/5 animate-pulse" />
+          </div>
+
+          <!-- Description lines -->
+          <div class="space-y-2 pt-1 max-w-lg">
+            <div class="h-3.5 w-full rounded bg-white/10 animate-pulse" />
+            <div class="h-3.5 w-4/5 rounded bg-white/10 animate-pulse" />
+          </div>
+        </div>
+
+        <!-- Bottom Controls Row Skeleton -->
+        <div class="mt-6 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <!-- Play Button Skeleton -->
+            <div
+              class="size-13 rounded-full bg-[#ffd875]/40 animate-pulse shadow-[0_0_22px_rgba(255,216,117,0.2)]"
+            />
+            <!-- Favorite & Info Skeletons -->
+            <div
+              class="size-10.5 rounded-full border border-white/10 bg-white/5 animate-pulse"
+            />
+            <div
+              class="size-10.5 rounded-full border border-white/10 bg-white/5 animate-pulse"
+            />
+          </div>
+
+          <!-- Right Thumbnail Strip Skeleton -->
+          <div class="hidden sm:flex items-center gap-2 overflow-hidden">
+            <div
+              v-for="i in 5"
+              :key="i"
+              class="aspect-[16/10] w-14 sm:w-16 shrink-0 rounded-[7px] bg-white/5 border border-white/10 animate-pulse"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1. REAL HERO SPOTLIGHT BANNER -->
+    <section
+      v-else-if="activeHero"
       class="relative -mt-22 h-[80vh] min-h-[560px] max-h-[700px] w-full flex items-end overflow-hidden pb-5 pt-26"
       @mouseenter="isHoveringHero = true"
       @mouseleave="isHoveringHero = false"
@@ -377,7 +470,20 @@ const lazyGenres = [
             Xem toàn bộ <ChevronRight class="size-4" />
           </NuxtLink>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div
+          v-if="isLoading"
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+        >
+          <div
+            v-for="i in 3"
+            :key="i"
+            class="aspect-[16/9] rounded-2xl bg-[#191b24] animate-pulse"
+          />
+        </div>
+        <div
+          v-else
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+        >
           <MovieCard
             v-for="item in (seriesPicks || []).slice(0, 3)"
             :key="item.slug"
@@ -403,6 +509,17 @@ const lazyGenres = [
           </NuxtLink>
         </div>
         <div
+          v-if="isLoading"
+          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5"
+        >
+          <div
+            v-for="i in 6"
+            :key="i"
+            class="aspect-[2/3] rounded-2xl bg-[#191b24] animate-pulse"
+          />
+        </div>
+        <div
+          v-else
           class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5"
         >
           <MovieCard
@@ -430,6 +547,17 @@ const lazyGenres = [
           </NuxtLink>
         </div>
         <div
+          v-if="isLoading"
+          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5"
+        >
+          <div
+            v-for="i in 6"
+            :key="i"
+            class="aspect-[2/3] rounded-2xl bg-[#191b24] animate-pulse"
+          />
+        </div>
+        <div
+          v-else
           class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5"
         >
           <MovieCard
@@ -442,7 +570,7 @@ const lazyGenres = [
       </section>
 
       <!-- Section: Phim 2026 Mới Chiếu Rạp -->
-      <section v-if="titles2026.length">
+      <section v-if="isLoading || titles2026.length">
         <div class="mb-4 flex items-center justify-between">
           <h2
             class="text-xl sm:text-2xl font-bold tracking-tight text-white font-display"
@@ -457,6 +585,17 @@ const lazyGenres = [
           </NuxtLink>
         </div>
         <div
+          v-if="isLoading"
+          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5"
+        >
+          <div
+            v-for="i in 6"
+            :key="i"
+            class="aspect-[2/3] rounded-2xl bg-[#191b24] animate-pulse"
+          />
+        </div>
+        <div
+          v-else
           class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5"
         >
           <MovieCard

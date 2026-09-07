@@ -82,14 +82,14 @@ async function handleLogout() {
     class="sticky top-0 z-40 w-full transition-all duration-300 bg-gradient-to-b from-black/85 via-black/40 to-transparent"
   >
     <div
-      class="mx-auto flex h-21 sm:h-22 max-w-[1480px] items-center justify-between px-5 sm:px-8 lg:px-12 xl:px-14"
+      class="mx-auto flex h-21 sm:h-22 max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-10"
     >
       <!-- LEFT: Logo + Desktop Search + Navigation Links -->
-      <div class="flex items-center gap-6 xl:gap-8">
-        <!-- Mobile hamburger toggle -->
+      <div class="flex items-center gap-3 xl:gap-4 2xl:gap-6 min-w-0">
+        <!-- Mobile/Tablet hamburger toggle -->
         <button
           type="button"
-          class="grid size-11 place-items-center rounded-xl text-white/90 transition hover:bg-white/10 hover:text-primary active:scale-95 lg:hidden"
+          class="grid size-11 place-items-center rounded-xl text-white/90 transition hover:bg-white/10 hover:text-primary active:scale-95 xl:hidden"
           aria-label="Mở menu"
           @click="isDrawerOpen = true"
         >
@@ -118,7 +118,7 @@ async function handleLogout() {
             v-model="searchQuery"
             type="text"
             placeholder="Tìm kiếm phim, diễn viên..."
-            class="h-11 w-56 lg:w-72 xl:w-88 rounded-full border border-white/12 bg-black/40 pl-11 pr-5 text-sm font-medium text-white placeholder-gray-400/80 backdrop-blur-md transition focus:border-primary/60 focus:bg-black/60 focus:outline-none focus:ring-1 focus:ring-primary/40"
+            class="h-11 w-44 sm:w-52 lg:w-64 xl:w-56 2xl:w-72 rounded-full border border-white/12 bg-black/40 pl-11 pr-5 text-sm font-medium text-white placeholder-gray-400/80 backdrop-blur-md transition focus:border-primary/60 focus:bg-black/60 focus:outline-none focus:ring-1 focus:ring-primary/40"
           />
           <div
             v-if="isSearchOpen && searchQuery.trim().length >= 2"
@@ -169,22 +169,22 @@ async function handleLogout() {
 
         <!-- Desktop Navigation Bar -->
         <nav
-          class="hidden lg:flex items-center gap-2 xl:gap-3 text-sm xl:text-[15px] font-semibold text-white/90"
+          class="hidden xl:flex items-center gap-0.5 xl:gap-1 2xl:gap-2 text-[13.5px] 2xl:text-[15px] font-semibold text-white/90 whitespace-nowrap shrink-0"
         >
           <!-- 1. Thể loại Dropdown -->
           <div
-            class="relative"
+            class="relative shrink-0"
             @mouseenter="isTheLoaiOpen = true"
             @mouseleave="isTheLoaiOpen = false"
           >
             <button
               type="button"
-              class="flex items-center gap-1.5 rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
+              class="flex items-center gap-1.5 rounded-xl px-2 xl:px-2.5 2xl:px-3 py-1.5 xl:py-2 whitespace-nowrap transition hover:bg-white/5 hover:text-primary shrink-0"
               :class="{ 'text-primary': isTheLoaiOpen }"
             >
-              <span>Thể loại</span>
+              <span class="whitespace-nowrap">Thể loại</span>
               <ChevronDown
-                class="size-4 transition-transform duration-200"
+                class="size-4 shrink-0 transition-transform duration-200"
                 :class="{ 'rotate-180': isTheLoaiOpen }"
               />
             </button>
@@ -211,7 +211,7 @@ async function handleLogout() {
           <!-- 2. Phim Lẻ Link -->
           <NuxtLink
             to="/browse?format=movie"
-            class="rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
+            class="rounded-xl px-2 xl:px-2.5 2xl:px-3 py-1.5 xl:py-2 whitespace-nowrap shrink-0 transition hover:bg-white/5 hover:text-primary"
           >
             Phim Lẻ
           </NuxtLink>
@@ -219,7 +219,7 @@ async function handleLogout() {
           <!-- 3. Phim Bộ Link -->
           <NuxtLink
             to="/browse?format=series"
-            class="rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
+            class="rounded-xl px-2 xl:px-2.5 2xl:px-3 py-1.5 xl:py-2 whitespace-nowrap shrink-0 transition hover:bg-white/5 hover:text-primary"
           >
             Phim Bộ
           </NuxtLink>
@@ -227,7 +227,7 @@ async function handleLogout() {
           <!-- 4. Lịch Chiếu Link -->
           <NuxtLink
             to="/schedule"
-            class="rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
+            class="rounded-xl px-2 xl:px-2.5 2xl:px-3 py-1.5 xl:py-2 whitespace-nowrap shrink-0 transition hover:bg-white/5 hover:text-primary"
           >
             Lịch Chiếu
           </NuxtLink>
@@ -235,7 +235,7 @@ async function handleLogout() {
           <!-- 5. Xem Chung Link -->
           <NuxtLink
             to="/party"
-            class="rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
+            class="rounded-xl px-2 xl:px-2.5 2xl:px-3 py-1.5 xl:py-2 whitespace-nowrap shrink-0 transition hover:bg-white/5 hover:text-primary"
           >
             Xem Chung
           </NuxtLink>
@@ -243,24 +243,24 @@ async function handleLogout() {
           <!-- 6. Nghệ Sĩ Link -->
           <NuxtLink
             to="/actors"
-            class="rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
+            class="rounded-xl px-2 xl:px-2.5 2xl:px-3 py-1.5 xl:py-2 whitespace-nowrap shrink-0 transition hover:bg-white/5 hover:text-primary"
           >
             Nghệ Sĩ
           </NuxtLink>
           <!-- 4. Quốc gia Dropdown -->
           <div
-            class="relative"
+            class="relative shrink-0"
             @mouseenter="isQuocGiaOpen = true"
             @mouseleave="isQuocGiaOpen = false"
           >
             <button
               type="button"
-              class="flex items-center gap-1.5 rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
+              class="flex items-center gap-1.5 rounded-xl px-2 xl:px-2.5 2xl:px-3 py-1.5 xl:py-2 whitespace-nowrap transition hover:bg-white/5 hover:text-primary shrink-0"
               :class="{ 'text-primary': isQuocGiaOpen }"
             >
-              <span>Quốc gia</span>
+              <span class="whitespace-nowrap">Quốc gia</span>
               <ChevronDown
-                class="size-4 transition-transform duration-200"
+                class="size-4 shrink-0 transition-transform duration-200"
                 :class="{ 'rotate-180': isQuocGiaOpen }"
               />
             </button>
@@ -286,18 +286,18 @@ async function handleLogout() {
 
           <!-- 5. Thêm Dropdown -->
           <div
-            class="relative"
+            class="relative shrink-0"
             @mouseenter="isThemOpen = true"
             @mouseleave="isThemOpen = false"
           >
             <button
               type="button"
-              class="flex items-center gap-1.5 rounded-xl px-3 py-2 transition hover:bg-white/5 hover:text-primary"
+              class="flex items-center gap-1.5 rounded-xl px-2 xl:px-2.5 2xl:px-3 py-1.5 xl:py-2 whitespace-nowrap transition hover:bg-white/5 hover:text-primary shrink-0"
               :class="{ 'text-primary': isThemOpen }"
             >
-              <span>Thêm</span>
+              <span class="whitespace-nowrap">Thêm</span>
               <ChevronDown
-                class="size-4 transition-transform duration-200"
+                class="size-4 shrink-0 transition-transform duration-200"
                 :class="{ 'rotate-180': isThemOpen }"
               />
             </button>

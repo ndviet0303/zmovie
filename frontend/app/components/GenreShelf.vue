@@ -47,6 +47,16 @@ async function loadTitles() {
   }
 }
 
+watch(
+  () => props.locale,
+  (next, prev) => {
+    if (next && next !== prev && hasLoaded.value) {
+      hasLoaded.value = false;
+      void loadTitles();
+    }
+  },
+);
+
 onMounted(() => {
   if (!import.meta.client) return;
 
@@ -65,7 +75,7 @@ onMounted(() => {
         }
       }
     },
-    { rootMargin: "400px" },
+    { rootMargin: "200px 0px" },
   );
 
   if (sectionRef.value) {
@@ -82,12 +92,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section ref="sectionRef" class="transition-opacity duration-500">
-    <!-- Show title if already loaded and has items, or if currently loading -->
-    <div
-      v-if="isLoading || titles.length > 0"
-      class="mb-4 flex items-center justify-between"
-    >
+  <section
+    v-if="!hasLoaded || titles.length > 0"
+    ref="sectionRef"
+    class="min-h-[340px] transition-opacity duration-500"
+  >
+    <!-- Section Heading -->
+    <div class="mb-4 flex items-center justify-between">
       <h2
         class="font-display text-xl font-bold tracking-tight text-white sm:text-2xl"
       >
@@ -101,9 +112,9 @@ onBeforeUnmount(() => {
       </NuxtLink>
     </div>
 
-    <!-- Skeletons while loading -->
+    <!-- Skeletons while not loaded yet or loading -->
     <div
-      v-if="isLoading"
+      v-if="!hasLoaded"
       class="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 md:grid-cols-4 lg:grid-cols-6"
     >
       <div
@@ -125,8 +136,13 @@ onBeforeUnmount(() => {
         variant="vertical"
       />
     </div>
-
-    <!-- Minimal placeholder if empty and not yet triggered, ensures sectionRef has height for intersection -->
-    <div v-else-if="!hasLoaded" class="h-20" />
   </section>
 </template>
+
+<style scoped>
+/* Ensure section height reservation during SSR/prerender to prevent cascade */
+section {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 340px;
+}
+</style>
