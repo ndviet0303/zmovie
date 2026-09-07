@@ -25,7 +25,7 @@ function takeUniqueTitles(
   });
 }
 
-export async function useHomePage() {
+export function useHomePage() {
   const {
     locale,
     messages,
@@ -37,33 +37,38 @@ export async function useHomePage() {
   const topPeriod = ref<TopPeriod>("week");
   const topPeriods: TopPeriod[] = ["day", "week", "month"];
 
-  const homePromise = useAsyncData("discovery-home", () =>
+  const {
+    data: home,
+    pending: homePending,
+    error,
+    refresh: refreshHome,
+  } = useLazyAsyncData("discovery-home", () =>
     fetchHomeDiscovery(activeLocale.value),
   );
-  const topPromise = useAsyncData("discovery-top", () =>
+  const {
+    data: topTitles,
+    pending: topPending,
+    refresh: refreshTop,
+  } = useLazyAsyncData("discovery-top", () =>
     fetchTopTitles(topPeriod.value, {
       locale: activeLocale.value,
       limit: 10,
     }),
   );
 
+  const isLoading = computed(() => homePending.value && !home.value);
+
   useZMovieSeo({
     title: computed(() =>
       isVietnamese.value ? "Xem phim hay online" : "Watch great movies online",
     ),
     description: computed(() => messages.value.home.description),
-    image: computed(() => homePromise.data.value?.hero.posterUrl),
+    image: computed(() => home.value?.hero.posterUrl),
   });
 
   onMounted(() => {
     void loadPersonalized(activeLocale.value);
   });
-
-  const [
-    { data: home, error },
-    { data: topTitles, pending: topPending, refresh: refreshTop },
-  ] = await Promise.all([homePromise, topPromise]);
-
   const catalogTitles = computed(() => home.value?.trending ?? []);
   const personalized = ref<PersonalizedDiscovery | null>(null);
 
@@ -184,6 +189,9 @@ export async function useHomePage() {
   return {
     home,
     error,
+    isLoading,
+    homePending,
+    refreshHome,
     activeLocale,
     messages,
     isVietnamese,
