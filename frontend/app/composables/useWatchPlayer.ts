@@ -1,27 +1,61 @@
 import { computed, onBeforeUnmount, ref, watch } from "vue";
+import Hls from "hls.js";
 import type {
   PlaybackEpisode,
   PlaybackResponse,
   PlaybackSource,
   TitleDetail,
-} from "~/types/catalog";
-import type { QualityOption, SubtitleOption } from "~/types/watch";
+} from "../types/catalog";
+import type { HistoryItem, Library } from "../types/library";
+import type { QualityOption, SubtitleOption } from "../types/watch";
 import {
   fetchCatalogPlayback,
   fetchCatalogTitleBySlug,
   recordTitleView,
-} from "~/services/catalog.service";
+} from "../services/catalog.service";
 import {
   fetchUserLibrary,
   recordWatchHistory,
-} from "~/services/library.service";
-import { getPlaybackSourceKind, inferPlaybackFormat } from "~/utils/playback";
+} from "../services/library.service";
+import { getPlaybackSourceKind, inferPlaybackFormat } from "../utils/playback";
+import { playbackMetrics } from "../utils/playbackMetrics";
 
 const LOCAL_PROGRESS_KEY = "zmovie.watch-progress.v1";
 const LOCAL_PROGRESS_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const LOCAL_PROGRESS_LIMIT = 100;
+const HISTORY_TIMEOUT_MS = 500;
+const MAX_HLS_RETRIES = 2;
 
-export function useWatchPlayer(slug: string) {
+function parseEpisodeNumber(
+  num: number | string | null | undefined,
+): number | null {
+  if (num === null || num === undefined) return null;
+  const parsed = typeof num === "number" ? num : parseInt(num, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+interface LocalProgressEntry {
+  episodeNumber: number | null;
+  progressSeconds: number;
+  updatedAt: number;
+}
+
+function isClientEnvironment(): boolean {
+  return typeof window !== "undefined" || Boolean(import.meta.client);
+}
+
+export interface WatchPlayerDependencies {
+  fetchLibrary?: () => Promise<Library | null>;
+  recordHistory?: (
+    slug: string,
+    data: { episodeNumber?: number | null; progressSeconds: number },
+  ) => Promise<unknown>;
+  recordView?: (
+    slug: string,
+  ) => Promise<{ counted: boolean; viewCount: number }>;
+}
+
+export function useWatchPlayer(slug: string, deps?: WatchPlayerDependencies) {
   const video = ref<HTMLVideoElement | null>(null);
   const playerFrame = ref<HTMLElement | null>(null);
 
@@ -56,8 +90,25 @@ export function useWatchPlayer(slug: string) {
   const hasRecordedView = ref(false);
   const authState = ref<"unknown" | "authenticated" | "anonymous">("unknown");
 
-  let hlsInstance: unknown = null;
+  let hlsInstance: Hls | null = null;
   let scrollObserver: IntersectionObserver | null = null;
+
+  // Generation & playback intent tracking
+  let currentGeneration = 0;
+  let hasAppliedResumeForGeneration = false;
+  let userHasExplicitlySelectedEpisode = false;
+  let resumeDecisionFrozen = false;
+  let pendingResumePosition = 0;
+  let pendingSeekTarget: number | null = null;
+  let playbackIntent: "play" | "pause" = "pause";
+  let hlsRetryCount = 0;
+
+  // Resolved service dependencies
+  const doFetchPlayback = deps?.fetchPlayback ?? fetchCatalogPlayback;
+  const doFetchTitle = deps?.fetchTitle ?? fetchCatalogTitleBySlug;
+  const doFetchLibrary = deps?.fetchLibrary ?? fetchUserLibrary;
+  const doRecordHistory = deps?.recordHistory ?? recordWatchHistory;
+  const doRecordView = deps?.recordView ?? recordTitleView;
 
   const currentEpisode = computed<PlaybackEpisode | null>(() => {
     return playback.value?.episodes[selectedEpisodeIndex.value] ?? null;
@@ -84,7 +135,7 @@ export function useWatchPlayer(slug: string) {
   const currentSource = computed<PlaybackSource | null>(() => {
     const sources = availableSources.value;
     if (sources.length === 0) return null;
-    return sources[activeSourceIndex.value] ?? sources[0];
+    return sources[activeSourceIndex.value] ?? sources[0] ?? null;
   });
 
   const isEmbed = computed(() => {
@@ -100,11 +151,11 @@ export function useWatchPlayer(slug: string) {
     titleSlug: string,
     episodeNumber: number | null,
   ): number {
-    if (!import.meta.client) return 0;
+    if (!isClientEnvironment()) return 0;
     try {
       const raw = localStorage.getItem(LOCAL_PROGRESS_KEY);
       if (!raw) return 0;
-      const parsed = JSON.parse(raw);
+      const parsed: Record<string, LocalProgressEntry> = JSON.parse(raw);
       const key = `${titleSlug}#${episodeNumber ?? 0}`;
       const entry = parsed[key];
       if (entry && Date.now() - entry.updatedAt < LOCAL_PROGRESS_TTL_MS) {
@@ -121,20 +172,18 @@ export function useWatchPlayer(slug: string) {
     episodeNumber: number | null,
     progressSeconds: number,
   ) {
-    if (!import.meta.client) return;
+    if (!isClientEnvironment()) return;
     try {
       const raw = localStorage.getItem(LOCAL_PROGRESS_KEY);
-      const data = raw ? JSON.parse(raw) : {};
+      const data: Record<string, LocalProgressEntry> = raw
+        ? JSON.parse(raw)
+        : {};
       const key = `${titleSlug}#${episodeNumber ?? 0}`;
       data[key] = { episodeNumber, progressSeconds, updatedAt: Date.now() };
 
       const entries = Object.entries(data);
       if (entries.length > LOCAL_PROGRESS_LIMIT) {
-        entries.sort(
-          (a, b) =>
-            (b[1] as { updatedAt: number }).updatedAt -
-            (a[1] as { updatedAt: number }).updatedAt,
-        );
+        entries.sort((a, b) => b[1].updatedAt - a[1].updatedAt);
         const trimmed = Object.fromEntries(
           entries.slice(0, LOCAL_PROGRESS_LIMIT),
         );
@@ -150,44 +199,95 @@ export function useWatchPlayer(slug: string) {
   async function loadData() {
     isLoading.value = true;
     playerError.value = "";
-    try {
-      const [titleData, playbackData] = await Promise.all([
-        fetchCatalogTitleBySlug(slug),
-        fetchCatalogPlayback(slug),
-      ]);
-      title.value = titleData;
-      playback.value = playbackData;
-      if (titleData?.viewCount) viewCount.value = titleData.viewCount;
+    playbackMetrics.startSession(slug);
 
-      checkAuthAndResume();
+    try {
+      // Title decoration does not gate playable data
+      doFetchTitle(slug)
+        .then((titleData) => {
+          title.value = titleData;
+          if (titleData?.viewCount) viewCount.value = titleData.viewCount;
+        })
+        .catch(() => undefined);
+
+      // Concurrent playback resolution and bounded remote history (500ms budget)
+      const historyPromise = Promise.race([
+        doFetchLibrary().catch(() => null),
+        new Promise<null>((resolve) =>
+          setTimeout(() => resolve(null), HISTORY_TIMEOUT_MS),
+        ),
+      ]);
+
+      const [playbackData, userLib] = await Promise.all([
+        doFetchPlayback(slug),
+        historyPromise,
+      ]);
+
+      playback.value = playbackData;
+
+      // Select initial episode if not explicitly selected by user
+      if (!userHasExplicitlySelectedEpisode && userLib?.history) {
+        const historyItem = userLib.history.find(
+          (h: HistoryItem) => h.title.slug === slug,
+        );
+        if (historyItem) {
+          const matchedIndex = playbackData.episodes.findIndex(
+            (e: PlaybackEpisode) =>
+              parseEpisodeNumber(e.number) ===
+              parseEpisodeNumber(historyItem.episodeNumber),
+          );
+          if (matchedIndex >= 0) {
+            selectedEpisodeIndex.value = matchedIndex;
+          }
+        }
+      }
+
+      // Determine initial resume position with local > remote precedence
+      const targetEpisode = playbackData.episodes[selectedEpisodeIndex.value];
+      const epNum = parseEpisodeNumber(targetEpisode?.number);
+      const localPos = getLocalProgress(slug, epNum);
+      let chosenPos = 0;
+
+      if (localPos > 5) {
+        chosenPos = localPos;
+      } else if (userLib?.history) {
+        const remoteHist = userLib.history.find(
+          (h: HistoryItem) => h.title.slug === slug,
+        );
+        if (
+          remoteHist &&
+          parseEpisodeNumber(remoteHist.episodeNumber) === (epNum ?? 1) &&
+          remoteHist.progressSeconds > 5
+        ) {
+          chosenPos = remoteHist.progressSeconds;
+        }
+      }
+
+      pendingResumePosition = chosenPos;
+      resumeDecisionFrozen = true;
+
+      // Asynchronous background library check if bounded history timed out
+      if (!userLib) {
+        doFetchLibrary()
+          .then((fullLib) => {
+            authState.value = fullLib ? "authenticated" : "anonymous";
+          })
+          .catch(() => {
+            authState.value = "anonymous";
+          });
+      } else {
+        authState.value = "authenticated";
+      }
     } catch (err: unknown) {
       playerError.value =
         err instanceof Error ? err.message : "Failed to load movie playback";
+      playbackMetrics.recordFailure("startup", "", "", playerError.value);
     } finally {
       if (!currentSource.value || playerError.value) isLoading.value = false;
     }
   }
 
-  async function checkAuthAndResume() {
-    try {
-      const lib = await fetchUserLibrary();
-      authState.value = "authenticated";
-      if (lib && currentEpisode.value) {
-        const historyItem = lib.history?.find((h) => h.title.slug === slug);
-        if (historyItem) {
-          const matchedIndex =
-            playback.value?.episodes.findIndex(
-              (e) => e.number === historyItem.episodeNumber,
-            ) ?? -1;
-          if (matchedIndex >= 0) selectedEpisodeIndex.value = matchedIndex;
-        }
-      }
-    } catch {
-      authState.value = "anonymous";
-    }
-  }
-
-  async function initPlayer() {
+  function initPlayer() {
     const src = currentSource.value;
     const sourceKind = getPlaybackSourceKind(src);
     if (!src) {
@@ -195,27 +295,38 @@ export function useWatchPlayer(slug: string) {
       return;
     }
 
+    const generation = ++currentGeneration;
+    hasAppliedResumeForGeneration = false;
+    hlsRetryCount = 0;
+
     isLoading.value = true;
-    if (sourceKind === "embed" || !import.meta.client) return;
+    playerError.value = "";
+
+    if (sourceKind === "embed" || !isClientEnvironment()) {
+      destroyHls();
+      return;
+    }
 
     destroyHls();
 
     const videoEl = video.value;
     if (!videoEl) return;
 
-    playerError.value = "";
     qualityOptions.value = [];
     subtitleOptions.value = [];
     selectedQuality.value = -1;
     selectedSubtitle.value = -1;
     currentTime.value = 0;
     duration.value = 0;
+
     videoEl.pause();
     videoEl.removeAttribute("src");
     videoEl.load();
     videoEl.volume = volume.value;
     videoEl.muted = isMuted.value;
     videoEl.playbackRate = playbackRate.value;
+
+    const initialPosition = pendingSeekTarget ?? pendingResumePosition;
 
     if (sourceKind === "video") {
       videoEl.src = src.url;
@@ -224,30 +335,36 @@ export function useWatchPlayer(slug: string) {
     }
 
     try {
-      const { default: Hls } = await import("hls.js");
       if (Hls.isSupported()) {
         const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
           backBufferLength: 90,
+          startPosition: initialPosition > 5 ? initialPosition : -1,
         });
 
         hls.attachMedia(videoEl);
         hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+          if (generation !== currentGeneration) {
+            hls.destroy();
+            return;
+          }
           hls.loadSource(src.url);
         });
 
         hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) => {
+          if (generation !== currentGeneration) return;
           qualityOptions.value = data.levels.map((level, idx) => ({
             level: idx,
             label: level.height ? `${level.height}p` : `Level ${idx + 1}`,
           }));
           selectedQuality.value = hls.currentLevel;
 
-          resumeSavedPosition(videoEl);
+          applyResumeOrSeek(videoEl, initialPosition);
         });
 
         hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => {
+          if (generation !== currentGeneration) return;
           subtitleOptions.value = (hls.subtitleTracks || []).map(
             (track, idx) => ({
               index: idx,
@@ -257,8 +374,21 @@ export function useWatchPlayer(slug: string) {
         });
 
         hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (generation !== currentGeneration) return;
           if (data.fatal) {
-            handleStreamError(data.type, data.details);
+            if (
+              data.type === Hls.ErrorTypes.NETWORK_ERROR &&
+              hlsRetryCount < MAX_HLS_RETRIES
+            ) {
+              hlsRetryCount++;
+              hls.startLoad();
+              return;
+            }
+            if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+              hls.recoverMediaError();
+              return;
+            }
+            failoverToNextSource(`HLS fatal error: ${data.details}`);
           }
         });
 
@@ -267,60 +397,93 @@ export function useWatchPlayer(slug: string) {
         videoEl.src = src.url;
       }
     } catch (e: unknown) {
+      if (generation !== currentGeneration) return;
       isLoading.value = false;
       playerError.value =
         e instanceof Error ? e.message : "Error initializing player";
     }
   }
 
-  function handleStreamError(_errorType: string, _details: string) {
-    // Multi-source automatic failover!
-    if (activeSourceIndex.value < availableSources.value.length - 1) {
-      activeSourceIndex.value++;
-      initPlayer();
-    } else {
-      isLoading.value = false;
-      playerError.value =
-        "Tất cả nguồn phát đều không khả dụng. Vui lòng báo lỗi để đội ngũ hỗ trợ sửa chữa.";
+  function applyResumeOrSeek(videoEl: HTMLVideoElement, targetPos: number) {
+    if (hasAppliedResumeForGeneration) return;
+    hasAppliedResumeForGeneration = true;
+    pendingResumePosition = 0;
+
+    if (targetPos > 5) {
+      const clampedPos =
+        Number.isFinite(videoEl.duration) && videoEl.duration > 0
+          ? Math.min(targetPos, Math.max(0, videoEl.duration - 1))
+          : targetPos;
+
+      if (Math.abs(videoEl.currentTime - clampedPos) > 1) {
+        videoEl.currentTime = clampedPos;
+      }
+    }
+
+    if (pendingSeekTarget !== null) {
+      pendingSeekTarget = null;
+    }
+
+    if (playbackIntent === "play" && videoEl.paused) {
+      videoEl.play().catch(() => undefined);
     }
   }
 
+  function failoverToNextSource(reason: string) {
+    const sources = availableSources.value;
+    if (activeSourceIndex.value < sources.length - 1) {
+      const pos = currentTime.value;
+      if (pos > 5) {
+        pendingSeekTarget = pos;
+      }
+      playbackIntent = isPlaying.value ? "play" : "pause";
+      activeSourceIndex.value++;
+    } else {
+      isLoading.value = false;
+      playerError.value =
+        "Tất cả nguồn phát đều không khả dụng. Vui lòng thử lại hoặc báo lỗi để được hỗ trợ.";
+      playbackMetrics.recordFailure(
+        "startup",
+        currentSource.value?.url ?? "",
+        currentSource.value?.format ?? "",
+        reason,
+      );
+    }
+  }
+
+  function onNativeVideoError(_event?: Event) {
+    if (!currentSource.value) return;
+    failoverToNextSource("Native video error");
+  }
+
+  function retryPlayback() {
+    activeSourceIndex.value = 0;
+    playerError.value = "";
+    initPlayer();
+  }
+
   function destroyHls() {
-    if (
-      hlsInstance &&
-      typeof (hlsInstance as { destroy: () => void }).destroy === "function"
-    ) {
-      (hlsInstance as { destroy: () => void }).destroy();
+    if (hlsInstance) {
+      hlsInstance.destroy();
       hlsInstance = null;
     }
   }
 
   function selectEpisode(idx: number) {
+    userHasExplicitlySelectedEpisode = true;
     if (idx === selectedEpisodeIndex.value) return;
     selectedEpisodeIndex.value = idx;
     activeSourceIndex.value = 0;
     currentTime.value = 0;
-    initPlayer();
+    pendingSeekTarget = null;
+    playbackIntent = isPlaying.value ? "play" : "pause";
   }
 
   function selectSource(idx: number) {
     if (idx === activeSourceIndex.value) return;
+    pendingSeekTarget = currentTime.value;
+    playbackIntent = isPlaying.value ? "play" : "pause";
     activeSourceIndex.value = idx;
-    initPlayer();
-  }
-
-  function resumeSavedPosition(videoEl: HTMLVideoElement) {
-    const resumePos = getLocalProgress(
-      slug,
-      currentEpisode.value?.number ?? null,
-    );
-    if (
-      resumePos > 5 &&
-      Number.isFinite(videoEl.duration) &&
-      resumePos < videoEl.duration - 30
-    ) {
-      videoEl.currentTime = resumePos;
-    }
   }
 
   function onLoadedMetadata() {
@@ -328,7 +491,9 @@ export function useWatchPlayer(slug: string) {
     if (!el) return;
     duration.value = Number.isFinite(el.duration) ? el.duration : 0;
     currentTime.value = el.currentTime;
-    resumeSavedPosition(el);
+
+    const initialPosition = pendingSeekTarget ?? pendingResumePosition;
+    applyResumeOrSeek(el, initialPosition);
   }
 
   function onMediaLoading() {
@@ -337,11 +502,55 @@ export function useWatchPlayer(slug: string) {
 
   function onMediaReady() {
     isLoading.value = false;
+    const el = video.value;
+    if (!el) return;
+
+    if (
+      "requestVideoFrameCallback" in el &&
+      typeof el.requestVideoFrameCallback === "function"
+    ) {
+      el.requestVideoFrameCallback(() => {
+        playbackMetrics.recordFirstFrame(
+          el,
+          currentSource.value?.url ?? "",
+          currentSource.value?.format ?? "",
+          hasAppliedResumeForGeneration,
+          currentTime.value,
+        );
+      });
+    } else {
+      playbackMetrics.recordFirstFrame(
+        el,
+        currentSource.value?.url ?? "",
+        currentSource.value?.format ?? "",
+        hasAppliedResumeForGeneration,
+        currentTime.value,
+      );
+    }
+  }
+
+  function onSeeking() {
+    isLoading.value = true;
   }
 
   function onSeeked() {
     const el = video.value;
-    if (el && el.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+    if (!el) return;
+    if (pendingSeekTarget !== null) {
+      if (
+        Math.abs(el.currentTime - pendingSeekTarget) <= 0.5 ||
+        (el.duration && el.duration - pendingSeekTarget < 0.5)
+      ) {
+        playbackMetrics.completeSeekMeasurement(
+          el,
+          currentSource.value?.url ?? "",
+          currentSource.value?.format ?? "",
+          "fallback-event",
+        );
+        pendingSeekTarget = null;
+      }
+    }
+    if (el.readyState >= 3) {
       isLoading.value = false;
     }
   }
@@ -350,8 +559,11 @@ export function useWatchPlayer(slug: string) {
     const el = video.value;
     if (!el) return;
     if (el.paused) {
+      playbackIntent = "play";
+      playbackMetrics.recordPlayIntent();
       el.play().catch(() => undefined);
     } else {
+      playbackIntent = "pause";
       el.pause();
     }
   }
@@ -359,9 +571,36 @@ export function useWatchPlayer(slug: string) {
   function seek(targetSeconds: number) {
     const el = video.value;
     if (!el) return;
-    const target = Math.max(0, Math.min(targetSeconds, duration.value || 0));
-    if (Math.abs(el.currentTime - target) < 0.01) return;
+    const maxDuration =
+      duration.value > 0 ? duration.value : Number.MAX_SAFE_INTEGER;
+    const target = Math.max(0, Math.min(targetSeconds, maxDuration));
+    if (Math.abs(el.currentTime - target) < 0.05) return;
+
+    pendingSeekTarget = target;
     isLoading.value = true;
+    playbackMetrics.startSeekMeasurement(target);
+
+    if (
+      "requestVideoFrameCallback" in el &&
+      typeof el.requestVideoFrameCallback === "function"
+    ) {
+      el.requestVideoFrameCallback(() => {
+        if (
+          pendingSeekTarget !== null &&
+          Math.abs(el.currentTime - pendingSeekTarget) <= 0.5
+        ) {
+          playbackMetrics.completeSeekMeasurement(
+            el,
+            currentSource.value?.url ?? "",
+            currentSource.value?.format ?? "",
+            "rvfc",
+          );
+          pendingSeekTarget = null;
+          isLoading.value = false;
+        }
+      });
+    }
+
     el.currentTime = target;
   }
 
@@ -399,7 +638,7 @@ export function useWatchPlayer(slug: string) {
     // Record view after 30 seconds
     if (!hasRecordedView.value && currentTime.value > 30) {
       hasRecordedView.value = true;
-      recordTitleView(slug)
+      doRecordView(slug)
         .then((res) => {
           if (res?.counted) viewCount.value = res.viewCount;
         })
@@ -408,12 +647,13 @@ export function useWatchPlayer(slug: string) {
 
     // Save progress periodically
     if (Math.floor(currentTime.value) % 5 === 0) {
-      const epNum = currentEpisode.value?.number ?? null;
+      const epNum = parseEpisodeNumber(currentEpisode.value?.number);
       saveLocalProgress(slug, epNum, Math.floor(currentTime.value));
       if (authState.value === "authenticated") {
-        recordWatchHistory(slug, epNum, Math.floor(currentTime.value)).catch(
-          () => undefined,
-        );
+        doRecordHistory(slug, {
+          episodeNumber: epNum,
+          progressSeconds: Math.floor(currentTime.value),
+        }).catch(() => undefined);
       }
     }
 
@@ -446,10 +686,11 @@ export function useWatchPlayer(slug: string) {
   }
 
   function setupIntersectionObserver() {
-    if (!import.meta.client || !playerFrame.value) return;
+    if (!isClientEnvironment() || !playerFrame.value) return;
     scrollObserver = new IntersectionObserver(
       (entries) => {
-        const [entry] = entries;
+        const entry = entries[0];
+        if (!entry) return;
         isScrolledPast.value =
           !entry.isIntersecting && entry.boundingClientRect.top < 0;
         if (isScrolledPast.value && isPlaying.value) {
@@ -461,15 +702,13 @@ export function useWatchPlayer(slug: string) {
     scrollObserver.observe(playerFrame.value);
   }
 
-  watch([currentSource, video], () => {
+  watch([currentSource, video], ([src, vid]) => {
+    if (!src || !vid) return;
     if (isEmbed.value) {
       destroyHls();
-      const el = video.value;
-      if (el) {
-        el.pause();
-        el.removeAttribute("src");
-        el.load();
-      }
+      vid.pause();
+      vid.removeAttribute("src");
+      vid.load();
       currentTime.value = 0;
       duration.value = 0;
       return;
@@ -478,6 +717,7 @@ export function useWatchPlayer(slug: string) {
   });
 
   onBeforeUnmount(() => {
+    currentGeneration++;
     destroyHls();
     scrollObserver?.disconnect();
   });
@@ -507,6 +747,7 @@ export function useWatchPlayer(slug: string) {
     selectedSubtitle,
     playerError,
     isTheaterMode,
+    isResumeDecisionFrozen: computed(() => resumeDecisionFrozen),
     isAutoNext,
     isSkipIntro,
     isMiniPlayerActive,
@@ -527,8 +768,11 @@ export function useWatchPlayer(slug: string) {
     onLoadedMetadata,
     onMediaLoading,
     onMediaReady,
+    onSeeking,
     onSeeked,
     onEnded,
+    onNativeVideoError,
+    retryPlayback,
     setupIntersectionObserver,
   };
 }

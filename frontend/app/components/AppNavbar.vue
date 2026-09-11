@@ -71,6 +71,21 @@ const moreItems = [
   { name: "Phim 4K", path: "/browse?collection=recommended" },
 ];
 
+const isScrolled = ref(false);
+
+function handleScroll() {
+  isScrolled.value = window.scrollY > 20;
+}
+
+onMounted(() => {
+  window.addEventListener("scroll", handleScroll, { passive: true });
+  handleScroll();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("scroll", handleScroll);
+});
+
 async function handleLogout() {
   await signOut();
   await navigateTo("/");
@@ -79,7 +94,12 @@ async function handleLogout() {
 
 <template>
   <header
-    class="sticky top-0 z-40 w-full transition-all duration-300 bg-gradient-to-b from-black/85 via-black/40 to-transparent"
+    class="sticky top-0 z-40 w-full transition-all duration-300"
+    :class="
+      isScrolled
+        ? 'bg-[#0f111a]/95 backdrop-blur-md border-b border-white/10 shadow-xl'
+        : 'bg-gradient-to-b from-black/85 via-black/40 to-transparent'
+    "
   >
     <div
       class="mx-auto flex h-21 sm:h-22 max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-10"
@@ -338,9 +358,9 @@ async function handleLogout() {
         <NuxtLink
           v-if="!user"
           to="/login"
-          class="flex items-center gap-2.5 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-black shadow-lg transition hover:bg-gray-100 hover:scale-105 active:scale-95"
+          class="flex items-center gap-1.5 sm:gap-2.5 rounded-full bg-white px-3.5 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-black shadow-lg transition hover:bg-gray-100 hover:scale-105 active:scale-95"
         >
-          <UserIcon class="size-4" />
+          <UserIcon class="size-3.5 sm:size-4" />
           <span>Thành viên</span>
         </NuxtLink>
 

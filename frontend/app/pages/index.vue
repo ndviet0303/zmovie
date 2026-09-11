@@ -49,6 +49,36 @@ function selectHero(title: TitleSummary) {
   selectedHero.value = title;
 }
 
+let touchStartX = 0;
+let touchEndX = 0;
+
+function handleTouchStart(e: TouchEvent) {
+  touchStartX = e.changedTouches[0]?.clientX ?? 0;
+}
+
+function handleTouchEnd(e: TouchEvent) {
+  touchEndX = e.changedTouches[0]?.clientX ?? 0;
+  handleSwipe();
+}
+
+function handleSwipe() {
+  const diff = touchEndX - touchStartX;
+  if (Math.abs(diff) < 45 || !heroSliderTitles.value.length) return;
+  const currentIndex = heroSliderTitles.value.findIndex(
+    (item) => item.slug === activeHero.value?.slug,
+  );
+  if (diff < 0) {
+    // Swipe left -> next slide
+    const nextIndex = (currentIndex + 1) % heroSliderTitles.value.length;
+    selectedHero.value = heroSliderTitles.value[nextIndex];
+  } else {
+    // Swipe right -> previous slide
+    const prevIndex =
+      (currentIndex - 1 + heroSliderTitles.value.length) %
+      heroSliderTitles.value.length;
+    selectedHero.value = heroSliderTitles.value[prevIndex];
+  }
+}
 onMounted(() => {
   autoCycleTimer = setInterval(() => {
     if (isHoveringHero.value || !heroSliderTitles.value.length) return;
@@ -245,6 +275,8 @@ const lazyGenres = [
       class="relative -mt-22 h-[80vh] min-h-[560px] max-h-[700px] w-full flex items-end overflow-hidden pb-5 pt-26"
       @mouseenter="isHoveringHero = true"
       @mouseleave="isHoveringHero = false"
+      @touchstart.passive="handleTouchStart"
+      @touchend.passive="handleTouchEnd"
     >
       <!-- Backdrop Image with Transition -->
       <transition name="fade" mode="out-in">
@@ -360,13 +392,14 @@ const lazyGenres = [
         </div>
 
         <!-- Bottom Controls Row: Action Buttons on Left, Thumbnails on Right -->
+        <!-- Bottom Controls Row: Action Buttons on Left, Indicators/Thumbnails on Right -->
         <div class="mt-5 flex items-center justify-between gap-4">
           <!-- Left Action Buttons -->
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3 shrink-0">
             <!-- Play Button (Yellow Circle) -->
             <NuxtLink
               :to="`/watch/${activeHero.slug}`"
-              class="grid size-13 place-items-center rounded-full bg-[#ffd875] text-black shadow-[0_0_22px_rgba(255,216,117,0.4)] transition duration-200 hover:scale-105 hover:bg-[#ffde8a] active:scale-95"
+              class="grid size-13 place-items-center rounded-full bg-[#ffd875] text-black shadow-[0_0_22px_rgba(255,216,117,0.4)] transition duration-200 hover:scale-105 hover:bg-[#ffde8a] active:scale-95 shrink-0"
               title="Xem ngay"
             >
               <Play class="size-5.5 fill-current translate-x-0.5" />
@@ -375,7 +408,7 @@ const lazyGenres = [
             <!-- Favorite Button (Round Outline) -->
             <button
               type="button"
-              class="grid size-10.5 place-items-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur-md transition duration-200 hover:border-white/50 hover:bg-white/10 active:scale-95"
+              class="grid size-10.5 place-items-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur-md transition duration-200 hover:border-white/50 hover:bg-white/10 active:scale-95 shrink-0"
               title="Yêu thích"
             >
               <Heart class="size-4.5" />
@@ -384,16 +417,38 @@ const lazyGenres = [
             <!-- Details Button (Round Outline) -->
             <NuxtLink
               :to="`/movies/${activeHero.slug}`"
-              class="grid size-10.5 place-items-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur-md transition duration-200 hover:border-white/50 hover:bg-white/10 active:scale-95"
+              class="grid size-10.5 place-items-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur-md transition duration-200 hover:border-white/50 hover:bg-white/10 active:scale-95 shrink-0"
               title="Chi tiết phim"
             >
               <Info class="size-4.5" />
             </NuxtLink>
           </div>
 
-          <!-- Right Thumbnail Strip (Hero Select) -->
+          <!-- Mobile Slide Indicators (when < sm) -->
           <div
-            class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 no-scrollbar shrink-0"
+            v-if="heroSliderTitles.length > 1"
+            class="flex sm:hidden items-center gap-1.5 shrink-0 pr-1"
+            role="tablist"
+            aria-label="Chọn phim nổi bật"
+          >
+            <button
+              v-for="item in heroSliderTitles"
+              :key="item.slug"
+              type="button"
+              class="h-1.5 rounded-full transition-all duration-300"
+              :class="
+                activeHero.slug === item.slug
+                  ? 'w-6 bg-[#ffd875]'
+                  : 'w-1.5 bg-white/30 hover:bg-white/60'
+              "
+              :aria-label="item.title"
+              @click="selectHero(item)"
+            />
+          </div>
+
+          <!-- Right Thumbnail Strip (Hero Select, sm+) -->
+          <div
+            class="hidden sm:flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 no-scrollbar shrink-0"
           >
             <button
               v-for="item in heroSliderTitles"
