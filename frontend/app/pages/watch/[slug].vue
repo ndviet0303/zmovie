@@ -75,7 +75,6 @@ usePlayerHotkeys({
 
 onMounted(() => {
   player.loadData().then(() => {
-    player.initPlayer();
     player.setupIntersectionObserver();
     danmaku.loadComments();
     danmaku.connectHub();
@@ -134,7 +133,10 @@ onMounted(() => {
           @loadedmetadata="player.onLoadedMetadata"
           @loading-start="player.onMediaLoading"
           @loading-end="player.onMediaReady"
+          @seeking="player.onSeeking"
           @seeked="player.onSeeked"
+          @error="player.onNativeVideoError"
+          @retry="player.retryPlayback"
           @video-ref="(el) => (player.video.value = el)"
         >
           <!-- Danmaku Canvas Layer -->

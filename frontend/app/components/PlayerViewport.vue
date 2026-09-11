@@ -17,7 +17,10 @@ const emit = defineEmits<{
   loadedmetadata: [];
   "loading-start": [];
   "loading-end": [];
+  seeking: [];
   seeked: [];
+  error: [e: Event];
+  retry: [];
   "video-ref": [el: HTMLVideoElement | null];
 }>();
 
@@ -67,8 +70,9 @@ watch(videoEl, (el) => {
       @loadstart="emit('loading-start')"
       @waiting="emit('loading-start')"
       @stalled="emit('loading-start')"
-      @seeking="emit('loading-start')"
+      @seeking="emit('seeking')"
       @seeked="emit('seeked')"
+      @error="emit('error', $event)"
     />
 
     <!-- Overlays Slot (Danmaku, DualSub, SkipIntro) -->
@@ -106,6 +110,13 @@ watch(videoEl, (el) => {
       class="absolute inset-0 flex flex-col items-center justify-center bg-black/85 p-6 text-center"
     >
       <p class="max-w-md text-sm text-red-400">{{ playerError }}</p>
+      <button
+        type="button"
+        class="mt-4 rounded-lg bg-amber-500 px-4 py-2 text-xs font-semibold text-black transition hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/50"
+        @click="emit('retry')"
+      >
+        Thử lại
+      </button>
     </div>
   </div>
 </template>

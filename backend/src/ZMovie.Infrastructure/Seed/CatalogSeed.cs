@@ -25,7 +25,7 @@ public static class CatalogSeed
         await EnsureTitle(db, Create("mua-he-cuoi-hem", "Summer on the Corner", "Mùa Hè Cuối Hẻm", "Old friends return to a small neighborhood and discover that growing up does not mean leaving everything behind.", "Những người bạn cũ trở về khu phố nhỏ và nhận ra trưởng thành không có nghĩa là phải bỏ lại mọi thứ phía sau.", "Romance, Family", 2025, "series", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80", 48, true, now), now, ct);
         await EnsureTitle(db, Create("ve-binh-ngan-ha", "Guardians of the Starlight", "Vệ Binh Ngân Hà", "A mismatched crew races across the stars to protect a world that has no idea it is in danger.", "Một đội phi hành đoàn bất đắc dĩ chạy đua giữa các vì sao để bảo vệ một thế giới chưa hề biết mình đang gặp nguy hiểm.", "Action, Science Fiction, Adventure", 2026, "series", "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=1200&q=80", 46, true, now), now, ct);
 
-        await EnsureEpisodes(db, natra, ["https://pub-a6d16eb1790945d6a27f6e7a28c2660b.r2.dev/phim.mp4"], ct);
+        await EnsureNatraEpisode(db, natra, ct);
         await EnsureEpisodes(db, mushoku, ["https://vip.opstream90.com/20260705/36184_705dd9f9/index.m3u8", "https://vip.opstream90.com/20260705/36185_f0260654/index.m3u8", "https://vip.opstream10.com/20260720/34407_ee79d5e1/index.m3u8", "https://vip.opstream10.com/20260720/34408_8f8f6380/index.m3u8"], ct);
         await EnsureEpisodes(db, translateLove, ["https://vip.opstream90.com/20260116/22574_4eb9407d/index.m3u8", "https://vip.opstream90.com/20260116/22575_026947ba/index.m3u8", "https://vip.opstream90.com/20260116/22576_a5311ea2/index.m3u8", "https://vip.opstream90.com/20260116/22577_3d5ac5d0/index.m3u8", "https://vip.opstream90.com/20260116/22578_8e6a4217/index.m3u8", "https://vip.opstream90.com/20260116/22579_599b61ce/index.m3u8", "https://vip.opstream90.com/20260116/22580_972a8c3b/index.m3u8", "https://vip.opstream90.com/20260116/22581_2393d7a6/index.m3u8", "https://vip.opstream90.com/20260116/22582_3e30c0a4/index.m3u8", "https://vip.opstream90.com/20260116/22583_94d231f1/index.m3u8", "https://vip.opstream90.com/20260116/22584_266e3c74/index.m3u8", "https://vip.opstream90.com/20260116/22585_b6d7a951/index.m3u8"], ct);
         await EnsureEpisodes(db, heavyKnight, ["https://vip.opstream10.com/20260718/34307_57990ea7/index.m3u8", "https://vip.opstream10.com/20260718/34308_c4f7cfb1/index.m3u8", "https://vip.opstream10.com/20260718/34309_b05ed73e/index.m3u8"], ct);
@@ -66,6 +66,43 @@ public static class CatalogSeed
             else
             {
                 existing.Update(existing.Name, urls[index], existing.SubtitleUrl);
+            }
+        }
+    }
+
+    private static async Task EnsureNatraEpisode(CatalogDbContext db, Title title, CancellationToken ct)
+    {
+        const string hlsUrl = "https://pub-a6d16eb1790945d6a27f6e7a28c2660b.r2.dev/v1/master.m3u8";
+        const string mp4Url = "https://pub-a6d16eb1790945d6a27f6e7a28c2660b.r2.dev/phim.mp4";
+
+        var existing = await db.Episodes.Include(x => x.Sources).FirstOrDefaultAsync(x => x.TitleId == title.Id && x.Number == 1, ct);
+        if (existing is null)
+        {
+            var episode = Episode.Create(EpisodeId.New(), title.Id, 1, "Bản Chiếu Rạp Full HD (Cloudflare R2)", hlsUrl);
+            episode.AddSource(EpisodeStreamSource.Create(EpisodeSourceId.New(), episode.Id, "Cloudflare R2 Direct Video (MP4 Fallback)", mp4Url, StreamFormat.Video, 2, true));
+            db.Episodes.Add(episode);
+        }
+        else
+        {
+            existing.Update("Bản Chiếu Rạp Full HD (Cloudflare R2)", hlsUrl, existing.SubtitleUrl);
+            var primary = existing.Sources.FirstOrDefault(s => s.Priority == 1);
+            if (primary is not null)
+            {
+                primary.UpdateDetails(hlsUrl, StreamFormat.Hls, 1, primary.SubtitleUrl, primary.AudioTrack);
+            }
+            else
+            {
+                existing.AddSource(EpisodeStreamSource.Create(EpisodeSourceId.New(), existing.Id, "Cloudflare R2 Pilot (Adaptive HLS)", hlsUrl, StreamFormat.Hls, 1, true));
+            }
+
+            var fallback = existing.Sources.FirstOrDefault(s => s.Priority == 2);
+            if (fallback is not null)
+            {
+                fallback.UpdateDetails(mp4Url, StreamFormat.Video, 2, fallback.SubtitleUrl, fallback.AudioTrack);
+            }
+            else
+            {
+                existing.AddSource(EpisodeStreamSource.Create(EpisodeSourceId.New(), existing.Id, "Cloudflare R2 Direct Video (MP4 Fallback)", mp4Url, StreamFormat.Video, 2, true));
             }
         }
     }

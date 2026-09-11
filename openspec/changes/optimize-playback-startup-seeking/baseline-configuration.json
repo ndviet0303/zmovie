@@ -1,0 +1,50 @@
+{
+  "titleSlug": "natra-2-ma-dong-nao-hai",
+  "titleName": {
+    "vi": "Natra 2: Ma Đồng Náo Hải",
+    "en": "Ne Zha 2: Demon Child Rages the Sea"
+  },
+  "episodeNumber": 1,
+  "sources": [
+    {
+      "provider": "Primary",
+      "url": "https://pub-a6d16eb1790945d6a27f6e7a28c2660b.r2.dev/phim.mp4",
+      "format": "video",
+      "priority": 1,
+      "subtitleUrl": null
+    }
+  ],
+  "headers": {
+    "acceptRanges": "bytes",
+    "accessControlAllowOrigin": "*",
+    "contentType": "video/mp4",
+    "contentLength": 2217188611
+  },
+  "media": {
+    "container": "mov,mp4,m4a,3gp,3g2,mj2",
+    "sizeBytes": 2217188611,
+    "durationSeconds": 8773.65,
+    "video": {
+      "codec": "h264",
+      "profile": "Main",
+      "level": 40,
+      "width": 1920,
+      "height": 800,
+      "frameRate": "24000/1001",
+      "bitrateBps": 1886960
+    },
+    "audio": {
+      "codec": "aac",
+      "profile": "LC",
+      "sampleRateHz": 48000,
+      "channels": 2,
+      "bitrateBps": 128458
+    }
+  },
+  "deliveryInventory": {
+    "r2PublicEndpoint": "https://pub-a6d16eb1790945d6a27f6e7a28c2660b.r2.dev",
+    "customDomain": null,
+    "deploymentAccess": "Local workspace environment; external R2 write tokens/credentials not present in local environment variables"
+  },
+  "capturedAt": "2026-09-10T09:23:10Z"
+}
